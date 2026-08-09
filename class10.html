@@ -205,10 +205,34 @@ section.paper{padding:76px 24px;}
 }
 
 /* ---------- 8. NOTES TABLE (class8/9/10/programming pages) ---------- */
+
+/* Accordion wrapper: the table stays hidden behind a clickable
+   summary bar until the user taps/clicks it open. Built with the
+   native <details>/<summary> elements — no JavaScript needed, and
+   it's fully keyboard and screen-reader accessible by default. */
+details.notes-accordion{
+  border:1px solid var(--ink);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow);background:#fff;
+}
+.notes-accordion-summary{
+  cursor:pointer;list-style:none;user-select:none;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 24px;background:var(--board);color:var(--chalk);
+  font-family:'Work Sans';font-weight:600;font-size:15.5px;
+  transition:background .15s;
+}
+.notes-accordion-summary:hover{background:var(--board-dark);}
+.notes-accordion-summary::-webkit-details-marker{display:none;}
+.notes-accordion-summary::after{
+  content:"▾";font-size:14px;color:var(--yellow);flex-shrink:0;
+  transition:transform .2s ease;
+}
+details.notes-accordion[open] .notes-accordion-summary::after{transform:rotate(180deg);}
+
 .notes-table-wrap{
-  background:#fff;border:1px solid var(--ink);border-radius:var(--radius);
+  background:#fff;
   overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
-  box-shadow:var(--shadow);max-width:100%;
+  max-width:100%;
 }
 table.notes-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;}
 table.notes-table col.col-details{width:auto;}
@@ -247,6 +271,7 @@ table.notes-table td iframe,
    that gap was what caused the action column/buttons to get clipped
    instead of reachable on phones and small tablets. */
 @media (max-width:760px){
+  .notes-accordion-summary{padding:16px 20px;font-size:14.5px;}
   .notes-table-wrap{overflow-x:visible;}
   table.notes-table{table-layout:auto;max-width:100%;}
   table.notes-table thead{display:none;}
@@ -513,7 +538,9 @@ html, body{overflow-x:hidden; width:100%;}
      ============================================================ -->
 <section class="paper" style="padding-top:40px;">
   <div class="wrap">
-    <div class="notes-table-wrap fade-up">
+    <details class="notes-accordion">
+      <summary class="notes-accordion-summary">View Class 10 Notes</summary>
+      <div class="notes-table-wrap fade-up">
       <table class="notes-table">
         <colgroup>
           <col class="col-details">
@@ -521,12 +548,18 @@ html, body{overflow-x:hidden; width:100%;}
         </colgroup>
         <thead>
           <tr>
+            <th>Details</th>
+            <th class="action-head">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
             <td class="desc">Class 10th Real Numbers — Maths Chapter 1 Notes</td>
-            <td class="action"><a href="https://drive.google.com/file/d/1_TPVZ9LQQzeHl3sSIoLiDn4HMNKt0mwJ/view?usp=sharing" class="btn-download">Click Here</a></td>
+            <td class="action"><a href="https://drive.google.com/file/d/1_TPVZ9LQQzeHl3sSIoLiDn4HMNKt0mwJ/view?usp=drive_link" class="btn-download">Click Here</a></td>
           </tr>
           <tr>
             <td class="desc">Class 10th Polynomials — Maths Chapter 2 Notes</td>
-            <td class="action"><a href="https://drive.google.com/file/d/1rhnPSRS-QGbd8XC0Gm70ysl3BUrdgN77/view?usp=sharing" class="btn-download">Click Here</a></td>
+            <td class="action"><a href="https://drive.google.com/file/d/1rhnPSRS-QGbd8XC0Gm70ysl3BUrdgN77/view?usp=drive_link" class="btn-download">Click Here</a></td>
           </tr>
           <!-- <tr>
             <td class="desc">Class 10th Chemical Reactions and Equations — Science Chapter 1 Notes</td>
@@ -551,11 +584,12 @@ html, body{overflow-x:hidden; width:100%;}
           <tr>
             <td class="desc">Class 10th IT (402) — PYQs with Detailed Solutions</td>
             <td class="action"><a href="#" class="btn-download">Click Here</a></td>
-          </tr> --> 
+          </tr> -->
           <!-- Add more rows here -->
         </tbody>
       </table>
-    </div>
+      </div>
+    </details>
   </div>
 </section>
 
