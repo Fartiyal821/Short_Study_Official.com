@@ -207,9 +207,10 @@ section.paper{padding:76px 24px;}
 /* ---------- 8. NOTES TABLE (class8/9/10/programming pages) ---------- */
 .notes-table-wrap{
   background:#fff;border:1px solid var(--ink);border-radius:var(--radius);
-  overflow:hidden;box-shadow:var(--shadow);
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  box-shadow:var(--shadow);max-width:100%;
 }
-table.notes-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+table.notes-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;}
 table.notes-table col.col-details{width:auto;}
 table.notes-table col.col-action{width:220px;}
 table.notes-table thead th{
@@ -226,6 +227,12 @@ table.notes-table td{
 }
 table.notes-table td.desc{color:var(--ink);font-weight:500;}
 table.notes-table td.action{text-align:center;}
+/* Any <iframe> pasted into a note row must always scale to its
+   container and never force the row (or the page) wider. */
+table.notes-table td iframe,
+.notes-table-wrap iframe{
+  max-width:100%;width:100%;border:0;display:block;border-radius:8px;
+}
 .btn-download{
   display:inline-block;background:var(--yellow);color:var(--board-dark);
   font-weight:600;font-size:13.5px;padding:9px 22px;border-radius:7px;
@@ -234,13 +241,23 @@ table.notes-table td.action{text-align:center;}
 }
 .btn-download:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--yellow-dark);}
 
-@media (max-width:640px){
-  table.notes-table{table-layout:auto;}
+/* Stacked "card" layout kicks in at the same breakpoint as the rest
+   of the mobile layout (760px) so there is no gap where the table
+   stays in fixed two-column mode on a screen too narrow for it —
+   that gap was what caused the action column/buttons to get clipped
+   instead of reachable on phones and small tablets. */
+@media (max-width:760px){
+  .notes-table-wrap{overflow-x:visible;}
+  table.notes-table{table-layout:auto;max-width:100%;}
   table.notes-table thead{display:none;}
-  table.notes-table, table.notes-table tbody, table.notes-table tr, table.notes-table td{display:block;width:100%;}
+  table.notes-table, table.notes-table tbody, table.notes-table tr, table.notes-table td{display:block;width:100%;max-width:100%;}
   table.notes-table tbody tr{border:1px solid var(--paper-line);margin-bottom:-1px;}
-  table.notes-table td{padding:14px 18px;border:none;border-bottom:1px solid var(--paper-line);}
+  table.notes-table td{padding:14px 16px;border:none;border-bottom:1px solid var(--paper-line);box-sizing:border-box;}
+  table.notes-table td.desc{word-break:break-word;}
   table.notes-table td.action{text-align:left;}
+  table.notes-table td iframe,
+  .notes-table-wrap iframe{width:100%;min-height:200px;}
+  .btn-download{width:100%;text-align:center;box-sizing:border-box;}
 }
 
 /* ---------- 9. CONTACT PAGE ---------- */
@@ -505,7 +522,7 @@ html, body{overflow-x:hidden; width:100%;}
         <thead>
           <tr>
             <td class="desc">Class 9th Number Systems — Maths Chapter 1 Notes</td>
-            <td class="action"><a href="https://drive.google.com/file/d/1grFYiNmeOuB9UjJ2r3BlBhvLpif9n7gQ/view?usp=sharing" class="btn-download">Click Here</a></td>
+            <td class="action"><a href="https://drive.google.com/file/d/1grFYiNmeOuB9UjJ2r3BlBhvLpif9n7gQ/view?usp=drive_link" class="btn-download">Click Here</a></td>
           </tr>
           <!-- <tr>
             <td class="desc">Class 9th Polynomials — Maths Chapter 2 Notes</td>
