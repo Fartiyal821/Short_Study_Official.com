@@ -1,9 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800"
-     crossorigin="anonymous"></script>
-   <meta name="google-site-verification" content="0yVz3m3iYVAS-9VF3lUnngHlsOsDzOI_I1etI34o_Jg" />
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="logo.png">
@@ -208,11 +205,45 @@ section.paper{padding:76px 24px;}
 }
 
 /* ---------- 8. NOTES TABLE (class8/9/10/programming pages) ---------- */
-.notes-table-wrap{
-  background:#fff;border:1px solid var(--ink);border-radius:var(--radius);
-  overflow:hidden;box-shadow:var(--shadow);
+
+/* Accordion wrapper: the table stays hidden behind a clickable
+   summary bar until the user taps/clicks it open. Built with the
+   native <details>/<summary> elements — no JavaScript needed, and
+   it's fully keyboard and screen-reader accessible by default. */
+details.notes-accordion{
+  border:1px solid var(--ink);border-radius:var(--radius);
+  overflow:hidden;box-shadow:var(--shadow);background:#fff;
 }
-table.notes-table{width:100%;border-collapse:collapse;table-layout:fixed;}
+.notes-accordion-summary{
+  cursor:pointer;list-style:none;user-select:none;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:18px 24px;background:var(--board);color:var(--chalk);
+  font-family:'Work Sans';font-weight:600;font-size:15.5px;
+  transition:background .15s;
+}
+.notes-accordion-summary:hover{background:var(--board-dark);}
+.notes-accordion-summary::-webkit-details-marker{display:none;}
+.notes-accordion-summary::after{
+  content:"▾";font-size:14px;color:var(--yellow);flex-shrink:0;
+  transition:transform .2s ease;
+}
+details.notes-accordion[open] .notes-accordion-summary::after{transform:rotate(180deg);}
+
+/* Generic accordion body — for reusing the same details/summary
+   pattern with plain text content (e.g. the homepage FAQ) instead
+   of a notes table. */
+.accordion-body{
+  padding:20px 24px;color:var(--ink-soft);font-size:15px;background:#fff;
+  border-top:1px solid var(--paper-line);
+}
+.accordion-body p{margin:0;}
+
+.notes-table-wrap{
+  background:#fff;
+  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+  max-width:100%;
+}
+table.notes-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;}
 table.notes-table col.col-details{width:auto;}
 table.notes-table col.col-action{width:220px;}
 table.notes-table thead th{
@@ -229,6 +260,12 @@ table.notes-table td{
 }
 table.notes-table td.desc{color:var(--ink);font-weight:500;}
 table.notes-table td.action{text-align:center;}
+/* Any <iframe> pasted into a note row must always scale to its
+   container and never force the row (or the page) wider. */
+table.notes-table td iframe,
+.notes-table-wrap iframe{
+  max-width:100%;width:100%;border:0;display:block;border-radius:8px;
+}
 .btn-download{
   display:inline-block;background:var(--yellow);color:var(--board-dark);
   font-weight:600;font-size:13.5px;padding:9px 22px;border-radius:7px;
@@ -237,13 +274,24 @@ table.notes-table td.action{text-align:center;}
 }
 .btn-download:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--yellow-dark);}
 
-@media (max-width:640px){
-  table.notes-table{table-layout:auto;}
+/* Stacked "card" layout kicks in at the same breakpoint as the rest
+   of the mobile layout (760px) so there is no gap where the table
+   stays in fixed two-column mode on a screen too narrow for it —
+   that gap was what caused the action column/buttons to get clipped
+   instead of reachable on phones and small tablets. */
+@media (max-width:760px){
+  .notes-accordion-summary{padding:16px 20px;font-size:14.5px;}
+  .notes-table-wrap{overflow-x:visible;}
+  table.notes-table{table-layout:auto;max-width:100%;}
   table.notes-table thead{display:none;}
-  table.notes-table, table.notes-table tbody, table.notes-table tr, table.notes-table td{display:block;width:100%;}
+  table.notes-table, table.notes-table tbody, table.notes-table tr, table.notes-table td{display:block;width:100%;max-width:100%;}
   table.notes-table tbody tr{border:1px solid var(--paper-line);margin-bottom:-1px;}
-  table.notes-table td{padding:14px 18px;border:none;border-bottom:1px solid var(--paper-line);}
+  table.notes-table td{padding:14px 16px;border:none;border-bottom:1px solid var(--paper-line);box-sizing:border-box;}
+  table.notes-table td.desc{word-break:break-word;}
   table.notes-table td.action{text-align:left;}
+  table.notes-table td iframe,
+  .notes-table-wrap iframe{width:100%;min-height:200px;}
+  .btn-download{width:100%;text-align:center;box-sizing:border-box;}
 }
 
 /* ---------- 9. CONTACT PAGE ---------- */
@@ -262,6 +310,28 @@ table.notes-table td.action{text-align:center;}
 .contact-row .label{display:block;font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
 .contact-row .value{font-weight:600;font-size:15.5px;color:var(--ink);word-break:break-word;}
 .contact-row a.value:hover{color:var(--pink-dark);}
+
+/* Contact form: uses a mailto: form action, since Short Study is a
+   static site with no backend server. Submitting opens the user's
+   email app with the fields pre-filled — no server required. */
+.contact-form-wrap{
+  max-width:560px;margin:0 auto 56px;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:36px 40px;
+}
+.contact-form-wrap h3{font-size:19px;margin-bottom:6px;color:var(--ink);}
+.contact-form-wrap .form-intro{color:var(--ink-soft);font-size:14px;margin-bottom:22px;}
+.form-field{margin-bottom:18px;}
+.form-field label{display:block;font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:6px;}
+.form-field input,
+.form-field textarea{
+  width:100%;font-family:'Work Sans';font-size:15px;color:var(--ink);
+  padding:12px 14px;border:1px solid var(--paper-line);border-radius:8px;
+  background:var(--paper);box-sizing:border-box;
+}
+.form-field input:focus,
+.form-field textarea:focus{outline:2px solid var(--yellow);outline-offset:1px;}
+.form-field textarea{resize:vertical;min-height:110px;}
+.contact-form-wrap .cta-btn{width:100%;text-align:center;margin-top:4px;}
 
 .reason-grid{
   display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px;
@@ -287,6 +357,15 @@ table.notes-table td.action{text-align:center;}
   max-width:640px;margin:0 auto 56px;text-align:center;color:var(--ink-soft);
   font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
 }
+
+/* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
+.edu-content{max-width:820px;margin:0 auto;}
+.edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
+.edu-content h3{font-size:17px;color:var(--ink);margin:26px 0 10px;}
+.edu-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
+.edu-content ul{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
+.edu-content li{margin-bottom:7px;}
+.edu-content strong{color:var(--ink);}
 
 /* ---------- 10. LEGAL PAGES (privacy / terms) ---------- */
 .legal-content{max-width:820px;margin:0 auto;}
@@ -420,43 +499,24 @@ html, body{overflow-x:hidden; width:100%;}
 </head>
 <body>
 
-   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800"
-     crossorigin="anonymous"></script>
-<!-- Fartiyal adds ad -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-8208662455546800"
-     data-ad-slot="9110562620"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-
 <!-- ============ HEADER / NAVBAR ============ -->
 <header>
-  <div class="nav">
+    <div class="nav">
     <a class="brand" href="index.html">Short<span>Study</span></a>
-
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html" class="active">Home</a></li>
-
-      <!-- E-book dropdown: acts as the main directory for all notes -->
       <li class="dropdown">
-        <a href="#" class="dropdown-toggle">E-book <span class="caret">▾</span></a>
+        <a href="#" class="dropdown-toggle">Notes <span class="caret">▾</span></a>
         <div class="dropdown-menu">
           <a href="class8.html">Class 8</a>
           <a href="class9.html">Class 9</a>
           <a href="class10.html">Class 10</a>
-          <a href="programming.html">Programming</a>
         </div>
       </li>
-
-      <li><a href="contact.html">Contact Us</a></li>
-      <li><a href="privacy-policy.html">Privacy Policy</a></li>
-      <li><a href="terms-conditions.html">Terms of Conditions</a></li>
+      <li><a href="programming.html">Programming</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
     </ul>
-
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
   </div>
 </header>
@@ -536,7 +596,36 @@ html, body{overflow-x:hidden; width:100%;}
   </div>
 </section>
 
-<!-- ============ ABOUT US SECTION ============ -->
+<!-- ============ CURRICULUM & METHODOLOGY (SEO-rich content) ============ -->
+<section class="paper" id="curriculum">
+  <div class="wrap edu-content fade-up">
+    <h2>What Short Study covers, and how we teach it</h2>
+    <p>Short Study was built around a simple idea: a student preparing for a Class 8, 9 or 10 exam — or a beginner trying to learn their first programming language — shouldn't have to choose between "free" and "actually good." Every resource on this site is written from scratch, organised chapter by chapter, and reviewed against the current syllabus, so what you're reading is both free and genuinely usable for exam preparation.</p>
+
+    <h3>Curriculum coverage, class by class</h3>
+    <p>Our <strong>Class 8</strong> notes lay the groundwork for the two board-prep years that follow — covering Mathematics (rational numbers, linear equations, mensuration), Science (crop production, cell structure, force and pressure), Social Science, and language grammar for English and Hindi. <strong>Class 9</strong> notes build directly on that foundation with number systems, polynomials, and coordinate geometry in Maths, along with matter, tissues, and motion in Science — the exact chapters that reappear, in harder form, on the Class 10 board exam. <strong>Class 10</strong> notes are written specifically with board exams in mind: real numbers, trigonometry, and quadratic equations in Maths; chemical reactions, life processes, and electricity in Science; plus a dedicated IT (Code 402) previous-year-questions resource with detailed, examiner-style solutions.</p>
+
+    <p>Alongside school notes, our <strong>Programming</strong> section is built for absolute beginners and freshers preparing for entry-level technical roles. It starts with Python fundamentals, moves through C and Java for a deeper understanding of how code actually executes, covers HTML & CSS for anyone interested in web development, and finishes with Data Structures and SQL basics — the exact topics that come up most often in fresher-level coding interviews.</p>
+
+    <h3>Our teaching methodology</h3>
+    <p>Every note on Short Study follows the same underlying approach, regardless of subject: <strong>understand first, memorise second.</strong> Instead of dense textbook paragraphs, our notes lead with a plain-language explanation of what a concept actually means, followed by worked examples, and finish with the kind of concise, highlighted summary points you'd want in front of you the night before an exam. For Mathematics and Science, that means step-by-step worked numericals rather than just final answers. For Social Science and languages, it means short, memorable revision points instead of full paragraphs you have to re-read every time. For programming, it means building the mental model behind a concept — what a loop actually does, why a linked list is useful — before showing the code that implements it.</p>
+
+    <p>We also deliberately keep our notes <strong>handwritten</strong> rather than typed. This isn't just an aesthetic choice — writing (and reading well-structured handwriting) engages memory differently than plain typed text does, and it mirrors the actual answer-sheet format that board exams reward: clear structure, underlined key terms, and diagrams labelled the way a well-prepared student would draw them.</p>
+
+    <h3>What makes Short Study different</h3>
+    <ul>
+      <li><strong>Genuinely free</strong> — no paywalls, no premium tier, no "unlock full notes" prompts hiding behind a payment.</li>
+      <li><strong>No sign-up required</strong> — every note is one click away, with nothing to register or download an app for.</li>
+      <li><strong>Chapter-wise organisation</strong> — find exactly the chapter you need instead of scrolling through one giant PDF.</li>
+      <li><strong>Continuously updated</strong> — notes are revised as syllabi, question patterns, and board formats change.</li>
+      <li><strong>Built for two audiences at once</strong> — school students preparing for exams, and complete beginners learning to code, without either group feeling like an afterthought.</li>
+    </ul>
+
+    <p>If you're new here, the fastest way to get started is to jump straight to your class using the "Notes" menu above, or head to our <a href="programming.html" style="color:var(--pink-dark); font-weight:600;">Programming</a> section if coding is what brought you here. And if you'd like to know more about why we built this in the first place, our <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page has the full story.</p>
+  </div>
+</section>
+
+<!-- ============ ABOUT US SECTION (short teaser — full story on about.html) ============ -->
 <section class="paper about-section">
   <div class="wrap">
 
@@ -544,30 +633,12 @@ html, body{overflow-x:hidden; width:100%;}
     <div class="about-intro fade-up">
       <span class="kicker">About Short Study</span>
       <h2 style="font-size:clamp(26px,3.6vw,36px); margin:10px 0 16px;">Free notes, built for every student</h2>
-      <p>Short Study exists for one simple reason: quality notes shouldn't cost anything. What started as a small effort to help a handful of classmates prepare for exams has grown into a complete, free learning resource for students across Class 8, 9 and 10, as well as anyone taking their first steps into programming.</p>
-      <p>We believe a student's access to good study material should never depend on how much they can afford to pay. That belief is the foundation of everything on this site — every note, every guide, and every resource is published with one condition attached: it stays free, forever.</p>
-    </div>
-
-    <div class="wrap about-grid">
-      <div class="about-copy fade-up">
-        <p>There are no hidden fees, no paywalls, and no sign-ups required to use Short Study. Every resource on this site is free to view and download, any time, from any device. We keep the platform lightweight and distraction-free so you can focus on what matters: understanding the topic in front of you.</p>
-        <p>From board-exam-ready school notes to beginner-friendly programming guides, our goal is to make sure that wherever you are in your learning journey, you can find clear, well-organised material to help you move forward — without spending a single rupee.</p>
-        <div class="about-stats">
-          <div><strong>3</strong><span>Classes covered</span></div>
-          <div><strong>100%</strong><span>Free, always</span></div>
-          <div><strong>24/7</strong><span>Access anytime</span></div>
-        </div>
-      </div>
-      <div class="about-illustration fade-up delay-1">
-        <svg viewBox="0 0 100 100" width="140" height="140" role="img" aria-label="Open book icon">
-          <path d="M50 25 C40 18 25 18 15 22 L15 75 C25 71 40 71 50 78 C60 71 75 71 85 75 L85 22 C75 18 60 18 50 25 Z" fill="#2B3A32"/>
-          <path d="M50 25 L50 78" stroke="#22302A" stroke-width="2"/>
-        </svg>
-      </div>
+      <p>Short Study exists for one simple reason: quality notes shouldn't cost anything. We believe a student's access to good study material should never depend on how much they can afford to pay — so every note, every guide, and every resource on this site stays free, permanently, with no sign-up required.</p>
+      <p><a href="about.html" style="color:var(--pink-dark); font-weight:600;">Read our full story on the About Us page →</a></p>
     </div>
 
     <!-- What we offer -->
-    <div style="margin-top:64px;">
+    <div style="margin-top:44px;">
       <div class="section-head fade-up">
         <span class="kicker">What we offer</span>
         <h2>Two focus areas, one goal</h2>
@@ -599,27 +670,74 @@ html, body{overflow-x:hidden; width:100%;}
       </div>
     </div>
 
-    <!-- Team & vision -->
-    <div class="team-block fade-up">
-      <div class="team-icon">👥</div>
-      <div>
-        <h3>The team behind Short Study</h3>
-        <p>Short Study is maintained by a small, dedicated team that works behind the scenes to research, organise, write and proofread every note published on this site. We review our material regularly against the latest syllabus, fix errors as soon as they're reported, and keep adding new notes based on what students actually ask for. Our vision is simple: to keep building a reliable, easy-to-understand library of free educational material that any student — regardless of their background or budget — can turn to whenever they need help.</p>
-      </div>
+  </div>
+</section>
+
+<!-- ============ FAQ SECTION ============ -->
+<section class="paper" id="faq">
+  <div class="wrap">
+    <div class="section-head fade-up">
+      <span class="kicker">Common questions</span>
+      <h2>Frequently asked questions</h2>
+      <p>Quick answers to what students ask us most. Still stuck? Our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page reaches a real inbox.</p>
     </div>
 
+    <div style="max-width:820px; margin:0 auto; display:grid; gap:14px;" class="fade-up">
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Is Short Study really 100% free?</summary>
+        <div class="accordion-body"><p>Yes — every note, chapter, and programming resource on this site is free to view and download, with no sign-up, login, or hidden payment. There is no premium tier and there never will be.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Do I need to create an account to access notes?</summary>
+        <div class="accordion-body"><p>No. Every note is one click away from the "Notes" menu at the top of the page — nothing to register, download, or log into.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Which classes and subjects do you cover?</summary>
+        <div class="accordion-body"><p>We cover Class 8, Class 9 and Class 10 across Mathematics, Science, Social Science, English and Hindi, plus a dedicated Programming section covering Python, C, Java, HTML/CSS, Data Structures and SQL basics for beginners and freshers.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Are the notes updated for the latest syllabus?</summary>
+        <div class="accordion-body"><p>Yes — we regularly review our notes against the current CBSE syllabus and question patterns, and update chapters when something changes rather than leaving them untouched for years.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">I can't find a chapter I need — what do I do?</summary>
+        <div class="accordion-body"><p>Reach out through our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page and tell us the class and chapter. We regularly add new notes based on what students actually ask for.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">I've never coded before — where should I start?</summary>
+        <div class="accordion-body"><p>Start with our Python notes in the Programming section — its simple syntax makes it one of the easiest languages to build confidence in early, and our notes assume zero prior coding background.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Can I download notes to study offline?</summary>
+        <div class="accordion-body"><p>Yes — every note is available to view online or download, so you can study offline whenever you don't have a reliable connection.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Who runs Short Study?</summary>
+        <div class="accordion-body"><p>Short Study is maintained by a small, dedicated team that researches, writes, and proofreads every note published on the site. You can read more about our mission on the <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page.</p></div>
+      </details>
+
+    </div>
   </div>
 </section>
 
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="footer-inner">
-    <ul class="footer-links">
+        <ul class="footer-links">
       <li><a href="index.html">Home</a></li>
       <li><a href="class8.html">Class 8</a></li>
       <li><a href="class9.html">Class 9</a></li>
       <li><a href="class10.html">Class 10</a></li>
       <li><a href="programming.html">Programming</a></li>
+      <li><a href="about.html">About Us</a></li>
       <li><a href="contact.html">Contact Us</a></li>
       <li><a href="privacy-policy.html">Privacy Policy</a></li>
       <li><a href="terms-conditions.html">Terms of Conditions</a></li>
