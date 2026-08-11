@@ -358,6 +358,66 @@ table.notes-table td iframe,
   font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
 }
 
+/* ---------- 9c. LESSON PAGES (programming/*.html) ---------- */
+.lesson-meta{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  max-width:820px;margin:0 auto 28px;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
+  border-bottom:1px solid var(--paper-line);padding-bottom:18px;
+}
+.lesson-meta .tag{
+  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
+  padding:5px 12px;
+}
+.lesson-content{max-width:820px;margin:0 auto;}
+.lesson-content h2{font-size:24px;color:var(--ink);margin:34px 0 14px;}
+.lesson-content h2:first-child{margin-top:0;}
+.lesson-content h3{font-size:18px;color:var(--ink);margin:26px 0 10px;}
+.lesson-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
+.lesson-content ul,.lesson-content ol{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
+.lesson-content li{margin-bottom:8px;}
+.lesson-content strong{color:var(--ink);}
+.lesson-content code{
+  font-family:'JetBrains Mono',monospace;background:var(--paper);
+  border:1px solid var(--paper-line);border-radius:4px;padding:2px 6px;font-size:13.5px;color:var(--pink-dark);
+}
+.code-block{
+  background:var(--board);color:var(--chalk);border-radius:10px;
+  padding:20px 22px;margin:0 0 18px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;
+}
+.code-block .cm{color:var(--chalk-dim);}
+.output-block{
+  background:var(--paper);border:1px dashed var(--paper-line);border-radius:10px;
+  padding:16px 20px;margin:0 0 18px;font-family:'JetBrains Mono',monospace;
+  font-size:13.5px;color:var(--ink-soft);
+}
+.output-block .label{
+  display:block;font-family:'Work Sans';font-size:11.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;
+}
+.mistake-list{
+  border-left:3px solid var(--pink);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px;margin:0 0 18px;
+}
+.mistake-list li{color:var(--ink-soft);}
+.exercise-list{
+  border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px 4px;margin:0 0 18px;
+}
+.pdf-callout{
+  max-width:820px;margin:40px auto 0;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+}
+.pdf-callout .pdf-text h3{font-size:16px;margin-bottom:4px;color:var(--ink);}
+.pdf-callout .pdf-text p{font-size:13.5px;color:var(--ink-soft);margin:0;}
+.lesson-nav{
+  max-width:820px;margin:36px auto 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:14px;
+}
+.lesson-nav a{color:var(--pink-dark);font-weight:600;}
+
 /* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
 .edu-content{max-width:820px;margin:0 auto;}
 .edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
@@ -477,6 +537,11 @@ html, body{overflow-x:hidden; width:100%;}
 
   footer{padding:40px 20px 26px;}
   .footer-links{gap:16px 20px;}
+
+  .lesson-meta{font-size:11.5px;gap:8px 12px;}
+  .code-block{padding:16px 16px;font-size:12.5px;}
+  .pdf-callout{flex-direction:column;align-items:flex-start;padding:22px;}
+  .pdf-callout .cta-btn{width:100%;text-align:center;}
 }
 
 /* ---- Small phones (narrow viewports, e.g. iPhone SE / older Androids) ---- */
@@ -501,18 +566,10 @@ html, body{overflow-x:hidden; width:100%;}
 
 <!-- ============ HEADER / NAVBAR ============ -->
 <header>
-    <div class="nav">
+      <div class="nav">
     <a class="brand" href="index.html">Short<span>Study</span></a>
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle">Notes <span class="caret">▾</span></a>
-        <div class="dropdown-menu">
-          <a href="class8.html">Class 8</a>
-          <a href="class9.html">Class 9</a>
-          <a href="class10.html">Class 10</a>
-        </div>
-      </li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html" class="active">Contact</a></li>
@@ -561,22 +618,22 @@ html, body{overflow-x:hidden; width:100%;}
         <div class="reason-card fade-up delay-1">
           <div class="reason-icon">📝</div>
           <h3>Request a note</h3>
-          <p>Can't find a chapter or subject you need? Tell us the class and topic and we'll try to add it.</p>
+          <p>Can't find a topic you need? Tell us which language or concept and we'll consider adding it to the curriculum.</p>
         </div>
         <div class="reason-card fade-up delay-2">
           <div class="reason-icon">🐞</div>
           <h3>Report a broken link</h3>
-          <p>If a "Click Here" button isn't opening a note, let us know which page and chapter so we can fix it fast.</p>
+          <p>If a lesson link, code example, or "Click Here" button isn't working, let us know which page so we can fix it fast.</p>
         </div>
         <div class="reason-card fade-up delay-3">
           <div class="reason-icon">💬</div>
           <h3>Share feedback</h3>
-          <p>Found an error in a note, or have an idea to make Short Study better? We genuinely want to hear it.</p>
+          <p>Found an error in a lesson, or have an idea to make Short Study better? We genuinely want to hear it.</p>
         </div>
         <div class="reason-card fade-up delay-4">
           <div class="reason-icon">🤝</div>
           <h3>Collaborate with us</h3>
-          <p>Want to contribute your own handwritten notes to help other students? Reach out and we'll take it from there.</p>
+          <p>Want to contribute a lesson or help review one? Reach out and we'll take it from there.</p>
         </div>
       </div>
     </div>
@@ -585,9 +642,9 @@ html, body{overflow-x:hidden; width:100%;}
     <div class="contact-steps fade-up">
       <h3>How to reach us — step by step</h3>
       <ol>
-        <li><strong>Choose your channel.</strong> Use email for detailed requests (like asking for a specific chapter or reporting a broken link), or Instagram for quick questions and updates.</li>
-        <li><strong>Mention the class or subject.</strong> If your query is about a note, include the class (8, 9 or 10) or the programming topic, plus the exact chapter name if you have it — this helps us respond faster.</li>
-        <li><strong>Describe the issue clearly.</strong> A short, specific message (for example, "Class 10 Science Chapter 6 link isn't opening") gets resolved much quicker than a general one.</li>
+        <li><strong>Choose your channel.</strong> Use email for detailed requests (like asking for a specific lesson or reporting a broken link), or Instagram for quick questions and updates.</li>
+        <li><strong>Mention the topic.</strong> If your query is about a lesson, include the language or subject (Python, C, Data Structures, etc.) — this helps us respond faster.</li>
+        <li><strong>Describe the issue clearly.</strong> A short, specific message (for example, "The Python Basics loop example isn't clear") gets resolved much quicker than a general one.</li>
         <li><strong>Wait for our reply.</strong> We personally read and respond to every message — see our typical response time below.</li>
       </ol>
     </div>
@@ -602,19 +659,19 @@ html, body{overflow-x:hidden; width:100%;}
           <input type="text" id="contact-name" name="Name" placeholder="e.g. Aarav Sharma" required>
         </div>
         <div class="form-field">
-          <label for="contact-class">Class or topic (optional)</label>
-          <input type="text" id="contact-class" name="Class or Topic" placeholder="e.g. Class 10 Science, or Python">
+          <label for="contact-class">Topic (optional)</label>
+          <input type="text" id="contact-class" name="Topic" placeholder="e.g. Python Basics, or Data Structures">
         </div>
         <div class="form-field">
           <label for="contact-message">Your message</label>
-          <textarea id="contact-message" name="Message" placeholder="Tell us what you need — a chapter request, a broken link, or feedback." required></textarea>
+          <textarea id="contact-message" name="Message" placeholder="Tell us what you need — a lesson request, a broken link, or feedback." required></textarea>
         </div>
         <button type="submit" class="cta-btn">Send message</button>
       </form>
     </div>
 
     <div class="response-note fade-up">
-      We typically respond within <strong>24–48 hours</strong>. For the fastest response on note requests or broken links, email us directly at
+      We typically respond within <strong>24–48 hours</strong>. For the fastest response on lesson requests or broken links, email us directly at
       <a href="mailto:gauravfartiyal751@gmail.com" style="color:var(--pink-dark); font-weight:600;">gauravfartiyal751@gmail.com</a>.
     </div>
 
@@ -624,11 +681,8 @@ html, body{overflow-x:hidden; width:100%;}
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="footer-inner">
-        <ul class="footer-links">
+            <ul class="footer-links">
       <li><a href="index.html">Home</a></li>
-      <li><a href="class8.html">Class 8</a></li>
-      <li><a href="class9.html">Class 9</a></li>
-      <li><a href="class10.html">Class 10</a></li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About Us</a></li>
       <li><a href="contact.html">Contact Us</a></li>
