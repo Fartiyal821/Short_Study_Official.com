@@ -6,7 +6,7 @@
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <title>About Us — Short Study</title>
-<meta name="description" content="Learn the story behind Short Study — why we build free, handwritten notes for Class 8 to 10 and free programming resources for beginners.">
+<meta name="description" content="Learn the story behind Short Study — why we built a free, written programming curriculum for beginners and freshers preparing for technical roles.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -358,6 +358,66 @@ table.notes-table td iframe,
   font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
 }
 
+/* ---------- 9c. LESSON PAGES (programming/*.html) ---------- */
+.lesson-meta{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  max-width:820px;margin:0 auto 28px;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
+  border-bottom:1px solid var(--paper-line);padding-bottom:18px;
+}
+.lesson-meta .tag{
+  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
+  padding:5px 12px;
+}
+.lesson-content{max-width:820px;margin:0 auto;}
+.lesson-content h2{font-size:24px;color:var(--ink);margin:34px 0 14px;}
+.lesson-content h2:first-child{margin-top:0;}
+.lesson-content h3{font-size:18px;color:var(--ink);margin:26px 0 10px;}
+.lesson-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
+.lesson-content ul,.lesson-content ol{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
+.lesson-content li{margin-bottom:8px;}
+.lesson-content strong{color:var(--ink);}
+.lesson-content code{
+  font-family:'JetBrains Mono',monospace;background:var(--paper);
+  border:1px solid var(--paper-line);border-radius:4px;padding:2px 6px;font-size:13.5px;color:var(--pink-dark);
+}
+.code-block{
+  background:var(--board);color:var(--chalk);border-radius:10px;
+  padding:20px 22px;margin:0 0 18px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;
+}
+.code-block .cm{color:var(--chalk-dim);}
+.output-block{
+  background:var(--paper);border:1px dashed var(--paper-line);border-radius:10px;
+  padding:16px 20px;margin:0 0 18px;font-family:'JetBrains Mono',monospace;
+  font-size:13.5px;color:var(--ink-soft);
+}
+.output-block .label{
+  display:block;font-family:'Work Sans';font-size:11.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;
+}
+.mistake-list{
+  border-left:3px solid var(--pink);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px;margin:0 0 18px;
+}
+.mistake-list li{color:var(--ink-soft);}
+.exercise-list{
+  border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px 4px;margin:0 0 18px;
+}
+.pdf-callout{
+  max-width:820px;margin:40px auto 0;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+}
+.pdf-callout .pdf-text h3{font-size:16px;margin-bottom:4px;color:var(--ink);}
+.pdf-callout .pdf-text p{font-size:13.5px;color:var(--ink-soft);margin:0;}
+.lesson-nav{
+  max-width:820px;margin:36px auto 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:14px;
+}
+.lesson-nav a{color:var(--pink-dark);font-weight:600;}
+
 /* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
 .edu-content{max-width:820px;margin:0 auto;}
 .edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
@@ -477,6 +537,11 @@ html, body{overflow-x:hidden; width:100%;}
 
   footer{padding:40px 20px 26px;}
   .footer-links{gap:16px 20px;}
+
+  .lesson-meta{font-size:11.5px;gap:8px 12px;}
+  .code-block{padding:16px 16px;font-size:12.5px;}
+  .pdf-callout{flex-direction:column;align-items:flex-start;padding:22px;}
+  .pdf-callout .cta-btn{width:100%;text-align:center;}
 }
 
 /* ---- Small phones (narrow viewports, e.g. iPhone SE / older Androids) ---- */
@@ -501,18 +566,10 @@ html, body{overflow-x:hidden; width:100%;}
 
 <!-- ============ HEADER / NAVBAR ============ -->
 <header>
-    <div class="nav">
+      <div class="nav">
     <a class="brand" href="index.html">Short<span>Study</span></a>
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle">Notes <span class="caret">▾</span></a>
-        <div class="dropdown-menu">
-          <a href="class8.html">Class 8</a>
-          <a href="class9.html">Class 9</a>
-          <a href="class10.html">Class 10</a>
-        </div>
-      </li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html" class="active">About</a></li>
       <li><a href="contact.html">Contact</a></li>
@@ -537,9 +594,9 @@ html, body{overflow-x:hidden; width:100%;}
 
       <p>Short Study started from a simple, slightly frustrating observation: the best study notes online were almost always locked behind a payment, a subscription, or an app download — while the free ones were usually scanned, disorganised, or missing half the chapters. Students who could pay got a smooth experience. Students who couldn't were left piecing together PDFs from a dozen different sources, half of them unreadable.</p>
 
-      <p>That gap didn't make sense to us. A good set of notes doesn't cost anything to produce beyond time and care — it's not a scarce resource that needs a price tag. So we started writing our own: handwritten, chapter-wise, organised the way a genuinely well-prepared student's notebook is organised, and posted for free, with no login wall in the way.</p>
+      <p>That gap didn't make sense to us. A good lesson doesn't cost anything to produce beyond time and care — it's not a scarce resource that needs a price tag. So we started writing our own: full written lessons, organised topic by topic the way a genuinely well-structured course would be, and posted for free, with no login wall in the way.</p>
 
-      <p>What began as notes for a handful of subjects has grown into a full library covering <strong>Class 8, Class 9, and Class 10</strong> — plus a dedicated <strong>Programming</strong> section for beginners and freshers who want to learn to code without paying for a bootcamp just to get started.</p>
+      <p>That's where Short Study's programming curriculum started: written lessons on Python, C, Java, HTML/CSS, Data Structures and SQL, each built to be read start to finish rather than skimmed for a single snippet — free, with no login wall, and no premium tier hiding the good parts.</p>
     </div>
     <div class="about-illustration fade-up delay-1">
       <svg viewBox="0 0 100 100" width="140" height="140" role="img" aria-label="Open book icon">
@@ -567,7 +624,7 @@ html, body{overflow-x:hidden; width:100%;}
       <div class="reason-card fade-up delay-2">
         <div class="reason-icon">✍️</div>
         <h3>Written to be useful</h3>
-        <p>Notes are handwritten and structured the way you'd actually revise from — not just scanned textbook pages with a new cover.</p>
+        <p>Lessons are written and structured the way you'd actually learn from — full explanations first, code second, not just snippets with no context.</p>
       </div>
       <div class="reason-card fade-up delay-3">
         <div class="reason-icon">🔄</div>
@@ -591,9 +648,45 @@ html, body{overflow-x:hidden; width:100%;}
       <h2>Our vision for Short Study</h2>
     </div>
     <div class="legal-content fade-up" style="text-align:left;">
-      <p>We're a small team, and we like it that way — it keeps the site honest and directly accountable to the students using it. Right now, that means most of our energy goes into two things: writing more notes, and making sure the ones already published are actually correct and exam-relevant.</p>
-      <p>Longer term, our goal is for Short Study to be the first place a Class 8–10 student thinks to check before searching randomly online, and the first place a beginner opens when they decide to try coding for the first time. We'd rather be genuinely useful to a smaller number of students than be everywhere and useful to no one — so we're building slowly, chapter by chapter, rather than rushing out content that isn't good enough to trust.</p>
-      <p>If you're a student using these notes: thank you for being the reason this exists. If you ever spot something wrong, missing, or confusing, our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page goes straight to a real inbox, and we read everything that comes through it.</p>
+      <p>We're a small team, and we like it that way — it keeps the site honest and directly accountable to the people using it. Right now, that means most of our energy goes into two things: writing more programming lessons, and making sure the ones already published are actually correct and useful.</p>
+      <p>Longer term, our goal is for Short Study to be the first place a complete beginner opens when they decide to try coding for the first time, and a genuinely useful reference for freshers preparing for technical interviews. We'd rather publish six lessons that are fully written, reviewed, and correct than sixty half-finished pages — so we're building the curriculum deliberately, topic by topic, rather than rushing out content that isn't good enough to trust.</p>
+      <p>If you're using these lessons: thank you for being the reason this exists. If you ever spot something wrong, missing, or confusing, our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page goes straight to a real inbox, and we read everything that comes through it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUTHORING & VERIFICATION PROCESS ============ -->
+<section class="paper">
+  <div class="wrap">
+    <div class="section-head fade-up">
+      <span class="kicker">Content credibility</span>
+      <h2>How lessons are written and verified</h2>
+      <p>Transparency about where this content comes from and how it's checked.</p>
+    </div>
+    <div class="reason-grid">
+      <div class="reason-card fade-up delay-1">
+        <div class="reason-icon">✍️</div>
+        <h3>Written from working knowledge</h3>
+        <p>Lessons are written by contributors with hands-on programming experience in the language or topic being taught, not generated from a single source and republished.</p>
+      </div>
+      <div class="reason-card fade-up delay-2">
+        <div class="reason-icon">🧪</div>
+        <h3>Every code example is run</h3>
+        <p>Code examples on this site are executed before publishing, and the output shown on each lesson page is the actual result of running that exact code.</p>
+      </div>
+      <div class="reason-card fade-up delay-3">
+        <div class="reason-icon">🔍</div>
+        <h3>Reviewed before publishing</h3>
+        <p>A second pass checks each lesson for technical accuracy and clarity before it goes live — nothing is published as a first draft.</p>
+      </div>
+      <div class="reason-card fade-up delay-4">
+        <div class="reason-icon">📅</div>
+        <h3>Dated and periodically revisited</h3>
+        <p>Every lesson displays a "Last Reviewed" date. When language conventions, tooling, or interview expectations shift, the lesson is revisited and updated.</p>
+      </div>
+    </div>
+    <div class="legal-content fade-up" style="text-align:left; margin-top:36px;">
+      <p>We don't claim formal academic credentials for every contributor, and we think pretending otherwise would be dishonest. What we do commit to is accuracy: every code example is tested, every lesson is reviewed by someone other than its author before publishing, and corrections reported through our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page are investigated and applied. If you find a technical error anywhere on this site, we want to know about it — and we'll fix it.</p>
     </div>
   </div>
 </section>
@@ -601,11 +694,8 @@ html, body{overflow-x:hidden; width:100%;}
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="footer-inner">
-        <ul class="footer-links">
+            <ul class="footer-links">
       <li><a href="index.html">Home</a></li>
-      <li><a href="class8.html">Class 8</a></li>
-      <li><a href="class9.html">Class 9</a></li>
-      <li><a href="class10.html">Class 10</a></li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About Us</a></li>
       <li><a href="contact.html">Contact Us</a></li>
