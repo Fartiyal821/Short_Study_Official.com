@@ -358,6 +358,66 @@ table.notes-table td iframe,
   font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
 }
 
+/* ---------- 9c. LESSON PAGES (programming/*.html) ---------- */
+.lesson-meta{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  max-width:820px;margin:0 auto 28px;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
+  border-bottom:1px solid var(--paper-line);padding-bottom:18px;
+}
+.lesson-meta .tag{
+  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
+  padding:5px 12px;
+}
+.lesson-content{max-width:820px;margin:0 auto;}
+.lesson-content h2{font-size:24px;color:var(--ink);margin:34px 0 14px;}
+.lesson-content h2:first-child{margin-top:0;}
+.lesson-content h3{font-size:18px;color:var(--ink);margin:26px 0 10px;}
+.lesson-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
+.lesson-content ul,.lesson-content ol{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
+.lesson-content li{margin-bottom:8px;}
+.lesson-content strong{color:var(--ink);}
+.lesson-content code{
+  font-family:'JetBrains Mono',monospace;background:var(--paper);
+  border:1px solid var(--paper-line);border-radius:4px;padding:2px 6px;font-size:13.5px;color:var(--pink-dark);
+}
+.code-block{
+  background:var(--board);color:var(--chalk);border-radius:10px;
+  padding:20px 22px;margin:0 0 18px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;
+}
+.code-block .cm{color:var(--chalk-dim);}
+.output-block{
+  background:var(--paper);border:1px dashed var(--paper-line);border-radius:10px;
+  padding:16px 20px;margin:0 0 18px;font-family:'JetBrains Mono',monospace;
+  font-size:13.5px;color:var(--ink-soft);
+}
+.output-block .label{
+  display:block;font-family:'Work Sans';font-size:11.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;
+}
+.mistake-list{
+  border-left:3px solid var(--pink);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px;margin:0 0 18px;
+}
+.mistake-list li{color:var(--ink-soft);}
+.exercise-list{
+  border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px 4px;margin:0 0 18px;
+}
+.pdf-callout{
+  max-width:820px;margin:40px auto 0;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+}
+.pdf-callout .pdf-text h3{font-size:16px;margin-bottom:4px;color:var(--ink);}
+.pdf-callout .pdf-text p{font-size:13.5px;color:var(--ink-soft);margin:0;}
+.lesson-nav{
+  max-width:820px;margin:36px auto 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:14px;
+}
+.lesson-nav a{color:var(--pink-dark);font-weight:600;}
+
 /* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
 .edu-content{max-width:820px;margin:0 auto;}
 .edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
@@ -477,6 +537,11 @@ html, body{overflow-x:hidden; width:100%;}
 
   footer{padding:40px 20px 26px;}
   .footer-links{gap:16px 20px;}
+
+  .lesson-meta{font-size:11.5px;gap:8px 12px;}
+  .code-block{padding:16px 16px;font-size:12.5px;}
+  .pdf-callout{flex-direction:column;align-items:flex-start;padding:22px;}
+  .pdf-callout .cta-btn{width:100%;text-align:center;}
 }
 
 /* ---- Small phones (narrow viewports, e.g. iPhone SE / older Androids) ---- */
@@ -501,18 +566,10 @@ html, body{overflow-x:hidden; width:100%;}
 
 <!-- ============ HEADER / NAVBAR ============ -->
 <header>
-    <div class="nav">
+      <div class="nav">
     <a class="brand" href="index.html">Short<span>Study</span></a>
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle">Notes <span class="caret">▾</span></a>
-        <div class="dropdown-menu">
-          <a href="class8.html">Class 8</a>
-          <a href="class9.html">Class 9</a>
-          <a href="class10.html">Class 10</a>
-        </div>
-      </li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
@@ -537,13 +594,13 @@ html, body{overflow-x:hidden; width:100%;}
     <p>By accessing or using Short Study ("the site"), you agree to be bound by these terms and conditions. If you do not agree with any part of these terms, please discontinue use of the site. These terms apply to all visitors, including students, educators, and anyone accessing our free notes and programming resources.</p>
 
     <h2>About our service</h2>
-    <p>Short Study provides free, handwritten notes for Class 8, Class 9 and Class 10 students, along with programming notes intended for freshers and beginners learning to code. All content is offered free of charge, without any requirement to pay, subscribe, or create an account.</p>
+    <p>Short Study provides a free, written programming curriculum intended for beginners and freshers learning to code, along with other educational content published on the site from time to time. All content is offered free of charge, without any requirement to pay, subscribe, or create an account.</p>
 
     <h2>Use of content</h2>
-    <p>Notes and resources on this site are provided for personal, non-commercial, educational use. You may view, download and print materials for your own study purposes or to share with fellow students. You may not resell, republish, or claim authorship of our notes, and you may not use automated tools to scrape or mass-download content from the site for redistribution elsewhere.</p>
+    <p>Lessons and resources on this site are provided for personal, non-commercial, educational use. You may view, download and print materials for your own study purposes or to share with others. You may not resell, republish, or claim authorship of our lessons, and you may not use automated tools to scrape or mass-download content from the site for redistribution elsewhere.</p>
 
-    <h2>No guarantee of accuracy</h2>
-    <p>We make a genuine effort to ensure our notes are accurate, well-organised and useful for exam preparation. However, notes are prepared by volunteers and contributors, and we cannot guarantee that every note is free of errors or fully up to date with the latest syllabus. Short Study should be used as a supplementary study aid alongside your official textbooks and guidance from your teachers, not as a sole source of truth.</p>
+    <h2>No guarantee of accuracy — educational disclaimer</h2>
+    <p>We make a genuine effort to ensure our lessons are technically accurate, well-tested, and useful for learning. Code examples are run before publishing and reviewed for correctness. However, lessons are prepared by contributors, and we cannot guarantee that every lesson is free of errors, fully current with the latest language versions or tooling, or suited to every reader's specific use case. Short Study should be used as a learning resource and study aid, not as a sole source of truth for professional, academic, or certification purposes — and outcomes such as interview results, exam performance, or project success cannot be guaranteed by using this content.</p>
 
     <h2>Third-party links and embedded files</h2>
     <p>Some notes may be hosted through third-party file or document services and linked or embedded on our pages. We are not responsible for the availability, content, or practices of these third-party services. Links to external websites are provided for convenience, and their inclusion does not imply endorsement.</p>
@@ -567,7 +624,7 @@ html, body{overflow-x:hidden; width:100%;}
     <p>We may add, modify, or remove notes, pages, or features on Short Study at any time without prior notice, as we continue to improve the platform for students and learners.</p>
 
     <h2>Eligibility</h2>
-    <p>Short Study is intended primarily for school students in Class 8 to 10 and for freshers or beginners learning programming. If you are under the age of majority in your jurisdiction, you should have a parent or guardian review these terms with you. By using the site, you confirm that you are using it for lawful, educational purposes.</p>
+    <p>Short Study is intended for anyone learning to program, including complete beginners, students, and freshers preparing for technical interviews, regardless of age or background. If you are under the age of majority in your jurisdiction, you should have a parent or guardian review these terms with you. By using the site, you confirm that you are using it for lawful, educational purposes.</p>
 
     <h2>Availability of the service</h2>
     <p>We aim to keep Short Study accessible at all times, but we do not guarantee uninterrupted or error-free access. The site may occasionally be unavailable due to maintenance, technical issues, or factors outside our control, including the availability of third-party file-hosting services our notes may link to.</p>
@@ -595,11 +652,8 @@ html, body{overflow-x:hidden; width:100%;}
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="footer-inner">
-        <ul class="footer-links">
+            <ul class="footer-links">
       <li><a href="index.html">Home</a></li>
-      <li><a href="class8.html">Class 8</a></li>
-      <li><a href="class9.html">Class 9</a></li>
-      <li><a href="class10.html">Class 10</a></li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About Us</a></li>
       <li><a href="contact.html">Contact Us</a></li>
