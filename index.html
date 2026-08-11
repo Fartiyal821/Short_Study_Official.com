@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="logo.png">
 <link rel="apple-touch-icon" href="logo.png">
 <title>Short Study — Free Notes for Class 8, 9, 10 and Programming</title>
-<meta name="description" content="Short Study offers completely free, handwritten school notes for Class 8, 9 and 10, plus programming resources for freshers and coding beginners.">
+<meta name="description" content="Short Study is a free, structured programming curriculum for beginners and freshers — covering Python, C, Java, HTML/CSS, Data Structures and SQL.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -360,6 +360,66 @@ table.notes-table td iframe,
   font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
 }
 
+/* ---------- 9c. LESSON PAGES (programming/*.html) ---------- */
+.lesson-meta{
+  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
+  max-width:820px;margin:0 auto 28px;
+  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
+  border-bottom:1px solid var(--paper-line);padding-bottom:18px;
+}
+.lesson-meta .tag{
+  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
+  padding:5px 12px;
+}
+.lesson-content{max-width:820px;margin:0 auto;}
+.lesson-content h2{font-size:24px;color:var(--ink);margin:34px 0 14px;}
+.lesson-content h2:first-child{margin-top:0;}
+.lesson-content h3{font-size:18px;color:var(--ink);margin:26px 0 10px;}
+.lesson-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
+.lesson-content ul,.lesson-content ol{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
+.lesson-content li{margin-bottom:8px;}
+.lesson-content strong{color:var(--ink);}
+.lesson-content code{
+  font-family:'JetBrains Mono',monospace;background:var(--paper);
+  border:1px solid var(--paper-line);border-radius:4px;padding:2px 6px;font-size:13.5px;color:var(--pink-dark);
+}
+.code-block{
+  background:var(--board);color:var(--chalk);border-radius:10px;
+  padding:20px 22px;margin:0 0 18px;overflow-x:auto;
+  font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;
+}
+.code-block .cm{color:var(--chalk-dim);}
+.output-block{
+  background:var(--paper);border:1px dashed var(--paper-line);border-radius:10px;
+  padding:16px 20px;margin:0 0 18px;font-family:'JetBrains Mono',monospace;
+  font-size:13.5px;color:var(--ink-soft);
+}
+.output-block .label{
+  display:block;font-family:'Work Sans';font-size:11.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;
+}
+.mistake-list{
+  border-left:3px solid var(--pink);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px;margin:0 0 18px;
+}
+.mistake-list li{color:var(--ink-soft);}
+.exercise-list{
+  border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 20px 4px;margin:0 0 18px;
+}
+.pdf-callout{
+  max-width:820px;margin:40px auto 0;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;
+  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
+}
+.pdf-callout .pdf-text h3{font-size:16px;margin-bottom:4px;color:var(--ink);}
+.pdf-callout .pdf-text p{font-size:13.5px;color:var(--ink-soft);margin:0;}
+.lesson-nav{
+  max-width:820px;margin:36px auto 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-size:14px;
+}
+.lesson-nav a{color:var(--pink-dark);font-weight:600;}
+
 /* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
 .edu-content{max-width:820px;margin:0 auto;}
 .edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
@@ -479,6 +539,11 @@ html, body{overflow-x:hidden; width:100%;}
 
   footer{padding:40px 20px 26px;}
   .footer-links{gap:16px 20px;}
+
+  .lesson-meta{font-size:11.5px;gap:8px 12px;}
+  .code-block{padding:16px 16px;font-size:12.5px;}
+  .pdf-callout{flex-direction:column;align-items:flex-start;padding:22px;}
+  .pdf-callout .cta-btn{width:100%;text-align:center;}
 }
 
 /* ---- Small phones (narrow viewports, e.g. iPhone SE / older Androids) ---- */
@@ -500,33 +565,13 @@ html, body{overflow-x:hidden; width:100%;}
 </style>
 </head>
 <body>
-   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800"
-     crossorigin="anonymous"></script>
-<!-- Fartiyal adds ad -->
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-8208662455546800"
-     data-ad-slot="9110562620"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
 
 <!-- ============ HEADER / NAVBAR ============ -->
 <header>
-    <div class="nav">
+      <div class="nav">
     <a class="brand" href="index.html">Short<span>Study</span></a>
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html" class="active">Home</a></li>
-      <li class="dropdown">
-        <a href="#" class="dropdown-toggle">Notes <span class="caret">▾</span></a>
-        <div class="dropdown-menu">
-          <a href="class8.html">Class 8</a>
-          <a href="class9.html">Class 9</a>
-          <a href="class10.html">Class 10</a>
-        </div>
-      </li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
@@ -537,10 +582,10 @@ html, body{overflow-x:hidden; width:100%;}
 
 <!-- ============ HERO ============ -->
 <section class="hero">
-  <span class="eyebrow">100% FREE · CLASS 8–10 · PROGRAMMING</span>
+  <span class="eyebrow">PROGRAMMING FUNDAMENTALS · FOR BEGINNERS & FRESHERS</span>
   <h1>Short<span class="accent">Study</span></h1>
-  <p class="tagline">Free, handwritten notes for Class 8, 9 and 10 — plus programming resources for anyone learning to code. No fees, no logins, no catch.</p>
-  <a href="#classes" class="cta-btn">Browse notes</a>
+  <p class="tagline">Short Study is a free, structured programming curriculum for absolute beginners and freshers preparing for entry-level technical roles — covering Python, C, Java, HTML/CSS, Data Structures and SQL through in-depth written lessons.</p>
+  <a href="#pathway" class="cta-btn">Explore the curriculum</a>
   <div class="hero-illustration">
     <svg viewBox="0 0 240 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Illustration of a student reading a book">
       <ellipse cx="120" cy="182" rx="80" ry="10" fill="#000" opacity="0.15"/>
@@ -553,59 +598,64 @@ html, body{overflow-x:hidden; width:100%;}
   </div>
 </section>
 
-<!-- ============ CLASSES SECTION (8, 9, 10 only) ============ -->
-<section class="paper" id="classes">
+<!-- ============ LEARNING PATHWAY SECTION ============ -->
+<section class="paper" id="pathway">
   <div class="wrap">
     <div class="section-head fade-up">
-      <span class="kicker">Free study material</span>
-      <h2>Select your class</h2>
-      <p>Handwritten, exam-ready notes — organised by class, updated regularly.</p>
+      <span class="kicker">Programming curriculum</span>
+      <h2>A structured learning pathway</h2>
+      <p>Each topic is a full written lesson — not just a code snippet or a PDF link — designed to be read start to finish, in order.</p>
     </div>
     <div class="class-grid">
 
       <div class="class-card fade-up delay-1">
         <div class="tape"></div>
-        <span class="num">CBSE · 08</span>
-        <h3>Class 8</h3>
-        <p>Free notes covering all major subjects for Class 8.</p>
-        <a href="class8.html" class="go">View notes</a>
+        <span class="num">LESSON 01</span>
+        <h3>Python Basics</h3>
+        <p>Variables, data types, and control flow — the starting point for most beginners.</p>
+        <a href="programming/python-basics.html" class="go">Start lesson</a>
       </div>
 
       <div class="class-card fade-up delay-2">
         <div class="tape"></div>
-        <span class="num">CBSE · 09</span>
-        <h3>Class 9</h3>
-        <p>Free notes covering all major subjects for Class 9.</p>
-        <a href="class9.html" class="go">View notes</a>
+        <span class="num">LESSON 02</span>
+        <h3>C Programming Basics</h3>
+        <p>How memory, variables, and logic actually work under the hood.</p>
+        <a href="programming/c-basics.html" class="go">Start lesson</a>
       </div>
 
       <div class="class-card fade-up delay-3">
         <div class="tape"></div>
-        <span class="num">CBSE · 10</span>
-        <h3>Class 10</h3>
-        <p>Free notes covering all major subjects for Class 10.</p>
-        <a href="class10.html" class="go">View notes</a>
+        <span class="num">LESSON 03</span>
+        <h3>Data Structures: Arrays</h3>
+        <p>The foundation of technical interviews — arrays explained from first principles.</p>
+        <a href="programming/data-structures-arrays.html" class="go">Start lesson</a>
       </div>
 
-    </div>
-  </div>
-</section>
-
-<!-- ============ PROGRAMMING SPOTLIGHT SECTION ============ -->
-<section class="paper" style="padding-top:0;">
-  <div class="wrap">
-    <div class="programming-spot fade-up">
-      <div>
-        <span class="kicker">For freshers & beginners</span>
-        <h2>Programming notes</h2>
-        <p>Free resources to help anyone start coding — from complete beginners to freshers preparing for their first job. Clear notes, real examples, no cost.</p>
-        <a href="programming.html" class="cta-btn" style="margin-top:0;">Explore programming notes</a>
+      <div class="class-card fade-up delay-1">
+        <div class="tape"></div>
+        <span class="num">LESSON 04</span>
+        <h3>Java &amp; OOP Concepts</h3>
+        <p>Classes, objects, and inheritance for technical interview preparation.</p>
+        <span class="go" style="color:var(--ink-soft); cursor:default;">In development</span>
       </div>
-      <div class="code-chip">function learn() {
-  cost = 0;
-  effort = "your best";
-  return "growth";
-}</div>
+
+      <div class="class-card fade-up delay-2">
+        <div class="tape"></div>
+        <span class="num">LESSON 05</span>
+        <h3>HTML &amp; CSS Basics</h3>
+        <p>Structuring and styling a webpage for anyone starting in web development.</p>
+        <span class="go" style="color:var(--ink-soft); cursor:default;">In development</span>
+      </div>
+
+      <div class="class-card fade-up delay-3">
+        <div class="tape"></div>
+        <span class="num">LESSON 06</span>
+        <h3>SQL Basics</h3>
+        <p>The queries every fresher is expected to know for a technical interview.</p>
+        <span class="go" style="color:var(--ink-soft); cursor:default;">In development</span>
+      </div>
+
     </div>
   </div>
 </section>
@@ -613,72 +663,68 @@ html, body{overflow-x:hidden; width:100%;}
 <!-- ============ CURRICULUM & METHODOLOGY (SEO-rich content) ============ -->
 <section class="paper" id="curriculum">
   <div class="wrap edu-content fade-up">
-    <h2>What Short Study covers, and how we teach it</h2>
-    <p>Short Study was built around a simple idea: a student preparing for a Class 8, 9 or 10 exam — or a beginner trying to learn their first programming language — shouldn't have to choose between "free" and "actually good." Every resource on this site is written from scratch, organised chapter by chapter, and reviewed against the current syllabus, so what you're reading is both free and genuinely usable for exam preparation.</p>
+    <h2>What Short Study covers, and how lessons are structured</h2>
+    <p>Short Study is a written programming curriculum for people starting from zero — students exploring computer science for the first time, self-taught learners, and freshers preparing for entry-level technical interviews. Every lesson is a full written page, reviewed and dated, built to be read in order rather than skimmed for a single answer.</p>
 
-    <h3>Curriculum coverage, class by class</h3>
-    <p>Our <strong>Class 8</strong> notes lay the groundwork for the two board-prep years that follow — covering Mathematics (rational numbers, linear equations, mensuration), Science (crop production, cell structure, force and pressure), Social Science, and language grammar for English and Hindi. <strong>Class 9</strong> notes build directly on that foundation with number systems, polynomials, and coordinate geometry in Maths, along with matter, tissues, and motion in Science — the exact chapters that reappear, in harder form, on the Class 10 board exam. <strong>Class 10</strong> notes are written specifically with board exams in mind: real numbers, trigonometry, and quadratic equations in Maths; chemical reactions, life processes, and electricity in Science; plus a dedicated IT (Code 402) previous-year-questions resource with detailed, examiner-style solutions.</p>
+    <h3>Curriculum coverage</h3>
+    <p><strong>Python</strong> is the recommended starting point: its readable syntax makes core programming concepts — variables, data types, loops, and conditionals — easier to grasp before moving to a stricter language. <strong>C</strong> follows next, because understanding how memory allocation, pointers, and control flow work at a lower level builds an understanding that higher-level languages tend to hide. <strong>Java</strong> introduces object-oriented programming — classes, objects, and inheritance — concepts that come up in the large majority of fresher-level technical interviews regardless of the role. For anyone interested in web development, <strong>HTML and CSS</strong> cover how a webpage is structured and styled. The curriculum closes with <strong>Data Structures</strong> (arrays, stacks, queues, linked lists, and trees) and <strong>SQL fundamentals</strong> — the two subjects most consistently tested in entry-level coding interviews.</p>
 
-    <p>Alongside school notes, our <strong>Programming</strong> section is built for absolute beginners and freshers preparing for entry-level technical roles. It starts with Python fundamentals, moves through C and Java for a deeper understanding of how code actually executes, covers HTML & CSS for anyone interested in web development, and finishes with Data Structures and SQL basics — the exact topics that come up most often in fresher-level coding interviews.</p>
+    <h3>How each lesson is built</h3>
+    <p>Every lesson on Short Study follows the same structure, regardless of topic: a plain-language conceptual explanation first, followed by commented code examples with their actual output shown, then a section on common mistakes beginners make with that specific topic, and finally a short set of practice exercises to self-assess understanding before moving on. This isn't a collection of code snippets — each lesson is written to be read and understood on its own, the way a textbook chapter would be, before you open an editor and start typing.</p>
 
-    <h3>Our teaching methodology</h3>
-    <p>Every note on Short Study follows the same underlying approach, regardless of subject: <strong>understand first, memorise second.</strong> Instead of dense textbook paragraphs, our notes lead with a plain-language explanation of what a concept actually means, followed by worked examples, and finish with the kind of concise, highlighted summary points you'd want in front of you the night before an exam. For Mathematics and Science, that means step-by-step worked numericals rather than just final answers. For Social Science and languages, it means short, memorable revision points instead of full paragraphs you have to re-read every time. For programming, it means building the mental model behind a concept — what a loop actually does, why a linked list is useful — before showing the code that implements it.</p>
+    <p>Lessons are dated and reviewed against current syllabus and interview expectations, so a "Last Reviewed" note at the top of each page tells you exactly how current the material is.</p>
 
-    <p>We also deliberately keep our notes <strong>handwritten</strong> rather than typed. This isn't just an aesthetic choice — writing (and reading well-structured handwriting) engages memory differently than plain typed text does, and it mirrors the actual answer-sheet format that board exams reward: clear structure, underlined key terms, and diagrams labelled the way a well-prepared student would draw them.</p>
-
-    <h3>What makes Short Study different</h3>
+    <h3>Who this is for</h3>
     <ul>
-      <li><strong>Genuinely free</strong> — no paywalls, no premium tier, no "unlock full notes" prompts hiding behind a payment.</li>
-      <li><strong>No sign-up required</strong> — every note is one click away, with nothing to register or download an app for.</li>
-      <li><strong>Chapter-wise organisation</strong> — find exactly the chapter you need instead of scrolling through one giant PDF.</li>
-      <li><strong>Continuously updated</strong> — notes are revised as syllabi, question patterns, and board formats change.</li>
-      <li><strong>Built for two audiences at once</strong> — school students preparing for exams, and complete beginners learning to code, without either group feeling like an afterthought.</li>
+      <li><strong>Complete beginners</strong> — no prior programming background is assumed anywhere in the curriculum.</li>
+      <li><strong>Freshers preparing for interviews</strong> — Data Structures and SQL lessons are written with interview questions specifically in mind.</li>
+      <li><strong>Self-taught learners</strong> — each lesson can be read independently, without requiring a paid course or account.</li>
+      <li><strong>Anyone switching into tech</strong> — the curriculum starts from first principles rather than assuming prior computer science education.</li>
     </ul>
 
-    <p>If you're new here, the fastest way to get started is to jump straight to your class using the "Notes" menu above, or head to our <a href="programming.html" style="color:var(--pink-dark); font-weight:600;">Programming</a> section if coding is what brought you here. And if you'd like to know more about why we built this in the first place, our <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page has the full story.</p>
+    <p>The fastest way to get started is the learning pathway above — begin with Python Basics if you've never written code before, or jump to whichever topic you already need. If you'd like to know more about how lessons are researched and reviewed, our <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page covers our authoring process in detail.</p>
   </div>
 </section>
 
-<!-- ============ ABOUT US SECTION (short teaser — full story on about.html) ============ -->
+<!-- ============ ABOUT / WHY SECTION (short teaser — full story on about.html) ============ -->
 <section class="paper about-section">
   <div class="wrap">
 
     <!-- Platform mission intro -->
     <div class="about-intro fade-up">
       <span class="kicker">About Short Study</span>
-      <h2 style="font-size:clamp(26px,3.6vw,36px); margin:10px 0 16px;">Free notes, built for every student</h2>
-      <p>Short Study exists for one simple reason: quality notes shouldn't cost anything. We believe a student's access to good study material should never depend on how much they can afford to pay — so every note, every guide, and every resource on this site stays free, permanently, with no sign-up required.</p>
-      <p><a href="about.html" style="color:var(--pink-dark); font-weight:600;">Read our full story on the About Us page →</a></p>
+      <h2 style="font-size:clamp(26px,3.6vw,36px); margin:10px 0 16px;">A written curriculum, not a link dump</h2>
+      <p>Short Study was built on the observation that most free programming resources online are either scattered code snippets with no surrounding explanation, or paid courses charging for material that doesn't need to cost anything. Each lesson here is written, reviewed, and dated like a reference text — not assembled from disconnected fragments.</p>
+      <p><a href="about.html" style="color:var(--pink-dark); font-weight:600;">Read more about our authoring process →</a></p>
     </div>
 
     <!-- What we offer -->
     <div style="margin-top:44px;">
       <div class="section-head fade-up">
-        <span class="kicker">What we offer</span>
-        <h2>Two focus areas, one goal</h2>
-        <p>Everything on Short Study falls into one of two categories — school notes or programming resources — kept simple on purpose so you always know where to look.</p>
+        <span class="kicker">Why this curriculum</span>
+        <h2>What each lesson gives you</h2>
       </div>
       <div class="offer-grid">
         <div class="offer-card fade-up delay-1">
-          <div class="offer-icon">📚</div>
-          <h3>School notes — Class 8, 9 & 10</h3>
-          <p>Handwritten, exam-focused notes covering the core subjects for Class 8, 9 and 10, written in a way that's easy to follow and quick to revise from before a test.</p>
+          <div class="offer-icon">📖</div>
+          <h3>Full written lessons</h3>
+          <p>Every topic is explained in complete prose before any code appears — the concept comes first, the syntax second.</p>
           <ul>
-            <li>Mathematics, Science and Social Science notes for every chapter</li>
-            <li>Language notes for English and Hindi, including grammar and literature</li>
-            <li>Regularly reviewed and updated to stay aligned with the current syllabus</li>
-            <li>Available to view online or download for offline study</li>
+            <li>Conceptual explanations, not just definitions</li>
+            <li>Commented code examples with real output</li>
+            <li>Common mistakes and debugging guidance for each topic</li>
+            <li>Practice exercises to check understanding</li>
           </ul>
         </div>
         <div class="offer-card fade-up delay-2">
-          <div class="offer-icon">💻</div>
-          <h3>Programming notes — freshers & beginners</h3>
-          <p>Straightforward programming notes built for absolute beginners, freshers preparing for interviews, and anyone learning to code without a formal course.</p>
+          <div class="offer-icon">🎯</div>
+          <h3>Built for freshers &amp; beginners</h3>
+          <p>The curriculum assumes zero prior coding background and is sequenced toward what fresher-level interviews actually test.</p>
           <ul>
-            <li>Beginner-friendly notes on Python, C, Java, HTML and CSS</li>
-            <li>Concept explanations paired with simple, real examples</li>
-            <li>Interview-oriented notes on data structures and core fundamentals</li>
-            <li>Written to be understood with zero prior coding background</li>
+            <li>No account, login, or payment required</li>
+            <li>Lessons dated and reviewed for currency</li>
+            <li>Data Structures and SQL written with interviews in mind</li>
+            <li>Readable on any device, no app required</li>
           </ul>
         </div>
       </div>
@@ -693,49 +739,49 @@ html, body{overflow-x:hidden; width:100%;}
     <div class="section-head fade-up">
       <span class="kicker">Common questions</span>
       <h2>Frequently asked questions</h2>
-      <p>Quick answers to what students ask us most. Still stuck? Our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page reaches a real inbox.</p>
+      <p>Quick answers to what learners ask us most. Still stuck? Our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page reaches a real inbox.</p>
     </div>
 
     <div style="max-width:820px; margin:0 auto; display:grid; gap:14px;" class="fade-up">
 
       <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Is Short Study really 100% free?</summary>
-        <div class="accordion-body"><p>Yes — every note, chapter, and programming resource on this site is free to view and download, with no sign-up, login, or hidden payment. There is no premium tier and there never will be.</p></div>
-      </details>
-
-      <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Do I need to create an account to access notes?</summary>
-        <div class="accordion-body"><p>No. Every note is one click away from the "Notes" menu at the top of the page — nothing to register, download, or log into.</p></div>
-      </details>
-
-      <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Which classes and subjects do you cover?</summary>
-        <div class="accordion-body"><p>We cover Class 8, Class 9 and Class 10 across Mathematics, Science, Social Science, English and Hindi, plus a dedicated Programming section covering Python, C, Java, HTML/CSS, Data Structures and SQL basics for beginners and freshers.</p></div>
-      </details>
-
-      <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Are the notes updated for the latest syllabus?</summary>
-        <div class="accordion-body"><p>Yes — we regularly review our notes against the current CBSE syllabus and question patterns, and update chapters when something changes rather than leaving them untouched for years.</p></div>
-      </details>
-
-      <details class="notes-accordion">
-        <summary class="notes-accordion-summary">I can't find a chapter I need — what do I do?</summary>
-        <div class="accordion-body"><p>Reach out through our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page and tell us the class and chapter. We regularly add new notes based on what students actually ask for.</p></div>
+        <summary class="notes-accordion-summary">Is this curriculum really free?</summary>
+        <div class="accordion-body"><p>Yes — every lesson on this site is free to read, with no sign-up, login, or hidden payment required.</p></div>
       </details>
 
       <details class="notes-accordion">
         <summary class="notes-accordion-summary">I've never coded before — where should I start?</summary>
-        <div class="accordion-body"><p>Start with our Python notes in the Programming section — its simple syntax makes it one of the easiest languages to build confidence in early, and our notes assume zero prior coding background.</p></div>
+        <div class="accordion-body"><p>Start with Python Basics in the learning pathway above. It assumes zero prior coding background and is written specifically as a first lesson.</p></div>
       </details>
 
       <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Can I download notes to study offline?</summary>
-        <div class="accordion-body"><p>Yes — every note is available to view online or download, so you can study offline whenever you don't have a reliable connection.</p></div>
+        <summary class="notes-accordion-summary">Do I need to complete lessons in order?</summary>
+        <div class="accordion-body"><p>The pathway is sequenced deliberately — Python before C, C before Java — but if you already have a specific topic you need, you're welcome to jump straight to it.</p></div>
       </details>
 
       <details class="notes-accordion">
-        <summary class="notes-accordion-summary">Who runs Short Study?</summary>
-        <div class="accordion-body"><p>Short Study is maintained by a small, dedicated team that researches, writes, and proofreads every note published on the site. You can read more about our mission on the <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page.</p></div>
+        <summary class="notes-accordion-summary">Are lessons kept up to date?</summary>
+        <div class="accordion-body"><p>Each lesson displays a "Last Reviewed" date at the top, so you always know how current the material is against present syllabus and interview expectations.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Some lessons say "In development" — when will they be ready?</summary>
+        <div class="accordion-body"><p>We publish lessons only once they're fully written and reviewed, rather than posting incomplete pages. Topics marked "In development" are actively being written and will link through once complete.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Can I download a revision sheet for a lesson?</summary>
+        <div class="accordion-body"><p>Yes — each lesson page includes an optional PDF revision sheet link at the bottom, after the full written lesson.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">Who writes and reviews these lessons?</summary>
+        <div class="accordion-body"><p>Short Study is maintained by a small team that researches, writes, and reviews every lesson before publishing. Our <a href="about.html" style="color:var(--pink-dark); font-weight:600;">About Us</a> page explains our authoring and verification process in detail.</p></div>
+      </details>
+
+      <details class="notes-accordion">
+        <summary class="notes-accordion-summary">I found an error in a lesson — how do I report it?</summary>
+        <div class="accordion-body"><p>Please reach out through our <a href="contact.html" style="color:var(--pink-dark); font-weight:600;">Contact Us</a> page with the lesson name and what's wrong — corrections are reviewed and applied promptly.</p></div>
       </details>
 
     </div>
@@ -745,11 +791,8 @@ html, body{overflow-x:hidden; width:100%;}
 <!-- ============ FOOTER ============ -->
 <footer>
   <div class="footer-inner">
-        <ul class="footer-links">
+            <ul class="footer-links">
       <li><a href="index.html">Home</a></li>
-      <li><a href="class8.html">Class 8</a></li>
-      <li><a href="class9.html">Class 9</a></li>
-      <li><a href="class10.html">Class 10</a></li>
       <li><a href="programming.html">Programming</a></li>
       <li><a href="about.html">About Us</a></li>
       <li><a href="contact.html">Contact Us</a></li>
