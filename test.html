@@ -13,14 +13,10 @@
 <link rel="stylesheet" href="style.css">
 <style>
 /* ---- Intro Section Animation ---- */
-.intro-text-box {
+.intro-text {
   max-width: 760px;
   margin: 0 auto 40px auto;
-  background: var(--paper, #fff);
-  border: 1px solid var(--paper-line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 34px 40px;
+  padding: 0 16px;
   color: var(--ink);
   font-family: 'Work Sans', sans-serif;
   line-height: 1.8;
@@ -28,15 +24,15 @@
   opacity: 0;
   transform: translateY(30px);
 }
-.intro-text-box p {
+.intro-text p {
   margin-bottom: 18px;
   font-size: 15.5px;
   text-align: justify;
 }
-.intro-text-box p:last-child {
+.intro-text p:last-child {
   margin-bottom: 0;
 }
-.intro-text-box strong {
+.intro-text strong {
   color: var(--board);
 }
 @keyframes floatIn {
@@ -164,7 +160,6 @@
   .test-card{padding:28px 22px;}
   .question-card{padding:26px 22px;}
   .score-banner{padding:32px 22px;}
-  .intro-text-box {padding: 24px 20px;}
 }
 </style>
 </head>
@@ -196,7 +191,7 @@
   <div class="wrap">
 
     <!-- ============ INTRODUCTORY SECTION ============ -->
-    <div class="intro-text-box">
+    <div class="intro-text">
       <p>Welcome to the ultimate proving ground for your coding journey. At <strong>ShortStudy</strong>, we believe that learning programming is not just about passively reading tutorials or copying code snippets; it is about actively challenging your mind, testing your logic, and discovering where your true strengths lie. That is exactly why we built this interactive assessment platform. Whether you are an absolute beginner taking your very first steps into the tech world or a fresh graduate preparing for rigorous technical interviews, this space is designed specifically for you.</p>
       <p>Stepping into the world of computer science can often feel overwhelming. The syntax of Python, the memory management of C, the object-oriented principles of Java, the styling intricacies of HTML and CSS, the complex logic of Data Structures, and the data manipulation powers of SQL—it is a lot to master. We understand that journey because we have been there. This test feature is crafted to be your personal, judgment-free practice arena. It is a place where mistakes are not setbacks, but stepping stones to mastery.</p>
       <p>Here, you will find a carefully curated, dynamically generated question bank that ensures no two attempts are exactly the same. When you select your preferred programming language and your desired test length, our algorithmic engine instantly weaves together a unique set of multiple-choice questions. This randomization guarantees that you are genuinely recalling concepts rather than just memorizing a fixed sequence of answers. Furthermore, the built-in live timer adds a healthy touch of real-world pressure, simulating the environment of actual academic exams and corporate placement tests. This helps you build crucial time-management skills alongside your technical knowledge.</p>
