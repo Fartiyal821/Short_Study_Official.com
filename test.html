@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="logo.png">
+<link rel="apple-touch-icon" href="logo.png">
+<title>Take a Test — Short Study</title>
+<meta name="description" content="Test your programming knowledge with free, randomized MCQ quizzes on Python, C, Java, HTML/CSS, Data Structures and SQL.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<style>
+.test-card{
+  max-width:560px;margin:0 auto;background:#fff;border:1px solid var(--paper-line);
+  border-radius:var(--radius);box-shadow:var(--shadow);padding:40px;
+}
+.test-field{margin-bottom:22px;}
+.test-field label{
+  display:block;font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:8px;
+}
+.test-field select{
+  width:100%;font-family:'Work Sans';font-size:15px;color:var(--ink);
+  padding:13px 14px;border:1px solid var(--paper-line);border-radius:8px;
+  background:var(--paper);box-sizing:border-box;appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%235B665E' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+.test-field select:disabled{opacity:.5;cursor:not-allowed;}
+.test-field select:focus{outline:2px solid var(--yellow);outline-offset:1px;}
+.difficulty-hint{font-size:12.5px;color:var(--ink-soft);margin-top:6px;}
+#generateBtn{width:100%;text-align:center;margin-top:4px;}
+#generateBtn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* ---- Test screen ---- */
+#testScreen{display:none;max-width:640px;margin:0 auto;}
+.test-topbar{
+  display:flex;align-items:center;justify-content:space-between;gap:16px;
+  margin-bottom:26px;flex-wrap:wrap;
+}
+.test-progress{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-soft);}
+.test-timer{
+  font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:600;color:var(--board);
+  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
+  padding:8px 18px;display:flex;align-items:center;gap:8px;
+}
+.test-timer.low-time{color:#B23B3B;border-color:#E8B4B4;background:#FDF1F1;animation:pulseTimer 1s ease infinite;}
+@keyframes pulseTimer{0%,100%{opacity:1;}50%{opacity:.55;}}
+.progress-bar-track{
+  height:6px;background:var(--paper-line);border-radius:6px;margin-bottom:30px;overflow:hidden;
+}
+.progress-bar-fill{
+  height:100%;background:var(--yellow);border-radius:6px;transition:width .3s ease;
+}
+.question-card{
+  background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:34px 32px;
+}
+.question-text{font-size:18px;font-weight:600;color:var(--ink);margin-bottom:24px;line-height:1.5;}
+.option-list{display:grid;gap:12px;margin-bottom:28px;}
+.option-btn{
+  display:flex;align-items:center;gap:12px;text-align:left;
+  width:100%;padding:14px 16px;border:1.5px solid var(--paper-line);border-radius:10px;
+  background:var(--paper);font-family:'Work Sans';font-size:14.5px;color:var(--ink);
+  cursor:pointer;transition:border-color .15s, background .15s, transform .1s;
+}
+.option-btn:hover{border-color:var(--yellow-dark);}
+.option-btn .opt-letter{
+  width:26px;height:26px;border-radius:50%;background:#fff;border:1.5px solid var(--paper-line);
+  display:flex;align-items:center;justify-content:center;font-size:12.5px;font-weight:700;
+  flex-shrink:0;color:var(--ink-soft);
+}
+.option-btn.selected{
+  border-color:var(--board);background:#fff;box-shadow:0 0 0 2px var(--board) inset;
+}
+.option-btn.selected .opt-letter{background:var(--board);color:var(--chalk);border-color:var(--board);}
+.test-actions{display:flex;justify-content:flex-end;}
+#nextBtn{opacity:.45;cursor:not-allowed;}
+#nextBtn.enabled{opacity:1;cursor:pointer;}
+
+/* ---- Timeout overlay ---- */
+.timeout-overlay{
+  display:none;position:fixed;inset:0;z-index:1000;
+  background:var(--board);color:var(--chalk);
+  align-items:center;justify-content:center;text-align:center;padding:24px;
+}
+.timeout-overlay.show{display:flex;}
+.timeout-inner{max-width:420px;}
+.timeout-inner .timeout-title{
+  font-family:'Kalam',cursive;font-weight:700;font-size:clamp(44px,9vw,68px);
+  color:var(--pink);margin-bottom:14px;line-height:1;
+  animation:timeoutPop .5s cubic-bezier(.34,1.56,.64,1) both;
+}
+@keyframes timeoutPop{
+  0%{transform:scale(.6);opacity:0;}
+  100%{transform:scale(1);opacity:1;}
+}
+.timeout-inner p{color:var(--chalk-dim);font-size:15.5px;margin-bottom:30px;}
+.timeout-inner .cta-btn{margin-top:0;}
+
+/* ---- Results screen ---- */
+#resultsScreen{display:none;max-width:720px;margin:0 auto;}
+.score-banner{
+  background:var(--board);color:var(--chalk);border-radius:var(--radius);
+  padding:40px 32px;text-align:center;margin-bottom:32px;
+}
+.score-banner .score-big{
+  font-family:'Kalam',cursive;font-size:clamp(48px,8vw,64px);color:var(--yellow);line-height:1;
+}
+.score-banner .score-sub{color:var(--chalk-dim);font-size:15px;margin-top:8px;}
+.results-list{display:grid;gap:14px;margin-bottom:30px;}
+.result-item{
+  background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);
+  padding:20px 22px;border-left:4px solid var(--paper-line);
+}
+.result-item.correct{border-left-color:#5B9A6F;}
+.result-item.incorrect{border-left-color:var(--pink-dark);}
+.result-item .r-q{font-size:14.5px;font-weight:600;color:var(--ink);margin-bottom:10px;}
+.result-item .r-line{font-size:13.5px;color:var(--ink-soft);margin-bottom:4px;}
+.result-item .r-line strong{color:var(--ink);}
+.result-item .r-tag{
+  display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  padding:3px 10px;border-radius:20px;margin-bottom:10px;
+}
+.result-item.correct .r-tag{background:#E7F3EA;color:#3D7A50;}
+.result-item.incorrect .r-tag{background:#FBEAE7;color:var(--pink-dark);}
+.results-actions{text-align:center;}
+
+@media (max-width:600px){
+  .test-card{padding:28px 22px;}
+  .question-card{padding:26px 22px;}
+  .score-banner{padding:32px 22px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER / NAVBAR ============ -->
+<header>
+  <div class="nav">
+    <a class="brand" href="index.html">Short<span>Study</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="programming.html">Programming</a></li>
+      <li><a href="test.html" class="active">Test</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ============ PAGE HEADER ============ -->
+<section class="page-header">
+  <span class="kicker">Test yourself</span>
+  <h1>Take a practice test</h1>
+  <p>Pick a topic and a length — questions are pulled at random, so no two attempts are quite the same.</p>
+</section>
+
+<main class="paper" style="padding-top:44px;">
+  <div class="wrap">
+
+    <!-- ============ SELECTION SCREEN ============ -->
+    <section id="selectionScreen" class="test-card fade-up" aria-label="Test setup">
+
+      <div class="test-field">
+        <label for="languageSelect">1. Choose a language</label>
+        <select id="languageSelect">
+          <option value="" selected disabled>Select a language…</option>
+          <!-- Options are populated from the JS questionBank object below,
+               so adding a new language to the bank automatically adds it here. -->
+        </select>
+      </div>
+
+      <div class="test-field">
+        <label for="difficultySelect">2. Choose a test length</label>
+        <select id="difficultySelect" disabled>
+          <option value="" selected disabled>Select a language first…</option>
+          <option value="short">Short — 10 Questions · 2:00</option>
+          <option value="medium">Medium — 20 Questions · 2:30</option>
+          <option value="long">Long — 40 Questions · 8:00</option>
+          <option value="morelong">More Long — 60 Questions · 10:00</option>
+        </select>
+        <div class="difficulty-hint" id="difficultyHint"></div>
+      </div>
+
+      <button id="generateBtn" class="cta-btn" disabled>Generate Questions</button>
+    </section>
+
+    <!-- ============ TEST SCREEN ============ -->
+    <section id="testScreen" aria-label="Test in progress">
+      <div class="test-topbar">
+        <span class="test-progress" id="progressLabel">Question 1 of 10</span>
+        <span class="test-timer" id="timerDisplay">02:00</span>
+      </div>
+      <div class="progress-bar-track">
+        <div class="progress-bar-fill" id="progressBarFill" style="width:0%;"></div>
+      </div>
+
+      <div class="question-card">
+        <div class="question-text" id="questionText">Question text goes here</div>
+        <div class="option-list" id="optionList"><!-- options injected by JS --></div>
+        <div class="test-actions">
+          <button id="nextBtn" class="cta-btn" style="margin-top:0;">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RESULTS SCREEN ============ -->
+    <section id="resultsScreen" aria-label="Test results">
+      <div class="score-banner">
+        <div class="score-big" id="scoreBig">0 / 0</div>
+        <div class="score-sub" id="scoreSub">You scored 0%</div>
+      </div>
+      <div class="results-list" id="resultsList"><!-- breakdown injected by JS --></div>
+      <div class="results-actions">
+        <button id="retakeBtn" class="cta-btn" style="margin-top:0;">Take another test</button>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ============ TIMEOUT OVERLAY ============ -->
+<div class="timeout-overlay" id="timeoutOverlay">
+  <div class="timeout-inner">
+    <div class="timeout-title">Try Again!!..</div>
+    <p>Time's up before you could submit. Take a breath and give it another shot — the questions will be freshly shuffled.</p>
+    <button id="timeoutRetryBtn" class="cta-btn">Set up a new test</button>
+  </div>
+</div>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="footer-inner">
+    <ul class="footer-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="programming.html">Programming</a></li>
+      <li><a href="test.html">Test</a></li>
+      <li><a href="about.html">About Us</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+      <li><a href="privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="terms-conditions.html">Terms of Conditions</a></li>
+    </ul>
+    <div class="footer-bottom">@ short study copyright all right reserved</div>
+  </div>
+</footer>
+
+<script src="js/script.js"></script>
+
+<!-- =========================================================
+     TEST MODULE ENGINE — Vanilla JS, fully frontend, no backend.
+     Everything below this comment is the self-contained "Test"
+     feature: the mock question bank, the randomization engine,
+     the timer, the one-by-one question flow, and the results/
+     timeout evaluation logic.
+     ========================================================= -->
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------------------------------------------------
+     1. MOCK QUESTION REPOSITORY
+     A plain JS object: { languageKey: [ {q, options[4], correct}, ... ] }
+     `correct` is the zero-based index into `options`.
+     To add a language: add a new key here — it automatically
+     appears in the language dropdown (see populateLanguages()).
+     To add questions: push more objects into any array below.
+     --------------------------------------------------------- */
+  const questionBank = {
+    "Python": [
+      { q: "What is the output of print(type(5)) in Python?", options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "int"], correct: 0 },
+      { q: "Which keyword is used to define a function in Python?", options: ["func", "def", "function", "lambda"], correct: 1 },
+      { q: "What does len([1, 2, 3]) return?", options: ["2", "3", "4", "Error"], correct: 1 },
+      { q: "Which of these is a mutable data type in Python?", options: ["tuple", "str", "list", "int"], correct: 2 },
+      { q: "What is the result of 3 // 2 in Python?", options: ["1.5", "1", "2", "0"], correct: 1 },
+      { q: "How do you start a single-line comment in Python?", options: ["//", "#", "/*", "--"], correct: 1 },
+      { q: "Which list method adds an item to the end of the list?", options: ["add()", "push()", "append()", "insert()"], correct: 2 },
+      { q: "What does range(5) generate?", options: ["1 to 5", "0 to 4", "0 to 5", "1 to 4"], correct: 1 },
+      { q: "Which operator is used for exponentiation in Python?", options: ["^", "**", "exp()", "pow"], correct: 1 },
+      { q: "What is the correct file extension for Python files?", options: [".pt", ".py", ".pyt", ".p"], correct: 1 },
+      { q: "Which of these is NOT a valid Python variable name?", options: ["_value", "value1", "2value", "Value"], correct: 2 },
+      { q: "What does 'if __name__ == \"__main__\":' check?", options: ["If the file has errors", "If the script is run directly", "If a function exists", "If Python is installed"], correct: 1 },
+      { q: "Which data type is used to store True or False in Python?", options: ["int", "bool", "str", "bit"], correct: 1 },
+      { q: "What does 'hello'.upper() return?", options: ["hello", "HELLO", "Hello", "Error"], correct: 1 },
+      { q: "Which loop is typically used to iterate over a sequence in Python?", options: ["while", "for", "loop", "repeat"], correct: 1 }
+    ],
+    "C": [
+      { q: "Which header file is required to use printf() in C?", options: ["conio.h", "stdio.h", "stdlib.h", "string.h"], correct: 1 },
+      { q: "What is the correct syntax to declare an integer variable in C?", options: ["int x;", "integer x;", "x: int;", "var x;"], correct: 0 },
+      { q: "Which symbol is used to end a statement in C?", options: [":", ";", ".", ","], correct: 1 },
+      { q: "What does '&' represent when placed before a variable name in C?", options: ["Bitwise AND", "Address-of operator", "Logical AND", "Pointer dereference"], correct: 1 },
+      { q: "Which loop checks its condition after executing the loop body at least once?", options: ["for", "while", "do-while", "foreach"], correct: 2 },
+      { q: "What is the typical size of an int in C on most modern systems?", options: ["2 bytes", "4 bytes", "8 bytes", "1 byte"], correct: 1 },
+      { q: "Which function is used to allocate memory dynamically in C?", options: ["alloc()", "malloc()", "new()", "create()"], correct: 1 },
+      { q: "What does '%d' represent inside printf() in C?", options: ["Double format specifier", "Integer format specifier", "Character format specifier", "String format specifier"], correct: 1 },
+      { q: "Which keyword is used to define a constant in C?", options: ["final", "const", "static", "constant"], correct: 1 },
+      { q: "What is the entry point function of every C program?", options: ["start()", "init()", "main()", "run()"], correct: 2 },
+      { q: "Which operator accesses a structure member through a pointer?", options: [".", "->", "::", "&"], correct: 1 },
+      { q: "What does the sizeof() operator return?", options: ["The value of a variable", "The address of a variable", "The size in bytes of a type or variable", "The type name"], correct: 2 },
+      { q: "Which of these is a valid comment in C?", options: ["# comment", "// comment", "' comment", "-- comment"], correct: 1 },
+      { q: "What is a NULL pointer in C?", options: ["A pointer to the first array element", "A pointer that points to nothing", "An uninitialised integer", "A pointer to main()"], correct: 1 },
+      { q: "Which function is commonly used to compare two strings in C?", options: ["strcmp()", "strcompare()", "compare()", "equals()"], correct: 0 }
+    ],
+    "Java": [
+      { q: "Which keyword is used for a class to inherit from another class in Java?", options: ["implements", "extends", "inherits", "super"], correct: 1 },
+      { q: "What is the default value of a boolean field in Java?", options: ["true", "false", "null", "0"], correct: 1 },
+      { q: "Which method is the entry point of a Java program?", options: ["start()", "run()", "main()", "init()"], correct: 2 },
+      { q: "Which keyword prevents a class from being inherited?", options: ["static", "final", "private", "sealed"], correct: 1 },
+      { q: "What is the size of an int in Java, regardless of platform?", options: ["2 bytes", "4 bytes", "8 bytes", "Platform-dependent"], correct: 1 },
+      { q: "Which of these Java collections allows duplicate elements?", options: ["HashSet", "TreeSet", "ArrayList", "HashMap keys"], correct: 2 },
+      { q: "What does JVM stand for?", options: ["Java Virtual Machine", "Java Variable Method", "Java Verified Module", "Java Visual Manager"], correct: 0 },
+      { q: "Which keyword is used to implement an interface in Java?", options: ["extends", "implements", "interface", "using"], correct: 1 },
+      { q: "What construct is used to handle exceptions in Java?", options: ["if-else", "try-catch", "switch-case", "check-fail"], correct: 1 },
+      { q: "Which access modifier restricts a member to only within its own class?", options: ["public", "protected", "private", "default"], correct: 2 },
+      { q: "What is the parent class of all classes in Java?", options: ["Class", "Object", "Main", "Super"], correct: 1 },
+      { q: "Which operator is used for string concatenation in Java?", options: ["&", "+", ".", "concat"], correct: 1 },
+      { q: "What is method overloading in Java?", options: ["Overriding a parent method", "Same method name with different parameters", "A method calling itself", "A method with no return type"], correct: 1 },
+      { q: "Which keyword is used to create a new object in Java?", options: ["create", "new", "make", "instance"], correct: 1 },
+      { q: "What does the 'static' keyword mean for a variable in Java?", options: ["It belongs to each object individually", "It belongs to the class, not any instance", "It cannot be changed", "It is only visible inside one method"], correct: 1 }
+    ],
+    "HTML/CSS": [
+      { q: "Which HTML tag is used to create a hyperlink?", options: ["<link>", "<a>", "<href>", "<url>"], correct: 1 },
+      { q: "Which CSS property is used to change text color?", options: ["text-color", "font-color", "color", "foreground"], correct: 2 },
+      { q: "What does CSS stand for?", options: ["Creative Style Sheets", "Cascading Style Sheets", "Computer Style Sheets", "Colorful Style Sheets"], correct: 1 },
+      { q: "Which HTML tag defines the largest heading?", options: ["<h6>", "<heading>", "<h1>", "<head>"], correct: 2 },
+      { q: "Which attribute specifies the image source in an <img> tag?", options: ["href", "src", "link", "source"], correct: 1 },
+      { q: "Which CSS property controls the space outside an element's border?", options: ["padding", "spacing", "margin", "gap"], correct: 2 },
+      { q: "Which HTML tag is used for an unordered (bulleted) list?", options: ["<ol>", "<ul>", "<list>", "<li>"], correct: 1 },
+      { q: "Which display value completely removes an element from the layout?", options: ["hidden", "invisible", "none", "collapse"], correct: 2 },
+      { q: "Which CSS selector symbol targets an element by its id?", options: [".", "#", "*", "@"], correct: 1 },
+      { q: "Which HTML tag is used to embed JavaScript in a page?", options: ["<js>", "<code>", "<script>", "<javascript>"], correct: 2 },
+      { q: "Which CSS property changes the size of text?", options: ["text-size", "font-size", "size", "font-weight"], correct: 1 },
+      { q: "Which HTML tag creates a row inside a table?", options: ["<td>", "<row>", "<tr>", "<th>"], correct: 2 },
+      { q: "Which CSS property controls the stacking order of overlapping elements?", options: ["stack-order", "z-index", "layer", "position-order"], correct: 1 },
+      { q: "What does setting display: flex on an element enable?", options: ["Grid layout", "Table layout", "Flexbox layout", "Absolute positioning"], correct: 2 },
+      { q: "Which HTML attribute is used to apply a CSS class to an element?", options: ["style", "class", "id", "css"], correct: 1 }
+    ],
+    "Data Structures": [
+      { q: "Which data structure follows Last-In-First-Out (LIFO) order?", options: ["Queue", "Stack", "Array", "Linked List"], correct: 1 },
+      { q: "Which data structure follows First-In-First-Out (FIFO) order?", options: ["Stack", "Tree", "Queue", "Graph"], correct: 2 },
+      { q: "What is the time complexity of accessing an array element by index?", options: ["O(n)", "O(log n)", "O(1)", "O(n^2)"], correct: 2 },
+      { q: "Which data structure is used internally to implement recursive function calls?", options: ["Queue", "Stack", "Heap (memory)", "Array"], correct: 1 },
+      { q: "A linked list node is typically composed of which two parts?", options: ["Key and value", "Data and a pointer to the next node", "Index and length", "Root and children"], correct: 1 },
+      { q: "What is the worst-case time complexity of a linear search?", options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"], correct: 2 },
+      { q: "Which data structure is best suited for representing hierarchical data?", options: ["Array", "Stack", "Tree", "Queue"], correct: 2 },
+      { q: "What is the time complexity of binary search on a sorted array?", options: ["O(n)", "O(log n)", "O(1)", "O(n^2)"], correct: 1 },
+      { q: "Which data structure stores data as key-value pairs for fast lookup?", options: ["Array", "Stack", "Hash Map", "Linked List"], correct: 2 },
+      { q: "What is the operation called that adds an element to the top of a stack?", options: ["Enqueue", "Push", "Insert", "Append"], correct: 1 },
+      { q: "What do you call a tree where each node has at most two children?", options: ["Binary tree", "Linked tree", "Dual tree", "Balanced tree"], correct: 0 },
+      { q: "Which data structure is commonly used to implement a priority queue efficiently?", options: ["Array", "Heap", "Stack", "Linked List"], correct: 1 },
+      { q: "What is the time complexity of inserting an element at the beginning of an array?", options: ["O(1)", "O(log n)", "O(n)", "O(n^2)"], correct: 2 },
+      { q: "Which graph traversal technique explores all neighbors before going deeper?", options: ["DFS", "BFS", "Binary Search", "Quick Sort"], correct: 1 },
+      { q: "Which graph traversal technique explores as far as possible before backtracking?", options: ["BFS", "DFS", "Linear Search", "Merge Sort"], correct: 1 }
+    ],
+    "SQL": [
+      { q: "Which SQL keyword is used to retrieve data from a table?", options: ["GET", "SELECT", "FETCH", "SHOW"], correct: 1 },
+      { q: "Which clause is used to filter rows based on a condition?", options: ["FILTER", "WHERE", "HAVING", "IF"], correct: 1 },
+      { q: "Which keyword removes duplicate rows from a result set?", options: ["UNIQUE", "DISTINCT", "REMOVE DUPLICATES", "ONLY"], correct: 1 },
+      { q: "Which SQL command is used to add new rows to a table?", options: ["ADD", "INSERT", "CREATE", "APPEND"], correct: 1 },
+      { q: "Which SQL command modifies existing data in a table?", options: ["MODIFY", "CHANGE", "UPDATE", "ALTER"], correct: 2 },
+      { q: "Which SQL command removes rows from a table?", options: ["REMOVE", "DROP", "DELETE", "CLEAR"], correct: 2 },
+      { q: "Which clause is used to sort query results?", options: ["SORT BY", "ORDER BY", "ARRANGE BY", "GROUP BY"], correct: 1 },
+      { q: "Which clause groups rows that share a common value?", options: ["GROUP BY", "ORDER BY", "CLUSTER BY", "SET BY"], correct: 0 },
+      { q: "Which keyword is used to combine rows from two related tables?", options: ["MERGE", "COMBINE", "JOIN", "LINK"], correct: 2 },
+      { q: "Which constraint ensures every value in a column is unique?", options: ["PRIMARY", "UNIQUE", "CHECK", "DISTINCT"], correct: 1 },
+      { q: "Which constraint ensures a column cannot store a NULL value?", options: ["NOT NULL", "REQUIRED", "NO EMPTY", "MANDATORY"], correct: 0 },
+      { q: "Which keyword is used to create a new table?", options: ["NEW TABLE", "MAKE TABLE", "CREATE TABLE", "ADD TABLE"], correct: 2 },
+      { q: "Which key uniquely identifies each row in a table?", options: ["FOREIGN KEY", "PRIMARY KEY", "UNIQUE KEY", "INDEX KEY"], correct: 1 },
+      { q: "Which function returns the number of rows in a result set?", options: ["SUM()", "TOTAL()", "COUNT()", "ROWS()"], correct: 2 },
+      { q: "Which clause filters groups after aggregation has been applied?", options: ["WHERE", "HAVING", "FILTER", "GROUP FILTER"], correct: 1 }
+    ]
+  };
+
+  /* NOTE ON POOL SIZE: this is a mock/demo repository — 15 questions
+     per language. "Short" (10) and a chunk of "Medium" (20) draw
+     unique questions every time. "Long" (40) and "More Long" (60)
+     exceed the pool size, so the randomizer below shuffles and
+     re-cycles the pool as needed (see getRandomQuestions) rather
+     than ever showing an empty or crashing test. For production,
+     grow each language's array — the engine needs no other changes. */
+
+  /* ---------------------------------------------------------
+     2. DIFFICULTY CONFIG
+     --------------------------------------------------------- */
+  const difficultyConfig = {
+    short:    { count: 10, seconds: 2 * 60,            label: "Short — 10 Questions · 2:00" },
+    medium:   { count: 20, seconds: 2 * 60 + 30,        label: "Medium — 20 Questions · 2:30" },
+    long:     { count: 40, seconds: 8 * 60,            label: "Long — 40 Questions · 8:00" },
+    morelong: { count: 60, seconds: 10 * 60,           label: "More Long — 60 Questions · 10:00" }
+  };
+
+  /* ---------------------------------------------------------
+     3. STATE
+     --------------------------------------------------------- */
+  let state = {
+    language: null,
+    difficultyKey: null,
+    questions: [],       // the randomized set for this attempt
+    userAnswers: [],      // parallel array of selected option index (or null)
+    currentIndex: 0,
+    secondsLeft: 0,
+    timerId: null
+  };
+
+  /* ---------------------------------------------------------
+     4. DOM REFERENCES
+     --------------------------------------------------------- */
+  const languageSelect   = document.getElementById("languageSelect");
+  const difficultySelect = document.getElementById("difficultySelect");
+  const difficultyHint   = document.getElementById("difficultyHint");
+  const generateBtn      = document.getElementById("generateBtn");
+
+  const selectionScreen  = document.getElementById("selectionScreen");
+  const testScreen       = document.getElementById("testScreen");
+  const resultsScreen    = document.getElementById("resultsScreen");
+  const timeoutOverlay   = document.getElementById("timeoutOverlay");
+
+  const progressLabel    = document.getElementById("progressLabel");
+  const timerDisplay      = document.getElementById("timerDisplay");
+  const progressBarFill   = document.getElementById("progressBarFill");
+  const questionText      = document.getElementById("questionText");
+  const optionList        = document.getElementById("optionList");
+  const nextBtn           = document.getElementById("nextBtn");
+
+  const scoreBig          = document.getElementById("scoreBig");
+  const scoreSub          = document.getElementById("scoreSub");
+  const resultsList       = document.getElementById("resultsList");
+  const retakeBtn         = document.getElementById("retakeBtn");
+  const timeoutRetryBtn   = document.getElementById("timeoutRetryBtn");
+
+  /* ---------------------------------------------------------
+     5. INITIAL SETUP — populate language dropdown from the bank
+     --------------------------------------------------------- */
+  function populateLanguages() {
+    Object.keys(questionBank).forEach(function (lang) {
+      const opt = document.createElement("option");
+      opt.value = lang;
+      opt.textContent = lang;
+      languageSelect.appendChild(opt);
+    });
+  }
+  populateLanguages();
+
+  /* ---------------------------------------------------------
+     6. SELECTION SCREEN LOGIC
+     --------------------------------------------------------- */
+  languageSelect.addEventListener("change", function () {
+    const hasLanguage = !!languageSelect.value;
+    difficultySelect.disabled = !hasLanguage;
+    difficultySelect.value = "";
+    difficultyHint.textContent = "";
+    generateBtn.disabled = true;
+  });
+
+  difficultySelect.addEventListener("change", function () {
+    const cfg = difficultyConfig[difficultySelect.value];
+    difficultyHint.textContent = cfg
+      ? "This test has " + cfg.count + " questions and a " + formatTime(cfg.seconds) + " time limit."
+      : "";
+    generateBtn.disabled = !difficultySelect.value;
+  });
+
+  generateBtn.addEventListener("click", function () {
+    startTest(languageSelect.value, difficultySelect.value);
+  });
+
+  /* ---------------------------------------------------------
+     7. RANDOMIZATION ENGINE
+     Fisher–Yates shuffle, then repeat-and-trim if the requested
+     count is larger than the available pool (see NOTE above).
+     --------------------------------------------------------- */
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function getRandomQuestions(lang, count) {
+    const pool = questionBank[lang] || [];
+    let combined = [];
+    // Keep appending freshly-shuffled copies of the pool until we
+    // have enough questions, so counts larger than the pool never
+    // break — they just cycle through a re-shuffled set.
+    while (combined.length < count) {
+      combined = combined.concat(shuffle(pool));
+    }
+    return combined.slice(0, count);
+  }
+
+  /* ---------------------------------------------------------
+     8. STARTING A TEST
+     --------------------------------------------------------- */
+  function startTest(lang, difficultyKey) {
+    const cfg = difficultyConfig[difficultyKey];
+    if (!lang || !cfg) return;
+
+    state = {
+      language: lang,
+      difficultyKey: difficultyKey,
+      questions: getRandomQuestions(lang, cfg.count),
+      userAnswers: new Array(cfg.count).fill(null),
+      currentIndex: 0,
+      secondsLeft: cfg.seconds,
+      timerId: null
+    };
+
+    selectionScreen.style.display = "none";
+    resultsScreen.style.display = "none";
+    timeoutOverlay.classList.remove("show");
+    testScreen.style.display = "block";
+
+    renderQuestion();
+    startTimer();
+  }
+
+  /* ---------------------------------------------------------
+     9. LIVE COUNTDOWN TIMER (MM:SS)
+     --------------------------------------------------------- */
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  }
+
+  function startTimer() {
+    updateTimerDisplay();
+    state.timerId = setInterval(function () {
+      state.secondsLeft--;
+      updateTimerDisplay();
+      if (state.secondsLeft <= 0) {
+        clearInterval(state.timerId);
+        handleTimeout();
+      }
+    }, 1000);
+  }
+
+  function updateTimerDisplay() {
+    timerDisplay.textContent = formatTime(Math.max(state.secondsLeft, 0));
+    timerDisplay.classList.toggle("low-time", state.secondsLeft <= 15);
+  }
+
+  function stopTimer() {
+    if (state.timerId) clearInterval(state.timerId);
+  }
+
+  /* ---------------------------------------------------------
+     10. TIMEOUT STATE — locks the test instantly
+     --------------------------------------------------------- */
+  function handleTimeout() {
+    testScreen.style.display = "none";
+    resultsScreen.style.display = "none";
+    timeoutOverlay.classList.add("show");
+  }
+
+  timeoutRetryBtn.addEventListener("click", function () {
+    timeoutOverlay.classList.remove("show");
+    resetToSelection();
+  });
+
+  /* ---------------------------------------------------------
+     11. ONE-BY-ONE QUESTION DISPLAY
+     --------------------------------------------------------- */
+  function renderQuestion() {
+    const total = state.questions.length;
+    const q = state.questions[state.currentIndex];
+
+    progressLabel.textContent = "Question " + (state.currentIndex + 1) + " of " + total;
+    progressBarFill.style.width = ((state.currentIndex) / total * 100) + "%";
+    questionText.textContent = q.q;
+
+    optionList.innerHTML = "";
+    const letters = ["A", "B", "C", "D"];
+    q.options.forEach(function (optionText, i) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "option-btn";
+      btn.innerHTML = '<span class="opt-letter">' + letters[i] + '</span><span>' + optionText + '</span>';
+      if (state.userAnswers[state.currentIndex] === i) {
+        btn.classList.add("selected");
+      }
+      btn.addEventListener("click", function () {
+        selectOption(i);
+      });
+      optionList.appendChild(btn);
+    });
+
+    const isLast = state.currentIndex === total - 1;
+    nextBtn.textContent = isLast ? "Submit Test" : "Next";
+    updateNextButtonState();
+  }
+
+  function selectOption(index) {
+    state.userAnswers[state.currentIndex] = index;
+    // Re-render just the highlighted state
+    Array.from(optionList.children).forEach(function (btn, i) {
+      btn.classList.toggle("selected", i === index);
+    });
+    updateNextButtonState();
+  }
+
+  function updateNextButtonState() {
+    const answered = state.userAnswers[state.currentIndex] !== null;
+    nextBtn.classList.toggle("enabled", answered);
+  }
+
+  nextBtn.addEventListener("click", function () {
+    if (state.userAnswers[state.currentIndex] === null) return; // must answer to proceed
+
+    const isLast = state.currentIndex === state.questions.length - 1;
+    if (isLast) {
+      submitTest();
+    } else {
+      state.currentIndex++;
+      renderQuestion();
+    }
+  });
+
+  /* ---------------------------------------------------------
+     12. SUBMISSION & EVALUATION
+     --------------------------------------------------------- */
+  function submitTest() {
+    stopTimer();
+    progressBarFill.style.width = "100%";
+
+    let correctCount = 0;
+    const breakdown = state.questions.map(function (q, i) {
+      const userIndex = state.userAnswers[i];
+      const isCorrect = userIndex === q.correct;
+      if (isCorrect) correctCount++;
+      return {
+        question: q.q,
+        userAnswer: userIndex !== null ? q.options[userIndex] : "(no answer)",
+        correctAnswer: q.options[q.correct],
+        isCorrect: isCorrect
+      };
+    });
+
+    renderResults(correctCount, state.questions.length, breakdown);
+  }
+
+  function renderResults(correctCount, total, breakdown) {
+    testScreen.style.display = "none";
+    resultsScreen.style.display = "block";
+
+    const pct = Math.round((correctCount / total) * 100);
+    scoreBig.textContent = correctCount + " / " + total;
+    scoreSub.textContent = "You scored " + pct + "% on the " + state.language + " (" + difficultyConfig[state.difficultyKey].label.split(" —")[0] + ") test.";
+
+    resultsList.innerHTML = "";
+    breakdown.forEach(function (item, i) {
+      const div = document.createElement("div");
+      div.className = "result-item " + (item.isCorrect ? "correct" : "incorrect");
+      div.innerHTML =
+        '<span class="r-tag">' + (item.isCorrect ? "Correct" : "Incorrect") + '</span>' +
+        '<div class="r-q">Q' + (i + 1) + '. ' + item.question + '</div>' +
+        '<div class="r-line">Your answer: <strong>' + item.userAnswer + '</strong></div>' +
+        (item.isCorrect ? '' : '<div class="r-line">Correct answer: <strong>' + item.correctAnswer + '</strong></div>');
+      resultsList.appendChild(div);
+    });
+  }
+
+  retakeBtn.addEventListener("click", resetToSelection);
+
+  /* ---------------------------------------------------------
+     13. RESET
+     --------------------------------------------------------- */
+  function resetToSelection() {
+    stopTimer();
+    testScreen.style.display = "none";
+    resultsScreen.style.display = "none";
+    timeoutOverlay.classList.remove("show");
+    selectionScreen.style.display = "block";
+
+    languageSelect.value = "";
+    difficultySelect.value = "";
+    difficultySelect.disabled = true;
+    difficultyHint.textContent = "";
+    generateBtn.disabled = true;
+  }
+
+})();
+</script>
+
+</body>
+</html>
