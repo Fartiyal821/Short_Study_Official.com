@@ -12,6 +12,39 @@
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
+/* ---- Intro Section Animation ---- */
+.intro-text-box {
+  max-width: 760px;
+  margin: 0 auto 40px auto;
+  background: var(--paper, #fff);
+  border: 1px solid var(--paper-line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 34px 40px;
+  color: var(--ink);
+  font-family: 'Work Sans', sans-serif;
+  line-height: 1.8;
+  animation: floatIn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  opacity: 0;
+  transform: translateY(30px);
+}
+.intro-text-box p {
+  margin-bottom: 18px;
+  font-size: 15.5px;
+  text-align: justify;
+}
+.intro-text-box p:last-child {
+  margin-bottom: 0;
+}
+.intro-text-box strong {
+  color: var(--board);
+}
+@keyframes floatIn {
+  0% { opacity: 0; transform: translateY(30px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Original Styles ---- */
 .test-card{
   max-width:560px;margin:0 auto;background:#fff;border:1px solid var(--paper-line);
   border-radius:var(--radius);box-shadow:var(--shadow);padding:40px;
@@ -131,6 +164,7 @@
   .test-card{padding:28px 22px;}
   .question-card{padding:26px 22px;}
   .score-banner{padding:32px 22px;}
+  .intro-text-box {padding: 24px 20px;}
 }
 </style>
 </head>
@@ -161,18 +195,23 @@
 <main class="paper" style="padding-top:44px;">
   <div class="wrap">
 
+    <!-- ============ INTRODUCTORY SECTION ============ -->
+    <div class="intro-text-box">
+      <p>Welcome to the ultimate proving ground for your coding journey. At <strong>ShortStudy</strong>, we believe that learning programming is not just about passively reading tutorials or copying code snippets; it is about actively challenging your mind, testing your logic, and discovering where your true strengths lie. That is exactly why we built this interactive assessment platform. Whether you are an absolute beginner taking your very first steps into the tech world or a fresh graduate preparing for rigorous technical interviews, this space is designed specifically for you.</p>
+      <p>Stepping into the world of computer science can often feel overwhelming. The syntax of Python, the memory management of C, the object-oriented principles of Java, the styling intricacies of HTML and CSS, the complex logic of Data Structures, and the data manipulation powers of SQL—it is a lot to master. We understand that journey because we have been there. This test feature is crafted to be your personal, judgment-free practice arena. It is a place where mistakes are not setbacks, but stepping stones to mastery.</p>
+      <p>Here, you will find a carefully curated, dynamically generated question bank that ensures no two attempts are exactly the same. When you select your preferred programming language and your desired test length, our algorithmic engine instantly weaves together a unique set of multiple-choice questions. This randomization guarantees that you are genuinely recalling concepts rather than just memorizing a fixed sequence of answers. Furthermore, the built-in live timer adds a healthy touch of real-world pressure, simulating the environment of actual academic exams and corporate placement tests. This helps you build crucial time-management skills alongside your technical knowledge.</p>
+      <p>Once you complete a test, you will not just get a raw score. Our instant evaluation system provides a comprehensive, color-coded breakdown of your performance, highlighting exactly which concepts you have mastered and which areas require a little more review. This immediate feedback loop is the secret to rapid improvement.</p>
+      <p>So, take a deep breath, trust in the hours of practice you have put in, and choose your domain below. Embrace the challenge, push your limits, and let every question you answer bring you one step closer to your dream role in the tech industry. Your journey to becoming an exceptional developer continues right here, right now.</p>
+    </div>
+
     <!-- ============ SELECTION SCREEN ============ -->
     <section id="selectionScreen" class="test-card fade-up" aria-label="Test setup">
-
       <div class="test-field">
         <label for="languageSelect">1. Choose a language</label>
         <select id="languageSelect">
           <option value="" selected disabled>Select a language…</option>
-          <!-- Options are populated from the JS questionBank object below,
-               so adding a new language to the bank automatically adds it here. -->
         </select>
       </div>
-
       <div class="test-field">
         <label for="difficultySelect">2. Choose a test length</label>
         <select id="difficultySelect" disabled>
@@ -184,7 +223,6 @@
         </select>
         <div class="difficulty-hint" id="difficultyHint"></div>
       </div>
-
       <button id="generateBtn" class="cta-btn" disabled>Generate Questions</button>
     </section>
 
@@ -197,10 +235,9 @@
       <div class="progress-bar-track">
         <div class="progress-bar-fill" id="progressBarFill" style="width:0%;"></div>
       </div>
-
       <div class="question-card">
         <div class="question-text" id="questionText">Question text goes here</div>
-        <div class="option-list" id="optionList"><!-- options injected by JS --></div>
+        <div class="option-list" id="optionList"></div>
         <div class="test-actions">
           <button id="nextBtn" class="cta-btn" style="margin-top:0;">Next</button>
         </div>
@@ -213,7 +250,7 @@
         <div class="score-big" id="scoreBig">0 / 0</div>
         <div class="score-sub" id="scoreSub">You scored 0%</div>
       </div>
-      <div class="results-list" id="resultsList"><!-- breakdown injected by JS --></div>
+      <div class="results-list" id="resultsList"></div>
       <div class="results-actions">
         <button id="retakeBtn" class="cta-btn" style="margin-top:0;">Take another test</button>
       </div>
@@ -249,25 +286,10 @@
 
 <script src="js/script.js"></script>
 
-<!-- =========================================================
-     TEST MODULE ENGINE — Vanilla JS, fully frontend, no backend.
-     Everything below this comment is the self-contained "Test"
-     feature: the mock question bank, the randomization engine,
-     the timer, the one-by-one question flow, and the results/
-     timeout evaluation logic.
-     ========================================================= -->
 <script>
 (function () {
   "use strict";
 
-  /* ---------------------------------------------------------
-     1. MOCK QUESTION REPOSITORY
-     A plain JS object: { languageKey: [ {q, options[4], correct}, ... ] }
-     `correct` is the zero-based index into `options`.
-     To add a language: add a new key here — it automatically
-     appears in the language dropdown (see populateLanguages()).
-     To add questions: push more objects into any array below.
-     --------------------------------------------------------- */
   const questionBank = {
     "Python": [
       { q: "What is the output of print(type(5)) in Python?", options: ["<class 'int'>", "<class 'float'>", "<class 'str'>", "int"], correct: 0 },
@@ -373,17 +395,6 @@
     ]
   };
 
-  /* NOTE ON POOL SIZE: this is a mock/demo repository — 15 questions
-     per language. "Short" (10) and a chunk of "Medium" (20) draw
-     unique questions every time. "Long" (40) and "More Long" (60)
-     exceed the pool size, so the randomizer below shuffles and
-     re-cycles the pool as needed (see getRandomQuestions) rather
-     than ever showing an empty or crashing test. For production,
-     grow each language's array — the engine needs no other changes. */
-
-  /* ---------------------------------------------------------
-     2. DIFFICULTY CONFIG
-     --------------------------------------------------------- */
   const difficultyConfig = {
     short:    { count: 10, seconds: 2 * 60,            label: "Short — 10 Questions · 2:00" },
     medium:   { count: 20, seconds: 2 * 60 + 30,        label: "Medium — 20 Questions · 2:30" },
@@ -391,22 +402,16 @@
     morelong: { count: 60, seconds: 10 * 60,           label: "More Long — 60 Questions · 10:00" }
   };
 
-  /* ---------------------------------------------------------
-     3. STATE
-     --------------------------------------------------------- */
   let state = {
     language: null,
     difficultyKey: null,
-    questions: [],       // the randomized set for this attempt
-    userAnswers: [],      // parallel array of selected option index (or null)
+    questions: [],      
+    userAnswers: [],      
     currentIndex: 0,
     secondsLeft: 0,
     timerId: null
   };
 
-  /* ---------------------------------------------------------
-     4. DOM REFERENCES
-     --------------------------------------------------------- */
   const languageSelect   = document.getElementById("languageSelect");
   const difficultySelect = document.getElementById("difficultySelect");
   const difficultyHint   = document.getElementById("difficultyHint");
@@ -430,9 +435,6 @@
   const retakeBtn         = document.getElementById("retakeBtn");
   const timeoutRetryBtn   = document.getElementById("timeoutRetryBtn");
 
-  /* ---------------------------------------------------------
-     5. INITIAL SETUP — populate language dropdown from the bank
-     --------------------------------------------------------- */
   function populateLanguages() {
     Object.keys(questionBank).forEach(function (lang) {
       const opt = document.createElement("option");
@@ -443,9 +445,6 @@
   }
   populateLanguages();
 
-  /* ---------------------------------------------------------
-     6. SELECTION SCREEN LOGIC
-     --------------------------------------------------------- */
   languageSelect.addEventListener("change", function () {
     const hasLanguage = !!languageSelect.value;
     difficultySelect.disabled = !hasLanguage;
@@ -466,11 +465,6 @@
     startTest(languageSelect.value, difficultySelect.value);
   });
 
-  /* ---------------------------------------------------------
-     7. RANDOMIZATION ENGINE
-     Fisher–Yates shuffle, then repeat-and-trim if the requested
-     count is larger than the available pool (see NOTE above).
-     --------------------------------------------------------- */
   function shuffle(arr) {
     const a = arr.slice();
     for (let i = a.length - 1; i > 0; i--) {
@@ -483,18 +477,12 @@
   function getRandomQuestions(lang, count) {
     const pool = questionBank[lang] || [];
     let combined = [];
-    // Keep appending freshly-shuffled copies of the pool until we
-    // have enough questions, so counts larger than the pool never
-    // break — they just cycle through a re-shuffled set.
     while (combined.length < count) {
       combined = combined.concat(shuffle(pool));
     }
     return combined.slice(0, count);
   }
 
-  /* ---------------------------------------------------------
-     8. STARTING A TEST
-     --------------------------------------------------------- */
   function startTest(lang, difficultyKey) {
     const cfg = difficultyConfig[difficultyKey];
     if (!lang || !cfg) return;
@@ -518,9 +506,6 @@
     startTimer();
   }
 
-  /* ---------------------------------------------------------
-     9. LIVE COUNTDOWN TIMER (MM:SS)
-     --------------------------------------------------------- */
   function formatTime(totalSeconds) {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
@@ -540,151 +525,138 @@
   }
 
   function updateTimerDisplay() {
-    timerDisplay.textContent = formatTime(Math.max(state.secondsLeft, 0));
-    timerDisplay.classList.toggle("low-time", state.secondsLeft <= 15);
+    timerDisplay.textContent = formatTime(state.secondsLeft);
+    if(state.secondsLeft <= 15) {
+      timerDisplay.classList.add("low-time");
+    } else {
+      timerDisplay.classList.remove("low-time");
+    }
   }
 
-  function stopTimer() {
-    if (state.timerId) clearInterval(state.timerId);
-  }
-
-  /* ---------------------------------------------------------
-     10. TIMEOUT STATE — locks the test instantly
-     --------------------------------------------------------- */
   function handleTimeout() {
     testScreen.style.display = "none";
-    resultsScreen.style.display = "none";
     timeoutOverlay.classList.add("show");
   }
 
-  timeoutRetryBtn.addEventListener("click", function () {
-    timeoutOverlay.classList.remove("show");
-    resetToSelection();
-  });
-
-  /* ---------------------------------------------------------
-     11. ONE-BY-ONE QUESTION DISPLAY
-     --------------------------------------------------------- */
   function renderQuestion() {
-    const total = state.questions.length;
-    const q = state.questions[state.currentIndex];
-
-    progressLabel.textContent = "Question " + (state.currentIndex + 1) + " of " + total;
-    progressBarFill.style.width = ((state.currentIndex) / total * 100) + "%";
-    questionText.textContent = q.q;
-
+    const qData = state.questions[state.currentIndex];
+    progressLabel.textContent = "Question " + (state.currentIndex + 1) + " of " + state.questions.length;
+    progressBarFill.style.width = ((state.currentIndex / state.questions.length) * 100) + "%";
+    questionText.textContent = qData.q;
+    
     optionList.innerHTML = "";
     const letters = ["A", "B", "C", "D"];
-    q.options.forEach(function (optionText, i) {
+    qData.options.forEach((opt, idx) => {
       const btn = document.createElement("button");
-      btn.type = "button";
       btn.className = "option-btn";
-      btn.innerHTML = '<span class="opt-letter">' + letters[i] + '</span><span>' + optionText + '</span>';
-      if (state.userAnswers[state.currentIndex] === i) {
+      if (state.userAnswers[state.currentIndex] === idx) {
         btn.classList.add("selected");
       }
-      btn.addEventListener("click", function () {
-        selectOption(i);
-      });
+      btn.innerHTML = `<span class="opt-letter">${letters[idx]}</span><span>${opt}</span>`;
+      btn.onclick = () => selectOption(idx);
       optionList.appendChild(btn);
     });
-
-    const isLast = state.currentIndex === total - 1;
-    nextBtn.textContent = isLast ? "Submit Test" : "Next";
-    updateNextButtonState();
+    
+    updateNextButton();
   }
 
-  function selectOption(index) {
-    state.userAnswers[state.currentIndex] = index;
-    // Re-render just the highlighted state
-    Array.from(optionList.children).forEach(function (btn, i) {
-      btn.classList.toggle("selected", i === index);
-    });
-    updateNextButtonState();
+  function selectOption(idx) {
+    state.userAnswers[state.currentIndex] = idx;
+    renderQuestion();
   }
 
-  function updateNextButtonState() {
-    const answered = state.userAnswers[state.currentIndex] !== null;
-    nextBtn.classList.toggle("enabled", answered);
+  function updateNextButton() {
+    if (state.userAnswers[state.currentIndex] !== null) {
+      nextBtn.classList.add("enabled");
+      if (state.currentIndex === state.questions.length - 1) {
+        nextBtn.textContent = "Submit Test";
+      } else {
+        nextBtn.textContent = "Next Question";
+      }
+    } else {
+      nextBtn.classList.remove("enabled");
+      nextBtn.textContent = "Next";
+    }
   }
 
-  nextBtn.addEventListener("click", function () {
-    if (state.userAnswers[state.currentIndex] === null) return; // must answer to proceed
-
-    const isLast = state.currentIndex === state.questions.length - 1;
-    if (isLast) {
-      submitTest();
+  nextBtn.addEventListener("click", function() {
+    if (!nextBtn.classList.contains("enabled")) return;
+    if (state.currentIndex === state.questions.length - 1) {
+      finishTest();
     } else {
       state.currentIndex++;
       renderQuestion();
     }
   });
 
-  /* ---------------------------------------------------------
-     12. SUBMISSION & EVALUATION
-     --------------------------------------------------------- */
-  function submitTest() {
-    stopTimer();
-    progressBarFill.style.width = "100%";
-
-    let correctCount = 0;
-    const breakdown = state.questions.map(function (q, i) {
-      const userIndex = state.userAnswers[i];
-      const isCorrect = userIndex === q.correct;
-      if (isCorrect) correctCount++;
-      return {
-        question: q.q,
-        userAnswer: userIndex !== null ? q.options[userIndex] : "(no answer)",
-        correctAnswer: q.options[q.correct],
-        isCorrect: isCorrect
-      };
-    });
-
-    renderResults(correctCount, state.questions.length, breakdown);
-  }
-
-  function renderResults(correctCount, total, breakdown) {
+  function finishTest() {
+    clearInterval(state.timerId);
     testScreen.style.display = "none";
     resultsScreen.style.display = "block";
-
-    const pct = Math.round((correctCount / total) * 100);
-    scoreBig.textContent = correctCount + " / " + total;
-    scoreSub.textContent = "You scored " + pct + "% on the " + state.language + " (" + difficultyConfig[state.difficultyKey].label.split(" —")[0] + ") test.";
-
-    resultsList.innerHTML = "";
-    breakdown.forEach(function (item, i) {
-      const div = document.createElement("div");
-      div.className = "result-item " + (item.isCorrect ? "correct" : "incorrect");
-      div.innerHTML =
-        '<span class="r-tag">' + (item.isCorrect ? "Correct" : "Incorrect") + '</span>' +
-        '<div class="r-q">Q' + (i + 1) + '. ' + item.question + '</div>' +
-        '<div class="r-line">Your answer: <strong>' + item.userAnswer + '</strong></div>' +
-        (item.isCorrect ? '' : '<div class="r-line">Correct answer: <strong>' + item.correctAnswer + '</strong></div>');
-      resultsList.appendChild(div);
-    });
+    renderResults();
   }
 
-  retakeBtn.addEventListener("click", resetToSelection);
+  function renderResults() {
+    let score = 0;
+    resultsList.innerHTML = "";
+    
+    state.questions.forEach((qData, i) => {
+      const userAns = state.userAnswers[i];
+      const isCorrect = userAns === qData.correct;
+      if (isCorrect) score++;
+      
+      const item = document.createElement("div");
+      item.className = "result-item " + (isCorrect ? "correct" : "incorrect");
+      
+      const tag = document.createElement("div");
+      tag.className = "r-tag";
+      tag.textContent = isCorrect ? "Correct" : "Incorrect";
+      
+      const qText = document.createElement("div");
+      qText.className = "r-q";
+      qText.textContent = (i + 1) + ". " + qData.q;
+      
+      const ansText = document.createElement("div");
+      ansText.className = "r-line";
+      if (isCorrect) {
+        ansText.innerHTML = "Your Answer: <strong>" + qData.options[userAns] + "</strong>";
+      } else {
+        const uStr = userAns !== null ? qData.options[userAns] : "None";
+        ansText.innerHTML = "Your Answer: " + uStr + " <br> Correct Answer: <strong>" + qData.options[qData.correct] + "</strong>";
+      }
+      
+      item.appendChild(tag);
+      item.appendChild(qText);
+      item.appendChild(ansText);
+      resultsList.appendChild(item);
+    });
+    
+    scoreBig.textContent = score + " / " + state.questions.length;
+    const pct = Math.round((score / state.questions.length) * 100);
+    scoreSub.textContent = "You scored " + pct + "%";
+  }
 
-  /* ---------------------------------------------------------
-     13. RESET
-     --------------------------------------------------------- */
-  function resetToSelection() {
-    stopTimer();
-    testScreen.style.display = "none";
+  retakeBtn.addEventListener("click", () => {
     resultsScreen.style.display = "none";
-    timeoutOverlay.classList.remove("show");
     selectionScreen.style.display = "block";
-
     languageSelect.value = "";
     difficultySelect.value = "";
     difficultySelect.disabled = true;
-    difficultyHint.textContent = "";
     generateBtn.disabled = true;
-  }
+    difficultyHint.textContent = "";
+  });
+
+  timeoutRetryBtn.addEventListener("click", () => {
+    timeoutOverlay.classList.remove("show");
+    selectionScreen.style.display = "block";
+    languageSelect.value = "";
+    difficultySelect.value = "";
+    difficultySelect.disabled = true;
+    generateBtn.disabled = true;
+    difficultyHint.textContent = "";
+  });
 
 })();
 </script>
-
 </body>
 </html>
