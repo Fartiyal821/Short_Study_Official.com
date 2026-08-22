@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="../logo.png">
+<link rel="apple-touch-icon" href="../logo.png">
+<title>Python Operators &amp; Conditionals: Arithmetic, Logical, if/elif &amp; More — Short Study</title>
+<meta name="description" content="An in-depth Python lesson covering arithmetic, comparison, logical, assignment, membership and identity operators plus if/elif/else — with 10 hard practice questions per topic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../css/style.css">
+<style>
+/* Page-specific additions only — everything else (theme variables,
+   .lesson-content, .code-block, .output-block, etc.) comes from the
+   shared ../css/style.css already used across the site. */
+.hard-q-heading{
+  display:inline-block;font-family:'Kalam',cursive;font-weight:700;font-size:19px;
+  color:var(--pink-dark);border-bottom:3px solid var(--yellow);
+  padding-bottom:5px;margin:18px 0 14px;
+}
+.hard-q-list{
+  border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
+  padding:16px 22px 4px;margin:0 0 30px;
+}
+.hard-q-list li{color:var(--ink-soft);font-size:15px;margin-bottom:12px;}
+.topic-block{margin-bottom:44px;padding-bottom:8px;border-bottom:1px solid var(--paper-line);}
+.topic-block:last-of-type{border-bottom:none;}
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER / NAVBAR ============ -->
+<header>
+  <div class="nav">
+    <a class="brand" href="../index.html">Short<span>Study</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../programming.html" class="active">Programming</a></li>
+      <li><a href="../about.html">About</a></li>
+      <li><a href="../contact.html">Contact</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ============ PAGE HEADER ============ -->
+<section class="page-header">
+  <span class="kicker">Programming · Python Deep Dive · Part 2 of 6</span>
+  <h1>Python Operators &amp; Conditionals</h1>
+  <p>Arithmetic, Comparison, Logical, Assignment, Membership &amp; Identity Operators, plus if / elif / else — in depth.</p>
+</section>
+
+<section class="paper" style="padding-bottom:20px;">
+  <div class="wrap">
+    <div class="lesson-meta fade-up">
+      <span class="tag">Last Reviewed: August 2026</span>
+      <span class="tag">Syllabus: Core Computer Science</span>
+      <span class="tag">Level: Beginner → Intermediate</span>
+    </div>
+
+    <div class="lesson-content fade-up">
+      <p style="margin-bottom:30px;">This is Part 2 of a 6-part deep-dive series on Python, continuing from <a href="python-fundamentals.html" style="color:var(--pink-dark); font-weight:600;">Python Fundamentals</a>. This part covers every operator category Python offers, then shows how they combine inside conditional statements to control program flow. As before, each topic ends with 10 genuinely hard questions.</p>
+
+      <!-- ============ TOPIC 1: Arithmetic Operators ============ -->
+      <div class="topic-block">
+        <h2>1. Arithmetic Operators</h2>
+        <p>Python provides seven arithmetic operators: <code>+</code> (addition), <code>-</code> (subtraction), <code>*</code> (multiplication), <code>/</code> (true division, always returns a <code>float</code>), <code>//</code> (floor division, rounds down to the nearest whole number), <code>%</code> (modulus, the remainder after division), and <code>**</code> (exponentiation). Operator precedence in Python follows standard mathematical rules — exponentiation binds tightest, then multiplication/division/floor-division/modulus (evaluated left to right), then addition/subtraction — and parentheses can always override the default order.</p>
+        <p>A subtlety many learners miss: floor division and modulus with negative numbers don't behave like they might expect from other languages. Python's <code>%</code> always returns a result with the same sign as the divisor, and <code>//</code> rounds toward negative infinity, not toward zero.</p>
+        <div class="code-block"><span class="cm"># True division vs floor division</span>
+print(7 / 2)     <span class="cm"># 3.5</span>
+print(7 // 2)    <span class="cm"># 3</span>
+
+<span class="cm"># Negative numbers behave differently than you might expect</span>
+print(-7 // 2)   <span class="cm"># -4, not -3</span>
+print(-7 % 2)    <span class="cm"># 1, not -1</span></div>
+        <div class="output-block"><span class="label">Output</span>3.5
+3
+-4
+1</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>-7 // 2</code> evaluate to <code>-4</code> instead of <code>-3</code> in Python?</li>
+          <li>Why does <code>-7 % 2</code> return <code>1</code> rather than <code>-1</code>, and what rule governs the sign of the result?</li>
+          <li>What is the output of <code>2 ** 3 ** 2</code>, and what does this reveal about the associativity of the exponentiation operator?</li>
+          <li>Why does <code>10 / 5</code> return <code>2.0</code> (a float) instead of <code>2</code> (an int) in Python 3?</li>
+          <li>What is the result of <code>5 % 0</code>, and what exception, if any, does it raise?</li>
+          <li>How would you compute the true mathematical floor division of two floats, and does <code>//</code> work identically for floats as for ints?</li>
+          <li>What is the output of <code>3 + 4 * 2 ** 2</code>, evaluated using Python's operator precedence rules step by step?</li>
+          <li>Why can <code>%</code> be used to check if a number is even or odd, and what would <code>-3 % 2</code> return in that context?</li>
+          <li>What happens when you use <code>**</code> with a negative exponent, like <code>2 ** -1</code>?</li>
+          <li>How does Python handle arithmetic between an <code>int</code> and a <code>complex</code> number, such as <code>3 + 2j</code>?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 2: Comparison Operators ============ -->
+      <div class="topic-block">
+        <h2>2. Comparison Operators</h2>
+        <p>Python's comparison operators — <code>==</code>, <code>!=</code>, <code>&gt;</code>, <code>&lt;</code>, <code>&gt;=</code>, <code>&lt;=</code> — compare two values and always return a <code>bool</code>. A feature unique to Python among mainstream languages is <strong>chained comparisons</strong>: <code>1 &lt; x &lt; 10</code> is valid syntax and evaluates exactly as a mathematician would read it, equivalent to <code>1 &lt; x and x &lt; 10</code>, without evaluating <code>x</code> twice.</p>
+        <p>Comparing values of different types is allowed for <code>==</code> and <code>!=</code> (Python simply returns <code>False</code> or <code>True</code> rather than erroring), but ordering comparisons like <code>&lt;</code> between fundamentally incompatible types — such as a string and an integer — raise a <code>TypeError</code> in Python 3.</p>
+        <div class="code-block"><span class="cm"># Chained comparison — evaluates x only once</span>
+x = 5
+print(1 < x < 10)   <span class="cm"># True</span>
+
+<span class="cm"># Comparing different types</span>
+print(5 == "5")     <span class="cm"># False, no error</span>
+print(5 < "5")       <span class="cm"># TypeError!</span></div>
+        <div class="output-block"><span class="label">Output</span>True
+False
+TypeError: '&lt;' not supported between instances of 'int' and 'str'</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>What is the output of <code>1 < 2 < 3 < 2</code>, evaluated as a chained comparison?</li>
+          <li>Why does <code>5 == "5"</code> return <code>False</code> instead of raising a <code>TypeError</code>, while <code>5 < "5"</code> does raise one?</li>
+          <li>In a chained comparison like <code>a < b < c</code>, is <code>b</code> evaluated once or twice? Why does this matter if <code>b</code> were a function call with side effects?</li>
+          <li>What does <code>[1, 2] == [1, 2]</code> return, and why does this differ from how identity comparison would behave on the same two lists?</li>
+          <li>How does Python compare two tuples, like <code>(1, 2) < (1, 3)</code>? Explain the comparison rule being applied.</li>
+          <li>What is the result of comparing <code>None == None</code> versus <code>None == 0</code>?</li>
+          <li>Why can strings be compared with <code>&lt;</code> and <code>&gt;</code> in Python, and what ordering rule (e.g. lexicographic, case sensitivity) governs the result?</li>
+          <li>What happens when you compare a <code>float</code> and an <code>int</code> for equality, such as <code>3.0 == 3</code>?</li>
+          <li>Why does comparing two different custom class instances with <code>==</code> return <code>False</code> by default, unless the class defines <code>__eq__</code>?</li>
+          <li>What is the output of <code>"10" > "9"</code>, and why does it differ from <code>10 > 9</code>?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 3: Logical Operators ============ -->
+      <div class="topic-block">
+        <h2>3. Logical Operators</h2>
+        <p>Python has three logical operators: <code>and</code>, <code>or</code>, and <code>not</code>. Unlike many languages, Python's <code>and</code> and <code>or</code> do not necessarily return a <code>bool</code> — they use <strong>short-circuit evaluation</strong> and return one of their actual operands. <code>and</code> returns the first falsy operand, or the last operand if all are truthy. <code>or</code> returns the first truthy operand, or the last operand if all are falsy. <code>not</code> always returns a proper <code>bool</code>.</p>
+        <p>This behaviour is frequently used deliberately in idiomatic Python — for example, <code>value = user_input or "default"</code> assigns <code>"default"</code> only if <code>user_input</code> is falsy (empty string, <code>None</code>, <code>0</code>, etc.), all in one line.</p>
+        <div class="code-block"><span class="cm"># and/or return an operand, not necessarily True/False</span>
+print(0 and 5)     <span class="cm"># 0 (first falsy value)</span>
+print(3 and 5)     <span class="cm"># 5 (last value, both truthy)</span>
+print("" or "hi")   <span class="cm"># "hi" (first truthy value)</span>
+print(not 0)        <span class="cm"># True</span></div>
+        <div class="output-block"><span class="label">Output</span>0
+5
+hi
+True</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>What is the output of <code>5 and 0 and 3</code>, and what rule determines which operand is returned?</li>
+          <li>Why does <code>print(0 and 5)</code> print <code>0</code> instead of <code>False</code>?</li>
+          <li>What does short-circuit evaluation mean for <code>False and expensive_function()</code> — is <code>expensive_function()</code> ever called?</li>
+          <li>What is the output of <code>[] or {} or "fallback"</code>, and why?</li>
+          <li>How would you rewrite <code>value = a if a else b</code> using <code>or</code> instead, and are the two forms always exactly equivalent?</li>
+          <li>What is the output of <code>not not 5</code>, and what type does it have?</li>
+          <li>Why does <code>not "False"</code> evaluate to <code>False</code>, even though the string literally contains the word "False"?</li>
+          <li>What is the result of <code>None or False or 0 or ""</code>, given that all four operands are falsy?</li>
+          <li>How does operator precedence resolve <code>True or False and False</code> — does <code>and</code> or <code>or</code> bind first?</li>
+          <li>Why is <code>a and b or c</code> considered a risky substitute for a proper if/else expression, and in what case does it silently give the wrong result?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 4: Assignment Operators ============ -->
+      <div class="topic-block">
+        <h2>4. Assignment Operators</h2>
+        <p>Beyond the basic <code>=</code>, Python offers augmented assignment operators that combine an operation with assignment in one step: <code>+=</code>, <code>-=</code>, <code>*=</code>, <code>/=</code>, <code>//=</code>, <code>%=</code>, <code>**=</code>, along with bitwise variants <code>&amp;=</code>, <code>|=</code>, <code>^=</code>, <code>&gt;&gt;=</code>, and <code>&lt;&lt;=</code>. For immutable types like <code>int</code>, <code>x += 1</code> is really shorthand for <code>x = x + 1</code> — it creates a new object and rebinds the name. For mutable types like <code>list</code>, augmented assignment can (depending on the type) modify the object in place instead.</p>
+        <p>Python 3.8 introduced the <strong>walrus operator</strong> <code>:=</code>, which assigns a value to a variable as part of a larger expression — most commonly used to avoid calling the same function twice inside a <code>while</code> loop condition or a list comprehension.</p>
+        <div class="code-block"><span class="cm"># += behaves differently for list vs tuple</span>
+lst = [1, 2]
+lst_id_before = id(lst)
+lst += [3]
+print(id(lst) == lst_id_before)   <span class="cm"># True — modified in place</span>
+
+<span class="cm"># Walrus operator</span>
+data = [1, 2, 3, 4, 5]
+if (n := len(data)) > 3:
+    print(f"List has {n} items")</div>
+        <div class="output-block"><span class="label">Output</span>True
+List has 5 items</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>lst += [3]</code> modify a list in place, while <code>x += 1</code> on an integer creates an entirely new object?</li>
+          <li>What is the difference in outcome between <code>lst = lst + [3]</code> and <code>lst += [3]</code> for a mutable list, if another variable also references the same list?</li>
+          <li>What does the walrus operator <code>:=</code> allow you to do that a plain <code>=</code> cannot, inside an <code>if</code> condition?</li>
+          <li>What is the output of <code>x = 5; x **= 2; print(x)</code>?</li>
+          <li>Why is <code>x = x = 5</code> valid but redundant, and what does chained assignment like <code>a = b = 5</code> actually do under the hood?</li>
+          <li>What happens if you try to use <code>+=</code> on a variable that hasn't been defined yet?</li>
+          <li>How would augmented assignment behave differently on a tuple, like <code>t = (1, 2); t += (3,)</code>, compared to a list?</li>
+          <li>What is the output of using the walrus operator inside a list comprehension, such as <code>[y := x * 2 for x in range(3)]</code>, and what is <code>y</code> equal to afterward?</li>
+          <li>Why does PEP 8 recommend avoiding walrus assignments in contexts where they hurt readability, despite being syntactically valid almost everywhere?</li>
+          <li>What is the output of <code>a = 5; b = a; a += 1; print(b)</code>, and why doesn't <code>b</code> change?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 5: Membership Operators ============ -->
+      <div class="topic-block">
+        <h2>5. Membership Operators</h2>
+        <p>The <code>in</code> and <code>not in</code> operators test whether a value exists within a sequence or collection — strings, lists, tuples, sets, and dictionaries all support them. For strings, <code>in</code> checks for substring presence, not just individual characters. For dictionaries, <code>in</code> checks against the <strong>keys</strong> by default, not the values — a common source of confusion for beginners who expect it to search values instead.</p>
+        <p>Performance matters here: checking membership with <code>in</code> on a <code>list</code> or <code>tuple</code> takes O(n) time (Python checks each element one by one), while checking membership on a <code>set</code> or <code>dict</code> takes O(1) average time, because both are built on hash tables. This is why converting a list to a set is a common optimisation when doing repeated membership checks.</p>
+        <div class="code-block"><span class="cm"># Substring check</span>
+print("cat" in "concatenate")   <span class="cm"># True</span>
+
+<span class="cm"># Dict 'in' checks keys, not values</span>
+d = {"name": "Aarav", "age": 16}
+print("name" in d)     <span class="cm"># True (it's a key)</span>
+print("Aarav" in d)    <span class="cm"># False (it's a value, not a key)</span></div>
+        <div class="output-block"><span class="label">Output</span>True
+True
+False</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>"Aarav" in d</code> return <code>False</code> for the dictionary in the example, even though <code>"Aarav"</code> clearly exists in the data?</li>
+          <li>How would you check whether a specific value (not key) exists anywhere in a dictionary's data?</li>
+          <li>Why is checking membership with <code>in</code> on a <code>set</code> generally much faster than on a <code>list</code> of the same size?</li>
+          <li>What is the output of <code>"" in "hello"</code>, and why does an empty string behave this way as a substring check?</li>
+          <li>What does <code>5 in [1, 2, 3, "5"]</code> return, and why doesn't the string <code>"5"</code> count as a match for the integer <code>5</code>?</li>
+          <li>How does <code>in</code> behave differently when applied to a 2D list, like checking <code>[1, 2] in [[1, 2], [3, 4]]</code>, versus checking a flat list?</li>
+          <li>What is the time complexity difference between <code>x in my_list</code> and <code>x in my_set</code> for a collection with 10,000 elements?</li>
+          <li>What does <code>not in</code> return for an empty collection, like <code>5 not in []</code>?</li>
+          <li>How would you check if ALL elements of one list are members of another list, using <code>in</code> combined with another Python construct?</li>
+          <li>Why can <code>in</code> be used on a range object like <code>5 in range(10)</code> without Python generating all ten numbers first?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 6: Identity Operators ============ -->
+      <div class="topic-block">
+        <h2>6. Identity Operators</h2>
+        <p><code>is</code> and <code>is not</code> check whether two variables refer to the <strong>exact same object</strong> in memory — not whether their values are equal. This is fundamentally different from <code>==</code>, which checks value equality. Two lists with identical contents are <code>==</code> but not <code>is</code>, because they're two distinct objects that happen to hold equal values. The correct, idiomatic way to compare against <code>None</code> is always <code>is None</code> or <code>is not None</code>, never <code>== None</code>.</p>
+        <p>A famous gotcha: Python caches small integers (typically -5 to 256) and some short strings for performance, so <code>a = 100; b = 100; a is b</code> often returns <code>True</code> — not because of any language guarantee, but because of an implementation detail (CPython's interning). Relying on this behaviour for anything beyond <code>None</code>, <code>True</code>, and <code>False</code> is considered a bug waiting to happen.</p>
+        <div class="code-block"><span class="cm"># == checks value, is checks identity</span>
+a = [1, 2, 3]
+b = [1, 2, 3]
+print(a == b)   <span class="cm"># True — same contents</span>
+print(a is b)   <span class="cm"># False — different objects</span>
+
+<span class="cm"># Small-int caching (CPython implementation detail)</span>
+x = 100
+y = 100
+print(x is y)   <span class="cm"># True, but don't rely on this!</span></div>
+        <div class="output-block"><span class="label">Output</span>True
+False
+True</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>a == b</code> return <code>True</code> while <code>a is b</code> returns <code>False</code> for the two identical lists in the example?</li>
+          <li>Why is <code>x is y</code> unreliable for large integers, like <code>x = 1000; y = 1000</code>, compared to small integers like <code>100</code>?</li>
+          <li>Why is <code>x == None</code> considered bad practice compared to <code>x is None</code>?</li>
+          <li>What is the output of <code>"" is ""</code> in most CPython implementations, and why does string interning affect the result?</li>
+          <li>What does <code>a = []; b = []; a is b</code> return, and why doesn't empty-list caching apply the way small-int caching does?</li>
+          <li>How would you check whether two variable names refer to the same object, without using <code>is</code> directly?</li>
+          <li>What is the practical risk of writing <code>if x is 100:</code> instead of <code>if x == 100:</code> in production code?</li>
+          <li>Why does <code>a is not None</code> read more idiomatically in Python than <code>not a is None</code>, even though both are logically equivalent?</li>
+          <li>What does <code>type(a) is type(b)</code> check, and how does it differ from <code>isinstance(a, type(b))</code>?</li>
+          <li>If two variables hold the same tuple of small integers, like <code>a = (1, 2); b = (1, 2)</code>, is <code>a is b</code> guaranteed to be <code>True</code> or <code>False</code>? Explain why this is implementation-dependent.</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 7: if Statement ============ -->
+      <div class="topic-block">
+        <h2>7. The if Statement</h2>
+        <p>The <code>if</code> statement is Python's most basic conditional construct: it evaluates an expression, and if that expression is truthy, the indented block beneath it executes. Python doesn't require a boolean specifically — any expression can be used as a condition, and Python applies its truthiness rules (covered under Data Types) to decide whether to treat it as true or false. There are no parentheses required around the condition and no curly braces around the block — indentation alone defines the block's boundaries, which is why consistent indentation is not just a style preference in Python, it's syntactically required.</p>
+        <div class="code-block">age = 20
+if age >= 18:
+    print("Eligible to vote")
+
+<span class="cm"># Any truthy/falsy expression works as a condition</span>
+name = ""
+if name:
+    print("Name provided")
+else:
+    print("Name is empty")</div>
+        <div class="output-block"><span class="label">Output</span>Eligible to vote
+Name is empty</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>if name:</code> evaluate to <code>False</code> for an empty string, without ever comparing it to anything explicitly?</li>
+          <li>What happens if the block beneath an <code>if</code> statement is not indented at all, or indented inconsistently with tabs and spaces mixed?</li>
+          <li>Can an <code>if</code> statement's condition be a function call that returns a list? What determines whether the block executes?</li>
+          <li>What is the output of <code>if []:</code> versus <code>if [0]:</code>, and why do they differ even though both "contain" something related to zero/emptiness?</li>
+          <li>Is it valid Python to write an <code>if</code> statement's block on the same line, like <code>if True: print("yes")</code>? What are the limitations of this form?</li>
+          <li>What does Python do internally when evaluating <code>if 3.14:</code> — does it convert the float to a bool first, and if so, how?</li>
+          <li>Why can't you write <code>if (x = 5):</code> in Python the way you might in C, and what would you use instead if you needed to assign and test in one line?</li>
+          <li>What is the output if the condition of an <code>if</code> statement raises an exception partway through evaluation, like <code>if 1/0:</code>?</li>
+          <li>How does Python handle an <code>if</code> statement whose condition is a custom object with a defined <code>__bool__</code> method?</li>
+          <li>What happens if an <code>if</code> block is completely empty except for a comment — does this raise an error, and if so, what fixes it?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 8: if-else, elif & Nested if ============ -->
+      <div class="topic-block">
+        <h2>8. if-else, elif &amp; Nested if</h2>
+        <p><code>if-else</code> provides an alternative block to run when the condition is false. <code>elif</code> (else-if) chains additional conditions to check in sequence, stopping at the first one that's true — Python evaluates an <code>if/elif/.../else</code> chain top to bottom and executes only the first matching branch, skipping the rest entirely, even if a later condition would also have been true. <strong>Nested if</strong> statements place one <code>if</code> block inside another, useful when a decision genuinely depends on a combination of conditions evaluated in stages — but deeply nested conditionals are usually a sign the logic could be flattened using <code>elif</code>, combined boolean conditions, or early returns inside a function.</p>
+        <div class="code-block">marks = 82
+if marks >= 90:
+    grade = "A"
+elif marks >= 75:
+    grade = "B"      <span class="cm"># matches here, rest is skipped</span>
+elif marks >= 60:
+    grade = "C"
+else:
+    grade = "D"
+print(grade)
+
+<span class="cm"># Nested if</span>
+age = 20
+has_id = True
+if age >= 18:
+    if has_id:
+        print("Entry allowed")
+    else:
+        print("ID required")
+else:
+    print("Too young")</div>
+        <div class="output-block"><span class="label">Output</span>B
+Entry allowed</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>In the grading example, why does the output stop at <code>"B"</code> even though <code>marks >= 60</code> is also technically true?</li>
+          <li>What is the difference in outcome between a chain of independent <code>if</code> statements versus an <code>if/elif</code> chain, when more than one condition is true?</li>
+          <li>Rewrite a 3-level nested if-statement checking age, membership status, and ID possession as a single flattened condition using <code>and</code>/<code>or</code>. What are the tradeoffs of doing so?</li>
+          <li>What happens if an <code>elif</code> appears after an <code>else</code> block in the same chain — is this valid Python?</li>
+          <li>What is the output of an if/elif/else chain where every condition, including the final <code>else</code>, is somehow skipped due to an early <code>return</code> inside a function?</li>
+          <li>Why is deeply nested <code>if</code> logic (4+ levels) generally considered a code smell, and what refactoring technique commonly fixes it?</li>
+          <li>What is the difference between <code>if a: if b: ...</code> written as nested statements versus <code>if a and b: ...</code> as a single condition, in terms of behaviour when <code>a</code> is false?</li>
+          <li>Can an <code>if</code> statement have multiple <code>else</code> blocks? What error occurs if you try?</li>
+          <li>What is the "dangling else" ambiguity in languages like C, and why does Python's mandatory indentation make this kind of ambiguity structurally impossible?</li>
+          <li>What is the output of a nested if-else where the inner if's condition depends on a variable modified inside the outer if's own condition check (via a function call with a side effect)?</li>
+        </ol>
+      </div>
+
+    </div>
+
+    <div class="pdf-callout fade-up">
+      <div class="pdf-text">
+        <h3>Operators &amp; Conditionals — Revision Sheet</h3>
+        <p>A one-page PDF summary of all 8 topics above, for quick pre-exam or pre-interview revision.</p>
+      </div>
+      <a href="#" class="cta-btn" style="margin-top:0;">Download PDF</a>
+    </div>
+
+    <div class="lesson-nav fade-up">
+      <a href="python-fundamentals.html">← Previous: Python Fundamentals (Part 1)</a>
+      <a href="python-loops-control.html">Next: Loops &amp; Control Flow (Part 3) →</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="footer-inner">
+    <ul class="footer-links">
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../programming.html">Programming</a></li>
+      <li><a href="../about.html">About Us</a></li>
+      <li><a href="../contact.html">Contact Us</a></li>
+      <li><a href="../privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="../terms-conditions.html">Terms of Conditions</a></li>
+    </ul>
+    <div class="footer-bottom">@ short study copyright all right reserved</div>
+  </div>
+</footer>
+
+<script src="../js/script.js"></script>
+</body>
+</html>
