@@ -3,563 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
-<title>Python Basics: Variables, Data Types & Control Flow — Short Study</title>
-<meta name="description" content="A full beginner lesson on Python variables, data types, and control flow — with commented code examples, common mistakes, and practice exercises.">
+<link rel="icon" type="image/png" href="../logo.png">
+<link rel="apple-touch-icon" href="../logo.png">
+<title>Python Fundamentals: print(), Variables, Data Types & More — Short Study</title>
+<meta name="description" content="An in-depth Python lesson covering print(), variables, data types, input(), type casting, comments, keywords and identifiers — with 10 hard practice questions per topic.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
 <style>
-/* =========================================================
-   SHORT STUDY — SHARED STYLESHEET
-   This one file styles every page. Sections are labelled so
-   you can jump straight to what you need to edit.
-   ========================================================= */
-
-/* ---------- 1. THEME VARIABLES (edit colors here) ---------- */
-:root{
-  --board:#2B3A32;        /* chalkboard green - header/hero/footer bg */
-  --board-dark:#22302A;   /* darker board shade */
-  --chalk:#F5F3EA;        /* off-white "chalk" text */
-  --chalk-dim:#CFCBBB;    /* muted chalk text */
-  --yellow:#F2C94C;       /* accent - buttons, highlights */
-  --yellow-dark:#B98F1F;  /* accent shadow */
-  --pink:#E8998D;         /* secondary accent */
-  --pink-dark:#A65A4E;    /* secondary accent, darker (text on light bg) */
-  --paper:#FBF9F3;        /* page background */
-  --paper-line:#E4E0D2;   /* hairline borders on paper */
-  --ink:#243029;          /* main body text */
-  --ink-soft:#5B665E;     /* secondary body text */
-  --radius:14px;
-  --shadow:0 10px 24px rgba(20,26,22,0.14);
+/* Page-specific additions only — everything else (theme variables,
+   .lesson-content, .code-block, .output-block, etc.) comes from the
+   shared ../css/style.css already used across the site. */
+.hard-q-heading{
+  display:inline-block;font-family:'Kalam',cursive;font-weight:700;font-size:19px;
+  color:var(--pink-dark);border-bottom:3px solid var(--yellow);
+  padding-bottom:5px;margin:18px 0 14px;
 }
-
-*{box-sizing:border-box;}
-html{scroll-behavior:smooth;}
-body{
-  margin:0;
-  background:var(--paper);
-  color:var(--ink);
-  font-family:'Work Sans',sans-serif;
-  line-height:1.6;
-  -webkit-font-smoothing:antialiased;
-}
-h1,h2,h3,.brand{
-  font-family:'Kalam',cursive;
-  font-weight:700;
-  margin:0;
-}
-a{color:inherit;text-decoration:none;}
-img,svg{max-width:100%;display:block;}
-.wrap{max-width:1120px;margin:0 auto;padding:0 24px;}
-ul{margin:0;padding:0;}
-
-/* ---------- 2. HEADER / NAVBAR ---------- */
-header{
-  position:sticky;top:0;z-index:100;
-  background:var(--board);
-  border-bottom:3px solid var(--yellow);
-}
-.nav{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:16px 24px;max-width:1120px;margin:0 auto;
-  position:relative;
-}
-.brand{color:var(--chalk);font-size:26px;}
-.brand span{color:var(--yellow);}
-.nav-links{
-  display:flex;align-items:center;gap:28px;list-style:none;margin:0;padding:0;
-}
-.nav-links > li{position:relative;}
-.nav-links a{
-  color:var(--chalk-dim);font-family:'Work Sans';font-weight:500;
-  font-size:15px;transition:color .2s;
-  display:flex;align-items:center;gap:5px;
-}
-.nav-links a:hover,.nav-links a.active{color:var(--yellow);}
-
-/* E-book dropdown */
-.dropdown{position:relative;}
-.dropdown-toggle{cursor:pointer;background:none;border:none;font:inherit;padding:0;}
-.dropdown-toggle .caret{font-size:11px;transition:transform .2s;}
-.dropdown.open .dropdown-toggle .caret{transform:rotate(180deg);}
-.dropdown-menu{
-  position:absolute;top:calc(100% + 14px);left:50%;transform:translateX(-50%);
-  background:#fff;border:1px solid var(--paper-line);border-radius:10px;
-  min-width:190px;padding:8px;box-shadow:var(--shadow);
-  opacity:0;visibility:hidden;transform:translateX(-50%) translateY(-6px);
-  transition:opacity .18s, transform .18s, visibility .18s;
-}
-.dropdown.open .dropdown-menu{
-  opacity:1;visibility:visible;transform:translateX(-50%) translateY(0);
-}
-.dropdown-menu a{
-  color:var(--ink);padding:9px 12px;border-radius:6px;font-size:14.5px;
-}
-.dropdown-menu a:hover{background:var(--paper);color:var(--pink-dark);}
-
-.menu-toggle{
-  display:none;background:none;border:2px solid var(--chalk-dim);border-radius:8px;
-  color:var(--chalk);width:40px;height:36px;cursor:pointer;font-size:18px;
-}
-
-/* ---------- 3. HERO (used on index.html) ---------- */
-.hero{
-  background:var(--board);
-  padding:72px 24px 88px;
-  text-align:center;
-}
-.hero .eyebrow{
-  display:inline-block;color:var(--yellow);font-family:'JetBrains Mono',monospace;
-  font-size:13px;letter-spacing:.08em;border:1px dashed var(--yellow);
-  padding:5px 14px;border-radius:20px;margin-bottom:22px;
-}
-.hero h1{color:var(--chalk);font-size:clamp(40px,7vw,72px);line-height:1.05;}
-.hero h1 .accent{color:var(--pink);}
-.hero p.tagline{
-  color:var(--chalk-dim);font-size:19px;max-width:560px;margin:20px auto 0;font-family:'Work Sans';
-}
-.cta-btn{
-  display:inline-block;margin-top:32px;background:var(--yellow);color:var(--board-dark);
-  font-weight:600;font-family:'Work Sans';padding:15px 34px;border-radius:8px;
-  border:2px solid var(--board-dark);box-shadow:4px 4px 0 var(--yellow-dark);
-  transition:transform .15s, box-shadow .15s;
-}
-.cta-btn:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--yellow-dark);}
-.hero-illustration{margin:56px auto 0;max-width:240px;}
-
-/* ---------- 4. PAGE HEADER (used on inner pages) ---------- */
-.page-header{
-  background:var(--board);padding:56px 24px;text-align:center;
-}
-.page-header .kicker{
-  font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--yellow);
-  letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:10px;
-}
-.page-header h1{color:var(--chalk);font-size:clamp(32px,5vw,48px);}
-.page-header p{color:var(--chalk-dim);max-width:560px;margin:14px auto 0;font-size:16px;}
-
-/* ---------- 5. GENERIC SECTIONS ---------- */
-section.paper{padding:76px 24px;}
-.section-head{text-align:center;margin-bottom:44px;}
-.section-head .kicker{
-  font-family:'JetBrains Mono',monospace;font-size:12px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--pink-dark);display:block;margin-bottom:10px;
-}
-.section-head h2{font-size:clamp(28px,4vw,40px);color:var(--ink);}
-.section-head p{color:var(--ink-soft);max-width:600px;margin:14px auto 0;}
-
-/* ---------- 6. CLASS / PROGRAMMING CARDS (index.html) ---------- */
-.class-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px;
-}
-.class-card{
-  background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);
-  padding:30px 24px;position:relative;box-shadow:var(--shadow);
-  transition:transform .2s;
-}
-.class-card:hover{transform:translateY(-6px);}
-.class-card .tape{
-  position:absolute;top:-10px;left:50%;transform:translateX(-50%) rotate(-2deg);
-  width:70px;height:22px;background:rgba(242,201,76,0.55);border:1px solid rgba(185,143,31,.4);
-}
-.class-card .num{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink-soft);}
-.class-card h3{font-size:26px;margin:6px 0 10px;color:var(--ink);}
-.class-card p{color:var(--ink-soft);font-size:14.5px;margin:0 0 18px;}
-.class-card .go{
-  font-weight:600;font-size:14px;color:var(--pink-dark);
-  display:inline-flex;align-items:center;gap:6px;
-}
-.class-card .go::after{content:"→";transition:transform .2s;}
-.class-card:hover .go::after{transform:translateX(4px);}
-
-/* Programming spotlight section */
-.programming-spot{
-  background:var(--board);color:var(--chalk);border-radius:20px;padding:52px 40px;
-  display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;
-}
-.programming-spot .kicker{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--yellow);letter-spacing:.1em;text-transform:uppercase;}
-.programming-spot h2{color:var(--chalk);font-size:clamp(26px,3.6vw,36px);margin:10px 0 12px;}
-.programming-spot p{color:var(--chalk-dim);max-width:480px;margin:0 0 20px;}
-.code-chip{
-  font-family:'JetBrains Mono',monospace;background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.14);color:var(--chalk-dim);
-  padding:20px 24px;border-radius:12px;font-size:13.5px;line-height:1.8;white-space:pre;
-}
-
-/* ---------- 7. ABOUT US SECTION ---------- */
-.about-section{background:#fff;border-top:1px solid var(--paper-line);border-bottom:1px solid var(--paper-line);}
-.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:50px;align-items:center;}
-.about-grid .about-copy p{color:var(--ink-soft);font-size:16px;margin-bottom:16px;}
-.about-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:26px;}
-.about-stats div{
-  background:var(--paper);border:1px solid var(--paper-line);border-radius:10px;
-  padding:18px 10px;text-align:center;
-}
-.about-stats strong{display:block;font-family:'Kalam',cursive;font-size:26px;color:var(--pink-dark);}
-.about-stats span{font-size:12.5px;color:var(--ink-soft);}
-.about-illustration{
-  background:var(--yellow);border-radius:20px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;
-}
-
-/* ---------- 8. NOTES TABLE (class8/9/10/programming pages) ---------- */
-
-/* Accordion wrapper: the table stays hidden behind a clickable
-   summary bar until the user taps/clicks it open. Built with the
-   native <details>/<summary> elements — no JavaScript needed, and
-   it's fully keyboard and screen-reader accessible by default. */
-details.notes-accordion{
-  border:1px solid var(--ink);border-radius:var(--radius);
-  overflow:hidden;box-shadow:var(--shadow);background:#fff;
-}
-.notes-accordion-summary{
-  cursor:pointer;list-style:none;user-select:none;
-  display:flex;align-items:center;justify-content:space-between;gap:12px;
-  padding:18px 24px;background:var(--board);color:var(--chalk);
-  font-family:'Work Sans';font-weight:600;font-size:15.5px;
-  transition:background .15s;
-}
-.notes-accordion-summary:hover{background:var(--board-dark);}
-.notes-accordion-summary::-webkit-details-marker{display:none;}
-.notes-accordion-summary::after{
-  content:"▾";font-size:14px;color:var(--yellow);flex-shrink:0;
-  transition:transform .2s ease;
-}
-details.notes-accordion[open] .notes-accordion-summary::after{transform:rotate(180deg);}
-
-/* Generic accordion body — for reusing the same details/summary
-   pattern with plain text content (e.g. the homepage FAQ) instead
-   of a notes table. */
-.accordion-body{
-  padding:20px 24px;color:var(--ink-soft);font-size:15px;background:#fff;
-  border-top:1px solid var(--paper-line);
-}
-.accordion-body p{margin:0;}
-
-.notes-table-wrap{
-  background:#fff;
-  overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
-  max-width:100%;
-}
-table.notes-table{width:100%;max-width:100%;border-collapse:collapse;table-layout:fixed;}
-table.notes-table col.col-details{width:auto;}
-table.notes-table col.col-action{width:220px;}
-table.notes-table thead th{
-  background:var(--board);color:var(--chalk);text-align:left;
-  padding:16px 22px;font-family:'Work Sans';font-weight:600;font-size:14px;
-  letter-spacing:.02em;border:1px solid var(--board-dark);
-}
-table.notes-table thead th.action-head{text-align:center;}
-table.notes-table tbody tr{transition:background .15s;}
-table.notes-table tbody tr:hover{background:var(--paper);}
-table.notes-table td{
-  padding:16px 22px;font-size:15px;vertical-align:middle;
-  border:1px solid var(--paper-line);
-}
-table.notes-table td.desc{color:var(--ink);font-weight:500;}
-table.notes-table td.action{text-align:center;}
-/* Any <iframe> pasted into a note row must always scale to its
-   container and never force the row (or the page) wider. */
-table.notes-table td iframe,
-.notes-table-wrap iframe{
-  max-width:100%;width:100%;border:0;display:block;border-radius:8px;
-}
-.btn-download{
-  display:inline-block;background:var(--yellow);color:var(--board-dark);
-  font-weight:600;font-size:13.5px;padding:9px 22px;border-radius:7px;
-  border:2px solid var(--board-dark);white-space:nowrap;
-  transition:transform .15s, box-shadow .15s;box-shadow:3px 3px 0 var(--yellow-dark);
-}
-.btn-download:hover{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--yellow-dark);}
-
-/* Stacked "card" layout kicks in at the same breakpoint as the rest
-   of the mobile layout (760px) so there is no gap where the table
-   stays in fixed two-column mode on a screen too narrow for it —
-   that gap was what caused the action column/buttons to get clipped
-   instead of reachable on phones and small tablets. */
-@media (max-width:760px){
-  .notes-accordion-summary{padding:16px 20px;font-size:14.5px;}
-  .notes-table-wrap{overflow-x:visible;}
-  table.notes-table{table-layout:auto;max-width:100%;}
-  table.notes-table thead{display:none;}
-  table.notes-table, table.notes-table tbody, table.notes-table tr, table.notes-table td{display:block;width:100%;max-width:100%;}
-  table.notes-table tbody tr{border:1px solid var(--paper-line);margin-bottom:-1px;}
-  table.notes-table td{padding:14px 16px;border:none;border-bottom:1px solid var(--paper-line);box-sizing:border-box;}
-  table.notes-table td.desc{word-break:break-word;}
-  table.notes-table td.action{text-align:left;}
-  table.notes-table td iframe,
-  .notes-table-wrap iframe{width:100%;min-height:200px;}
-  .btn-download{width:100%;text-align:center;box-sizing:border-box;}
-}
-
-/* ---------- 9. CONTACT PAGE ---------- */
-.contact-card{
-  max-width:520px;margin:0 auto;background:#fff;border:1px solid var(--paper-line);
-  border-radius:var(--radius);box-shadow:var(--shadow);padding:40px;
-}
-.contact-row{
-  display:flex;align-items:center;gap:16px;padding:16px 0;border-top:1px solid var(--paper-line);
-}
-.contact-row:first-child{border-top:none;}
-.contact-icon{
-  width:44px;height:44px;border-radius:50%;background:var(--paper);
-  display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
-}
-.contact-row .label{display:block;font-size:12.5px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em;}
-.contact-row .value{font-weight:600;font-size:15.5px;color:var(--ink);word-break:break-word;}
-.contact-row a.value:hover{color:var(--pink-dark);}
-
-/* Contact form: uses a mailto: form action, since Short Study is a
-   static site with no backend server. Submitting opens the user's
-   email app with the fields pre-filled — no server required. */
-.contact-form-wrap{
-  max-width:560px;margin:0 auto 56px;background:#fff;border:1px solid var(--paper-line);
-  border-radius:var(--radius);box-shadow:var(--shadow);padding:36px 40px;
-}
-.contact-form-wrap h3{font-size:19px;margin-bottom:6px;color:var(--ink);}
-.contact-form-wrap .form-intro{color:var(--ink-soft);font-size:14px;margin-bottom:22px;}
-.form-field{margin-bottom:18px;}
-.form-field label{display:block;font-size:13.5px;font-weight:600;color:var(--ink);margin-bottom:6px;}
-.form-field input,
-.form-field textarea{
-  width:100%;font-family:'Work Sans';font-size:15px;color:var(--ink);
-  padding:12px 14px;border:1px solid var(--paper-line);border-radius:8px;
-  background:var(--paper);box-sizing:border-box;
-}
-.form-field input:focus,
-.form-field textarea:focus{outline:2px solid var(--yellow);outline-offset:1px;}
-.form-field textarea{resize:vertical;min-height:110px;}
-.contact-form-wrap .cta-btn{width:100%;text-align:center;margin-top:4px;}
-
-.reason-grid{
-  display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:22px;
-  max-width:900px;margin:0 auto 56px;
-}
-.reason-card{
-  background:#fff;border:1px solid var(--paper-line);border-radius:var(--radius);
-  padding:26px 22px;box-shadow:var(--shadow);
-}
-.reason-card .reason-icon{font-size:22px;margin-bottom:12px;}
-.reason-card h3{font-size:17px;margin-bottom:8px;color:var(--ink);}
-.reason-card p{color:var(--ink-soft);font-size:14px;margin:0;}
-
-.contact-steps{
-  max-width:640px;margin:0 auto 56px;background:#fff;border:1px solid var(--paper-line);
-  border-radius:var(--radius);box-shadow:var(--shadow);padding:36px 40px;
-}
-.contact-steps h3{font-size:19px;margin-bottom:18px;color:var(--ink);}
-.contact-steps ol{margin:0;padding-left:20px;color:var(--ink-soft);font-size:15px;}
-.contact-steps li{margin-bottom:12px;padding-left:4px;}
-.contact-steps li:last-child{margin-bottom:0;}
-.response-note{
-  max-width:640px;margin:0 auto 56px;text-align:center;color:var(--ink-soft);
-  font-size:14.5px;border:1px dashed var(--paper-line);border-radius:10px;padding:16px 20px;
-}
-
-/* ---------- 9c. LESSON PAGES (programming/*.html) ---------- */
-.lesson-meta{
-  display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;
-  max-width:820px;margin:0 auto 28px;
-  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
-  border-bottom:1px solid var(--paper-line);padding-bottom:18px;
-}
-.lesson-meta .tag{
-  background:var(--paper);border:1px solid var(--paper-line);border-radius:20px;
-  padding:5px 12px;
-}
-.lesson-content{max-width:820px;margin:0 auto;}
-.lesson-content h2{font-size:24px;color:var(--ink);margin:34px 0 14px;}
-.lesson-content h2:first-child{margin-top:0;}
-.lesson-content h3{font-size:18px;color:var(--ink);margin:26px 0 10px;}
-.lesson-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
-.lesson-content ul,.lesson-content ol{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
-.lesson-content li{margin-bottom:8px;}
-.lesson-content strong{color:var(--ink);}
-.lesson-content code{
-  font-family:'JetBrains Mono',monospace;background:var(--paper);
-  border:1px solid var(--paper-line);border-radius:4px;padding:2px 6px;font-size:13.5px;color:var(--pink-dark);
-}
-.code-block{
-  background:var(--board);color:var(--chalk);border-radius:10px;
-  padding:20px 22px;margin:0 0 18px;overflow-x:auto;
-  font-family:'JetBrains Mono',monospace;font-size:13.5px;line-height:1.7;
-}
-.code-block .cm{color:var(--chalk-dim);}
-.output-block{
-  background:var(--paper);border:1px dashed var(--paper-line);border-radius:10px;
-  padding:16px 20px;margin:0 0 18px;font-family:'JetBrains Mono',monospace;
-  font-size:13.5px;color:var(--ink-soft);
-}
-.output-block .label{
-  display:block;font-family:'Work Sans';font-size:11.5px;font-weight:600;
-  text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);margin-bottom:8px;
-}
-.mistake-list{
-  border-left:3px solid var(--pink);background:var(--paper);border-radius:0 10px 10px 0;
-  padding:16px 20px;margin:0 0 18px;
-}
-.mistake-list li{color:var(--ink-soft);}
-.exercise-list{
+.hard-q-list{
   border-left:3px solid var(--yellow);background:var(--paper);border-radius:0 10px 10px 0;
-  padding:16px 20px 4px;margin:0 0 18px;
+  padding:16px 22px 4px;margin:0 0 30px;
 }
-.pdf-callout{
-  max-width:820px;margin:40px auto 0;background:#fff;border:1px solid var(--paper-line);
-  border-radius:var(--radius);box-shadow:var(--shadow);padding:26px 28px;
-  display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;
-}
-.pdf-callout .pdf-text h3{font-size:16px;margin-bottom:4px;color:var(--ink);}
-.pdf-callout .pdf-text p{font-size:13.5px;color:var(--ink-soft);margin:0;}
-.lesson-nav{
-  max-width:820px;margin:36px auto 0;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
-  font-size:14px;
-}
-.lesson-nav a{color:var(--pink-dark);font-weight:600;}
-
-/* ---------- 9b. EDUCATIONAL SEO CONTENT (notes pages) ---------- */
-.edu-content{max-width:820px;margin:0 auto;}
-.edu-content h2{font-size:24px;color:var(--ink);margin:0 0 14px;}
-.edu-content h3{font-size:17px;color:var(--ink);margin:26px 0 10px;}
-.edu-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
-.edu-content ul{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
-.edu-content li{margin-bottom:7px;}
-.edu-content strong{color:var(--ink);}
-
-/* ---------- 10. LEGAL PAGES (privacy / terms) ---------- */
-.legal-content{max-width:820px;margin:0 auto;}
-.legal-content h2{font-size:22px;color:var(--ink);margin:34px 0 12px;}
-.legal-content h2:first-child{margin-top:0;}
-.legal-content p{color:var(--ink-soft);font-size:15.5px;margin-bottom:14px;}
-.legal-content ul{margin:0 0 14px 20px;color:var(--ink-soft);font-size:15.5px;}
-.legal-content li{margin-bottom:8px;}
-.legal-updated{
-  font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--ink-soft);
-  border:1px dashed var(--paper-line);display:inline-block;padding:6px 14px;border-radius:20px;margin-bottom:30px;
-}
-
-/* ---------- 11. FOOTER (all pages) ---------- */
-footer{background:var(--board-dark);color:var(--chalk-dim);padding:48px 24px 30px;}
-.footer-inner{max-width:1120px;margin:0 auto;text-align:center;}
-.footer-links{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:24px;padding:0;margin:0 0 22px;}
-.footer-links a{font-size:14px;color:var(--chalk-dim);}
-.footer-links a:hover{color:var(--yellow);}
-.footer-bottom{font-size:13px;color:#8B9089;border-top:1px solid rgba(255,255,255,.08);padding-top:20px;}
-
-/* ---------- 12. LOAD-IN ANIMATIONS (pure CSS — no JS required) ---------- */
-/* Content is opacity:1 by default. The animation is a bonus entrance
-   effect that plays automatically on page load; it can never hide
-   content, even if JavaScript fails to load or run. */
-.fade-up{
-  opacity:1;
-  animation:fadeUpIn .7s ease both;
-}
-@keyframes fadeUpIn{
-  from{opacity:0;transform:translateY(20px);}
-  to{opacity:1;transform:translateY(0);}
-}
-.fade-up.delay-1{animation-delay:.08s;}
-.fade-up.delay-2{animation-delay:.16s;}
-.fade-up.delay-3{animation-delay:.24s;}
-.fade-up.delay-4{animation-delay:.32s;}
-
-@media (prefers-reduced-motion:reduce){
-  html{scroll-behavior:auto;}
-  .fade-up{opacity:1;transform:none;animation:none;}
-  *{transition:none!important;animation:none!important;}
-}
-
-/* ---------- 13. RESPONSIVE ---------- */
-
-/* Global safety net: nothing on the page should ever cause
-   horizontal scrolling on any device. */
-html, body{overflow-x:hidden; width:100%;}
-
-/* ---- Tablets (also covers small laptops) ---- */
-@media (max-width:980px){
-  .wrap{padding:0 20px;}
-  section.paper{padding:60px 20px;}
-  .hero{padding:60px 20px 72px;}
-  .ebook-inner{gap:36px;}
-  .about-grid{gap:34px;}
-}
-
-/* ---- Phones and small tablets ---- */
-@media (max-width:760px){
-  .nav-links{
-    position:absolute;top:100%;left:0;right:0;background:var(--board);
-    flex-direction:column;align-items:flex-start;padding:20px 24px;gap:4px;display:none;
-    border-bottom:3px solid var(--yellow);
-    max-height:calc(100vh - 70px);overflow-y:auto;
-    -webkit-overflow-scrolling:touch;
-  }
-  .nav-links.open{display:flex;}
-  .nav-links > li{width:100%;}
-  .nav-links a{padding:12px 4px;width:100%;min-height:44px;box-sizing:border-box;align-items:center;}
-  .menu-toggle{display:flex;align-items:center;justify-content:center;width:44px;height:44px;}
-  .dropdown-menu{
-    position:static;transform:none;opacity:1;visibility:visible;box-shadow:none;
-    border:none;background:transparent;padding:0 0 0 14px;max-height:0;overflow:hidden;
-    transition:max-height .2s ease;
-  }
-  .dropdown.open .dropdown-menu{max-height:220px;}
-  .dropdown-menu a{color:var(--chalk-dim);padding:10px 12px;min-height:40px;}
-  .dropdown-menu a:hover{background:transparent;color:var(--yellow);}
-
-  .about-grid{grid-template-columns:1fr;}
-  .about-illustration{max-width:220px;margin:0 auto;order:-1;}
-  .programming-spot{grid-template-columns:1fr;text-align:left;padding:40px 26px;}
-  .code-chip{order:-1;font-size:12.5px;padding:16px 18px;white-space:pre-wrap;word-break:break-word;}
-
-  .hero{padding:52px 20px 64px;}
-  .hero p.tagline{font-size:17px;}
-  .cta-btn{width:100%;text-align:center;padding:16px 24px;}
-
-  section.paper{padding:52px 20px;}
-  .section-head{margin-bottom:34px;}
-
-  .ebook{padding:56px 20px;}
-  .ebook-cover{max-width:220px;margin:0 auto;}
-  .btn-row{flex-direction:column;}
-  .btn-row a{width:100%;text-align:center;}
-
-  .community{padding:56px 20px;}
-  .community-card{padding:30px 26px;}
-
-  .contribute{padding:56px 20px;}
-  .amount-row{gap:10px;}
-
-  .contact-card{padding:28px 24px;}
-  .contact-steps{padding:26px 22px;}
-
-  .legal-content h2{font-size:20px;}
-
-  footer{padding:40px 20px 26px;}
-  .footer-links{gap:16px 20px;}
-
-  .lesson-meta{font-size:11.5px;gap:8px 12px;}
-  .code-block{padding:16px 16px;font-size:12.5px;}
-  .pdf-callout{flex-direction:column;align-items:flex-start;padding:22px;}
-  .pdf-callout .cta-btn{width:100%;text-align:center;}
-}
-
-/* ---- Small phones (narrow viewports, e.g. iPhone SE / older Androids) ---- */
-@media (max-width:420px){
-  .brand{font-size:22px;}
-  .hero h1{font-size:38px;}
-  .hero .eyebrow{font-size:11.5px;padding:5px 12px;}
-  .section-head h2{font-size:26px;}
-  .class-card{padding:24px 18px;}
-  table.notes-table td{padding:12px 14px;font-size:14px;}
-  .btn-download{width:100%;text-align:center;padding:10px 16px;}
-  .contact-icon{width:38px;height:38px;font-size:17px;}
-  .reason-grid{gap:16px;}
-  .reason-card{padding:20px 18px;}
-  .contact-steps{padding:22px 18px;}
-  .legal-content{padding:0;}
-}
-
+.hard-q-list li{color:var(--ink-soft);font-size:15px;margin-bottom:12px;}
+.topic-block{margin-bottom:44px;padding-bottom:8px;border-bottom:1px solid var(--paper-line);}
+.topic-block:last-of-type{border-bottom:none;}
 </style>
 </head>
 <body>
@@ -569,11 +36,10 @@ html, body{overflow-x:hidden; width:100%;}
   <div class="nav">
     <a class="brand" href="../index.html">Short<span>Study</span></a>
     <ul class="nav-links" id="navLinks">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html" class="active">Programming</a></li>
-      <li><a href="Test.html" class="active">Test</a></li>
-      <li><a href="about.html">About</a></li>
-      <li><a href="contact.html">Contact</a></li>
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../programming.html" class="active">Programming</a></li>
+      <li><a href="../about.html">About</a></li>
+      <li><a href="../contact.html">Contact</a></li>
     </ul>
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
   </div>
@@ -581,9 +47,9 @@ html, body{overflow-x:hidden; width:100%;}
 
 <!-- ============ PAGE HEADER ============ -->
 <section class="page-header">
-  <span class="kicker">Programming · Lesson 01</span>
-  <h1>Python Basics: Variables, Data Types &amp; Control Flow</h1>
-  <p>The recommended starting point if you've never written a line of code before.</p>
+  <span class="kicker">Programming · Python Deep Dive · Part 1 of 6</span>
+  <h1>Python Fundamentals</h1>
+  <p>print(), Variables, Data Types, input(), Type Casting, Comments, Keywords &amp; Identifiers — in depth.</p>
 </section>
 
 <section class="paper" style="padding-bottom:20px;">
@@ -591,112 +57,256 @@ html, body{overflow-x:hidden; width:100%;}
     <div class="lesson-meta fade-up">
       <span class="tag">Last Reviewed: August 2026</span>
       <span class="tag">Syllabus: Core Computer Science</span>
-      <span class="tag">Level: Beginner</span>
+      <span class="tag">Level: Beginner → Intermediate</span>
     </div>
 
     <div class="lesson-content fade-up">
+      <p style="margin-bottom:30px;">This is Part 1 of a 6-part deep-dive series on Python, building directly on the <a href="python-basics.html" style="color:var(--pink-dark); font-weight:600;">Python Basics</a> lesson. Each topic below is covered in depth, followed by 10 genuinely challenging practice questions to test how well the concept actually stuck — not just whether you can recognise the syntax.</p>
 
-      <h2>Introduction &amp; prerequisites</h2>
-      <p>Python is one of the most widely used programming languages in the world, and it's also one of the friendliest for a first-time learner — its syntax reads closer to plain English than most other languages, which means you spend less time fighting the language and more time understanding the actual concepts. This lesson covers <strong>variables</strong>, <strong>data types</strong>, and <strong>control flow</strong> (how a program makes decisions and repeats actions) — the three building blocks almost every program is made of.</p>
-      <p>There are no prerequisites for this lesson. You don't need any prior programming experience, and you don't need Python installed on your computer to follow along — every example below shows exactly what the code does and what it outputs, so you can read and understand it either way. If you do want to try the examples yourself, Python comes pre-installed on most systems, or you can use any free online Python editor.</p>
+      <!-- ============ TOPIC 1: print() ============ -->
+      <div class="topic-block">
+        <h2>1. The print() Function</h2>
+        <p><code>print()</code> is the first function almost every Python learner meets, and it's more configurable than it first appears. By default, <code>print()</code> writes its arguments to standard output, separated by a single space, and ends with a newline character. Both of those defaults can be overridden with the <code>sep</code> and <code>end</code> keyword arguments — <code>sep</code> controls what goes between multiple printed values, and <code>end</code> controls what's printed after the last value instead of the default newline.</p>
+        <p><code>print()</code> can also accept any number of positional arguments, automatically converts non-string values to their string representation, and — since Python 3.6 — is commonly paired with f-strings (<code>f"..."</code>) to embed expressions directly inside a string. It's worth remembering that <code>print()</code> always returns <code>None</code>; it displays output as a side effect, it does not hand back a usable value the way <code>input()</code> or a normal function call does.</p>
+        <div class="code-block"><span class="cm"># Customising sep and end</span>
+print("Python", "is", "fun", sep="-", end="!\n")
+<span class="cm"># Using an f-string</span>
+name = "Aarav"
+print(f"Hello, {name}!")</div>
+        <div class="output-block"><span class="label">Output</span>Python-is-fun!
+Hello, Aarav!</div>
 
-      <h2>What is a variable?</h2>
-      <p>A variable is simply a name that points to a value stored in memory. Instead of writing the number <code>25</code> everywhere in your code, you can store it in a variable called <code>age</code> and refer to <code>age</code> instead — which makes code both easier to read and easier to change later. In Python, you create a variable simply by assigning a value to a name; there's no need to declare its type in advance, which is different from many other programming languages.</p>
-
-      <h2>Python's core data types</h2>
-      <p>Every value in Python has a <strong>type</strong>, which determines what kind of data it holds and what operations you can perform on it. The four data types you'll use constantly as a beginner are:</p>
-      <ul>
-        <li><strong>int</strong> — a whole number, like <code>25</code> or <code>-3</code></li>
-        <li><strong>float</strong> — a number with a decimal point, like <code>3.14</code> or <code>2.0</code></li>
-        <li><strong>str</strong> — text, written inside quotes, like <code>"hello"</code></li>
-        <li><strong>bool</strong> — a value that is either <code>True</code> or <code>False</code>, used for decisions</li>
-      </ul>
-      <p>Python figures out a variable's type automatically based on the value you assign it, and you can always check a variable's type using the built-in <code>type()</code> function.</p>
-
-      <h3>Code example: creating variables of different types</h3>
-      <div class="code-block"><span class="cm"># Storing different types of data in variables</span>
-name = "Aarav"        <span class="cm"># str — text</span>
-age = 16               <span class="cm"># int — whole number</span>
-height = 5.6            <span class="cm"># float — decimal number</span>
-is_student = True       <span class="cm"># bool — True or False</span>
-
-<span class="cm"># Printing a variable shows its current value</span>
-print(name)
-print(age)
-print(type(age))</div>
-      <div class="output-block"><span class="label">Output</span>Aarav
-16
-&lt;class 'int'&gt;</div>
-
-      <h2>Control flow: making decisions with if / elif / else</h2>
-      <p>Control flow is how a program decides which code to run based on a condition. In Python, this is done with <code>if</code>, <code>elif</code> (short for "else if"), and <code>else</code>. The program checks each condition in order, and runs the first block whose condition is <code>True</code> — if none of them are true, the <code>else</code> block runs instead. Note that Python uses <strong>indentation</strong> (spacing) rather than curly braces to show which code belongs inside which block — this is one of the first syntax habits beginners need to get comfortable with.</p>
-
-      <h3>Code example: if / elif / else</h3>
-      <div class="code-block"><span class="cm"># Checking a student's marks and assigning a grade</span>
-marks = 78
-
-if marks >= 90:
-    grade = "A"
-elif marks >= 75:
-    grade = "B"
-elif marks >= 60:
-    grade = "C"
-else:
-    grade = "D"
-
-print("Grade:", grade)</div>
-      <div class="output-block"><span class="label">Output</span>Grade: B</div>
-
-      <h2>Control flow: repeating actions with loops</h2>
-      <p>Loops let you repeat a block of code multiple times instead of writing it out by hand. The <code>for</code> loop is used when you know how many times you want to repeat something (or want to go through each item in a list); the <code>while</code> loop is used when you want to repeat something until a condition becomes false.</p>
-
-      <h3>Code example: a for loop</h3>
-      <div class="code-block"><span class="cm"># Printing numbers 1 through 5 using a for loop</span>
-for number in range(1, 6):
-    print(number)</div>
-      <div class="output-block"><span class="label">Output</span>1
-2
-3
-4
-5</div>
-
-      <h2>Common mistakes &amp; debugging tips</h2>
-      <div class="mistake-list">
-        <ul>
-          <li><strong>Inconsistent indentation.</strong> Python uses indentation to define code blocks — mixing tabs and spaces, or indenting inconsistently, causes an <code>IndentationError</code>. Stick to 4 spaces per level.</li>
-          <li><strong>Forgetting the colon.</strong> Every <code>if</code>, <code>elif</code>, <code>else</code>, <code>for</code>, and <code>while</code> line must end with a colon (<code>:</code>) — this is one of the most common beginner errors.</li>
-          <li><strong>Using <code>=</code> instead of <code>==</code>.</strong> A single <code>=</code> assigns a value; a double <code>==</code> compares two values. Writing <code>if age = 18:</code> instead of <code>if age == 18:</code> will raise an error.</li>
-          <li><strong>Mixing up data types in comparisons.</strong> Comparing a string to a number, like <code>"5" == 5</code>, will always be <code>False</code> in Python — the types have to match.</li>
-          <li><strong>Off-by-one errors in <code>range()</code>.</strong> <code>range(1, 6)</code> produces numbers 1 through 5, not 1 through 6 — the second number is never included.</li>
-        </ul>
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>What does <code>print()</code> return when called with no arguments — and what is actually displayed?</li>
+          <li>Predict the exact output of <code>print(1, 2, 3, sep="", end="")</code> followed immediately by <code>print(4)</code> on the next line.</li>
+          <li>Why does <code>print("Score:", 95)</code> not raise a <code>TypeError</code> even though it mixes a string and an integer?</li>
+          <li>What is the difference between <code>print(f"{3+4}")</code> and <code>print("3+4")</code>?</li>
+          <li>How would you print the literal characters <code>{}</code> inside an f-string without Python interpreting them as a placeholder?</li>
+          <li>What does <code>print(*[1, 2, 3])</code> output, and why does the unpacking operator matter here?</li>
+          <li>If <code>x = print("hi")</code>, what is the value of <code>x</code> and why?</li>
+          <li>How does <code>print("a", "b", "c", sep="\n")</code> differ visually from three separate <code>print()</code> calls?</li>
+          <li>What happens if you pass an object with no custom <code>__str__</code> method to <code>print()</code>?</li>
+          <li>Why is relying on <code>print()</code> for debugging considered risky in production code, compared to using the <code>logging</code> module?</li>
+        </ol>
       </div>
 
-      <h2>Practice exercises</h2>
-      <p>Try writing the code for each of these before checking your understanding — this is where the concepts above actually become skills.</p>
-      <div class="exercise-list">
-        <ol>
-          <li>Create three variables to store your name, age, and whether you're currently a student, then print all three using <code>print()</code>.</li>
-          <li>Write an <code>if / elif / else</code> block that takes a number and prints whether it's positive, negative, or zero.</li>
-          <li>Use a <code>for</code> loop with <code>range()</code> to print all even numbers between 1 and 20.</li>
-          <li>What data type would you use to store a person's exact bank balance, and why? What about their name?</li>
-          <li>Predict the output of this code before running it: <code>x = "5"; y = 5; print(x == y)</code> — then explain why, based on what you learned about data types above.</li>
+      <!-- ============ TOPIC 2: Variables ============ -->
+      <div class="topic-block">
+        <h2>2. Variables</h2>
+        <p>In Python, a variable is best understood not as a labelled box holding a value, but as a <strong>name bound to an object</strong> that exists independently in memory. When you write <code>x = 10</code>, Python creates an integer object <code>10</code> and makes the name <code>x</code> point to it — it doesn't copy the value into a container called <code>x</code>. This distinction matters once you start reassigning variables or working with mutable objects like lists, because two names can point to the exact same object.</p>
+        <p>Python supports multiple assignment in a single line (<code>a, b, c = 1, 2, 3</code>), chained assignment (<code>a = b = c = 0</code>), and augmented assignment (<code>x += 1</code>). Variable names are case-sensitive, can contain letters, digits, and underscores, but cannot start with a digit or match a reserved keyword. There is no variable declaration step in Python — a name comes into existence the moment it's first assigned a value.</p>
+        <div class="code-block"><span class="cm"># Multiple assignment</span>
+a, b, c = 1, 2, 3
+<span class="cm"># Two names pointing to the same list object</span>
+list1 = [1, 2, 3]
+list2 = list1
+list2.append(4)
+print(list1)  <span class="cm"># list1 changes too!</span></div>
+        <div class="output-block"><span class="label">Output</span>[1, 2, 3, 4]</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why did modifying <code>list2</code> in the example above also change <code>list1</code>? What Python concept explains this?</li>
+          <li>What is the difference between <code>x = x + 1</code> and <code>x += 1</code> for a mutable object like a list versus an immutable object like an integer?</li>
+          <li>What does Python's <code>id()</code> function tell you, and how could you use it to prove two variables reference the same object?</li>
+          <li>Explain why <code>a = b = []</code> followed by <code>a.append(1)</code> also changes <code>b</code>, but <code>a = b = 0</code> followed by <code>a += 1</code> does not change <code>b</code>.</li>
+          <li>Is <code>x = 5</code> considered a "declaration" in the same sense as in C? Justify your answer.</li>
+          <li>What happens if you reference a variable before it has been assigned anywhere in the current scope?</li>
+          <li>How does Python's small-integer caching (typically -5 to 256) affect the result of comparing two integer variables with <code>is</code>?</li>
+          <li>Why is it considered bad practice to use a single-letter variable name like <code>l</code> in Python specifically?</li>
+          <li>What does swapping with <code>a, b = b, a</code> actually do internally, and why doesn't it need a temporary variable?</li>
+          <li>What is variable shadowing, and how could accidentally naming a variable <code>list</code> or <code>str</code> cause a subtle bug later in the same file?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 3: Data Types ============ -->
+      <div class="topic-block">
+        <h2>3. Data Types</h2>
+        <p>Python is dynamically typed, meaning a variable's type is determined by the value currently assigned to it, and can change if reassigned. The core built-in types are <code>int</code>, <code>float</code>, <code>complex</code>, <code>str</code>, <code>bool</code>, and the special singleton <code>None</code> (of type <code>NoneType</code>). Beyond these, Python's built-in container types — <code>list</code>, <code>tuple</code>, <code>set</code>, and <code>dict</code> — are covered in depth later in this series.</p>
+        <p>A crucial distinction beginners often miss is <strong>mutability</strong>: <code>int</code>, <code>float</code>, <code>str</code>, <code>bool</code>, and <code>tuple</code> are immutable — once created, their value cannot change in place — while <code>list</code>, <code>set</code>, and <code>dict</code> are mutable. You can check a value's type at runtime with <code>type()</code>, and check whether it belongs to a type (including subclasses) with <code>isinstance()</code>, which is generally the preferred, more Pythonic approach.</p>
+        <div class="code-block"><span class="cm"># bool is actually a subclass of int in Python</span>
+print(isinstance(True, int))   <span class="cm"># True</span>
+print(True + True)             <span class="cm"># 2</span></div>
+        <div class="output-block"><span class="label">Output</span>True
+2</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>isinstance(True, int)</code> return <code>True</code> in Python? What does this reveal about the <code>bool</code> type?</li>
+          <li>What is the output of <code>type(1) == type(True)</code>, and why does it differ from <code>isinstance(True, int)</code>?</li>
+          <li>Why is a string considered immutable even though you can "change" it with <code>s = s + "x"</code>?</li>
+          <li>What is the practical difference between using <code>type(x) == list</code> and <code>isinstance(x, list)</code> when checking a variable's type?</li>
+          <li>What data type does <code>3 / 2</code> return in Python 3, and how does this differ from Python 2's behaviour?</li>
+          <li>Why does Python treat <code>None</code> as its own distinct type rather than as a special value of another type like 0 or an empty string?</li>
+          <li>What is the type of the result of <code>3 + 4j</code>, and where would you realistically use it?</li>
+          <li>Why can a tuple be considered "immutable" even if it contains a mutable list as one of its elements?</li>
+          <li>What does <code>type(None) == type(None)</code> evaluate to, and why is comparing to <code>None</code> conventionally done with <code>is</code> rather than <code>==</code>?</li>
+          <li>Explain why <code>0.1 + 0.2 == 0.3</code> evaluates to <code>False</code> in Python, based on how <code>float</code> is represented internally.</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 4: input() ============ -->
+      <div class="topic-block">
+        <h2>4. The input() Function</h2>
+        <p><code>input()</code> pauses program execution, optionally displays a prompt string, waits for the user to type a response and press Enter, and then returns whatever was typed as a <strong>string</strong> — always, with no exceptions, even if the user types a number. This is one of the most common sources of bugs for beginners, who assume <code>input()</code> "knows" they wanted a number and are surprised when arithmetic on the result fails or behaves unexpectedly (string concatenation instead of addition).</p>
+        <p>To work with numeric input, you must explicitly convert the result using <code>int()</code> or <code>float()</code>. To accept multiple values on one line, a common pattern is combining <code>input()</code> with <code>.split()</code> to break the line into a list of strings, which can then be converted individually.</p>
+        <div class="code-block"><span class="cm"># WRONG: this concatenates strings, doesn't add numbers</span>
+a = input("Enter first number: ")
+b = input("Enter second number: ")
+print(a + b)   <span class="cm"># e.g. "5" + "3" = "53", not 8</span>
+
+<span class="cm"># CORRECT: cast to int first</span>
+a = int(input("Enter first number: "))
+b = int(input("Enter second number: "))
+print(a + b)   <span class="cm"># 8</span></div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>If a user enters <code>7</code> at an <code>input()</code> prompt, what is the exact type and value stored in the variable?</li>
+          <li>Why does <code>input("5") + input("3")</code> not produce <code>8</code> even if the user types 5 and 3?</li>
+          <li>What exception is raised if a user types <code>"abc"</code> when your code runs <code>int(input())</code>, and how would you handle it gracefully?</li>
+          <li>How would you read two space-separated integers from a single <code>input()</code> call and store them in two separate variables?</li>
+          <li>What happens if <code>input()</code> is called and the user presses Enter without typing anything — what value is returned?</li>
+          <li>Why is validating and sanitising <code>input()</code> considered a security-relevant practice, even in a simple script?</li>
+          <li>What is the output of <code>type(input())</code>, regardless of what the user types?</li>
+          <li>How would you use a loop combined with <code>input()</code> and a <code>try/except</code> block to keep asking the user for a valid integer until they provide one?</li>
+          <li>What is the difference in behaviour between Python 2's <code>raw_input()</code> and Python 3's <code>input()</code>?</li>
+          <li>Why can't <code>input()</code> be meaningfully used in most automated/non-interactive scripts (e.g. scheduled scripts or web servers)?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 5: Type Casting ============ -->
+      <div class="topic-block">
+        <h2>5. Type Casting</h2>
+        <p>Type casting (or type conversion) is the process of converting a value from one data type to another. Python performs some conversions automatically — this is called <strong>implicit</strong> casting, and it happens, for example, when you add an <code>int</code> and a <code>float</code> together and Python automatically produces a <code>float</code> result. <strong>Explicit</strong> casting is when you deliberately convert a value using functions like <code>int()</code>, <code>float()</code>, <code>str()</code>, or <code>bool()</code>.</p>
+        <p>Casting isn't always safe: <code>int("abc")</code> raises a <code>ValueError</code> because the string isn't a valid number, and <code>int(3.9)</code> truncates toward zero rather than rounding, giving <code>3</code> — not <code>4</code>. Casting to <code>bool()</code> follows Python's "truthiness" rules: <code>0</code>, <code>0.0</code>, <code>""</code>, <code>[]</code>, <code>{}</code>, and <code>None</code> are all falsy, while almost everything else is truthy.</p>
+        <div class="code-block"><span class="cm"># Implicit casting: int + float = float</span>
+result = 5 + 2.0
+print(result, type(result))
+
+<span class="cm"># Explicit casting: truncation, not rounding</span>
+print(int(9.9))   <span class="cm"># 9, not 10</span>
+print(bool(""))    <span class="cm"># False</span>
+print(bool("0"))   <span class="cm"># True — non-empty string!</span></div>
+        <div class="output-block"><span class="label">Output</span>7.0 &lt;class 'float'&gt;
+9
+False
+True</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why does <code>bool("0")</code> evaluate to <code>True</code> when the string visually represents zero?</li>
+          <li>What is the result of <code>int(3.99)</code>, and how does this differ from what <code>round(3.99)</code> would give?</li>
+          <li>What exception, if any, is raised by <code>int("3.5")</code>, and why does it fail even though <code>float("3.5")</code> succeeds?</li>
+          <li>What is the output of <code>int(True)</code> and <code>str(False)</code>, and what does each reveal about how Python handles booleans in casting?</li>
+          <li>Why does <code>5 + 2.0</code> implicitly become a <code>float</code>, but <code>"5" + 2</code> raises a <code>TypeError</code> instead of silently converting?</li>
+          <li>What is the difference between <code>int("10", 2)</code> and <code>int("10")</code>, and what does the second argument to <code>int()</code> control?</li>
+          <li>Why is <code>float("nan") == float("nan")</code> famously <code>False</code>, and how does this relate to type casting rules?</li>
+          <li>What does casting an empty list <code>bool([])</code> versus a list containing only <code>False</code>, <code>bool([False])</code>, return, and why do they differ?</li>
+          <li>How would you safely cast user input to an integer without crashing the program if the input is invalid?</li>
+          <li>What is the output of <code>list("abc")</code>, and why does casting a string to a list behave differently than casting a number to a string?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 6: Comments ============ -->
+      <div class="topic-block">
+        <h2>6. Comments</h2>
+        <p>Comments are lines that Python's interpreter ignores entirely — they exist purely for human readers. A single-line comment starts with <code>#</code> and extends to the end of the line. Python has no dedicated multi-line comment syntax, but developers commonly achieve the same effect by stacking multiple <code>#</code> lines, or by using a triple-quoted string (<code>"""..."""</code>) as a standalone statement — though technically the latter is a string literal, not a comment, and is more properly reserved for <strong>docstrings</strong>, which document functions, classes, and modules and can be accessed programmatically via the <code>__doc__</code> attribute.</p>
+        <p>Good commenting explains <em>why</em> code does something, not <em>what</em> it does — the "what" should be obvious from clear code itself. Over-commenting obvious code is considered a code smell just as much as under-commenting complex logic.</p>
+        <div class="code-block"><span class="cm"># This is a single-line comment</span>
+def add(a, b):
+    """This is a docstring, not a comment — it's stored and retrievable."""
+    return a + b
+
+print(add.__doc__)</div>
+        <div class="output-block"><span class="label">Output</span>This is a docstring, not a comment — it's stored and retrievable.</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why is a triple-quoted string used as a standalone statement not technically a "comment" in the way <code>#</code> is?</li>
+          <li>What happens at runtime, performance-wise, to a triple-quoted string used as a standalone expression versus assigned to a docstring?</li>
+          <li>How would you access the docstring of a function called <code>calculate_area</code> from outside the function itself?</li>
+          <li>Why does Python have no true multi-line comment syntax, unlike languages such as C or Java with <code>/* */</code>?</li>
+          <li>What is the difference between a comment and a docstring in terms of accessibility at runtime?</li>
+          <li>Is it possible for a <code>#</code> character to appear inside a string literal without being treated as the start of a comment? Explain with an example.</li>
+          <li>Why is commenting out large blocks of code with <code>#</code> generally discouraged in production codebases compared to version control?</li>
+          <li>What convention (PEP 8) governs the number of spaces before an inline comment on the same line as code?</li>
+          <li>Can a comment span a line continuation created with a backslash (<code>\\</code>)? What happens if you try?</li>
+          <li>Why might a linter flag a comment like <code># increment i by 1</code> above the line <code>i += 1</code> as low-value?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 7: Keywords ============ -->
+      <div class="topic-block">
+        <h2>7. Keywords</h2>
+        <p>Keywords are reserved words that form the syntax of the Python language itself — words like <code>if</code>, <code>else</code>, <code>for</code>, <code>while</code>, <code>def</code>, <code>class</code>, <code>return</code>, <code>import</code>, <code>True</code>, <code>False</code>, and <code>None</code>. Because they have fixed meaning to the interpreter, keywords <strong>cannot</strong> be used as variable, function, or class names — attempting to do so raises a <code>SyntaxError</code>. Python provides the built-in <code>keyword</code> module, which exposes <code>keyword.kwlist</code>, a list of every current keyword, useful for checking programmatically whether a given string is reserved.</p>
+        <p>Recent Python versions introduced <strong>soft keywords</strong> — words like <code>match</code>, <code>case</code>, and <code>type</code> that have special meaning only in specific syntactic contexts (like the <code>match</code> statement introduced in Python 3.10) but remain valid as ordinary identifiers elsewhere, unlike true keywords.</p>
+        <div class="code-block">import keyword
+print(keyword.iskeyword("for"))    <span class="cm"># True</span>
+print(keyword.iskeyword("match"))  <span class="cm"># False — it's a soft keyword</span>
+print(len(keyword.kwlist))         <span class="cm"># total number of keywords</span></div>
+        <div class="output-block"><span class="label">Output</span>True
+False
+35</div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>What error occurs if you try to run <code>class = "Math"</code>, and why specifically does <code>class</code> trigger it?</li>
+          <li>What is a "soft keyword" in Python, and how does <code>match</code> differ from a hard keyword like <code>if</code>?</li>
+          <li>How would you programmatically check, at runtime, whether a given string the user typed is a reserved Python keyword?</li>
+          <li>Why can <code>True</code>, <code>False</code>, and <code>None</code> be considered keywords rather than ordinary built-in variables?</li>
+          <li>What is the difference between a keyword and a built-in function name like <code>list</code> or <code>print</code> — why can the latter be reassigned without a <code>SyntaxError</code>?</li>
+          <li>Why does <code>async</code> and <code>await</code> being added as full keywords in Python 3.7 (from soft keywords before) break older code that used them as variable names?</li>
+          <li>What happens if you try to define a function named <code>def</code>?</li>
+          <li>Is <code>_</code> (a single underscore) a keyword in Python? Explain its special conventional meaning versus reserved status.</li>
+          <li>Why is <code>self</code> not a keyword in Python, despite being used almost universally as the first parameter of instance methods?</li>
+          <li>What is the total number of keywords in the Python version you're using, and how would you find out without looking it up online?</li>
+        </ol>
+      </div>
+
+      <!-- ============ TOPIC 8: Identifiers ============ -->
+      <div class="topic-block">
+        <h2>8. Identifiers</h2>
+        <p>An identifier is the name you give to a variable, function, class, module, or any other user-defined object. Python's rules for valid identifiers: they must start with a letter (a-z, A-Z) or an underscore, followed by any combination of letters, digits, and underscores; they cannot start with a digit; they cannot be a reserved keyword; and — since Python 3 — they can also include valid Unicode characters beyond the basic ASCII set, though this is rarely used in practice.</p>
+        <p>Python is case-sensitive, so <code>score</code>, <code>Score</code>, and <code>SCORE</code> are three entirely distinct identifiers. Beyond the language's hard rules, PEP 8 (Python's style guide) recommends conventions: <code>snake_case</code> for variables and functions, <code>PascalCase</code> for classes, and <code>UPPER_SNAKE_CASE</code> for constants — these are conventions, not enforced by the interpreter, but following them is considered a mark of idiomatic Python.</p>
+        <div class="code-block"><span class="cm"># Valid identifiers</span>
+_private = 1
+student_name = "Aarav"
+MAX_SIZE = 100
+
+<span class="cm"># These would raise a SyntaxError if uncommented:</span>
+<span class="cm"># 2nd_place = "silver"</span>
+<span class="cm"># class = "Physics"</span></div>
+
+        <span class="hard-q-heading">Top 10 Very Hard Questions</span>
+        <ol class="hard-q-list">
+          <li>Why is <code>_2nd_place</code> a valid identifier, but <code>2nd_place</code> is not?</li>
+          <li>Are <code>total</code> and <code>Total</code> the same identifier in Python? Explain what this implies for naming discipline.</li>
+          <li>What is the conventional (PEP 8) difference in naming style between a regular variable, a class, and a constant?</li>
+          <li>Why does an identifier starting with a double underscore (like <code>__value</code>) inside a class trigger Python's name mangling?</li>
+          <li>Can an identifier legally consist of a single underscore, <code>_</code>? What special convention is it used for in interactive sessions and unpacking?</li>
+          <li>Is <code>café</code> a valid Python identifier? What does this reveal about Python 3's handling of Unicode in source code?</li>
+          <li>Why would naming a variable <code>list</code> or <code>id</code> technically work but be considered a serious anti-pattern?</li>
+          <li>What is the maximum length of a valid Python identifier?</li>
+          <li>How does an identifier differ fundamentally from a string literal that happens to contain the same characters, like <code>"score"</code> versus <code>score</code>?</li>
+          <li>Why does <code>dir()</code> called with no arguments list identifiers currently in scope, and how could this be used to detect accidental variable shadowing?</li>
         </ol>
       </div>
 
     </div>
 
-    <!-- Optional PDF / revision sheet download, placed after the full lesson text -->
     <div class="pdf-callout fade-up">
       <div class="pdf-text">
-        <h3>Python Basics — Revision Sheet</h3>
-        <p>A one-page PDF summary of variables, data types, and control flow syntax for quick revision.</p>
+        <h3>Python Fundamentals — Revision Sheet</h3>
+        <p>A one-page PDF summary of all 8 topics above, for quick pre-exam or pre-interview revision.</p>
       </div>
-      <a href="https://drive.google.com/file/d/1li9OO6tAjUJ0IyMfEzDbc7Oqsfj-sBOG/view?usp=sharing" class="cta-btn" style="margin-top:0;">Download PDF</a>
+      <a href="#" class="cta-btn" style="margin-top:0;">Download PDF</a>
     </div>
 
     <div class="lesson-nav fade-up">
-      <a href="../programming.html">← Back to all lessons</a>
-      <a href="c-basics.html">Next: C Programming Basics →</a>
+      <a href="python-basics.html">← Back to Python Basics (intro)</a>
+      <a href="python-operators-conditionals.html">Next: Operators &amp; Conditionals (Part 2) →</a>
     </div>
 
   </div>
@@ -706,17 +316,17 @@ for number in range(1, 6):
 <footer>
   <div class="footer-inner">
     <ul class="footer-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html">Programming</a></li>
-      <li><a href="about.html">About Us</a></li>
-      <li><a href="contact.html">Contact Us</a></li>
-      <li><a href="privacy-policy.html">Privacy Policy</a></li>
-      <li><a href="terms-conditions.html">Terms & Conditions</a></li>
+      <li><a href="../index.html">Home</a></li>
+      <li><a href="../programming.html">Programming</a></li>
+      <li><a href="../about.html">About Us</a></li>
+      <li><a href="../contact.html">Contact Us</a></li>
+      <li><a href="../privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="../terms-conditions.html">Terms of Conditions</a></li>
     </ul>
     <div class="footer-bottom">@ short study copyright all right reserved</div>
   </div>
 </footer>
 
-<script src="script.js"></script>
+<script src="../js/script.js"></script>
 </body>
 </html>
