@@ -2,7 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/fireba
 import { getFirestore, collection, addDoc, doc, setDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
-const apiKey = globalThis.apiKey || "";
+const apiKey = globalThis.apiKey || "AIzaSyCtg7gLeHbl1uSIrxx6laxBdxx4zVQP4CQ";
 const firebaseConfig = { apiKey, authDomain: "shortstudy-de7d4.firebaseapp.com", projectId: "shortstudy-de7d4", storageBucket: "shortstudy-de7d4.firebasestorage.app", messagingSenderId: "766812137638", appId: "1:766812137638:web:c6fdff7b473170cd116c67" };
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
