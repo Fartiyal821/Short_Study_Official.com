@@ -15,7 +15,7 @@
   <!-- =========================================================
        1. STRICT AUTH GUARD: LOGIN / REGISTER (UNAUTHENTICATED)
        ========================================================= -->
-  <div id="auth-guard-screen">
+  <div id="login-section" class="auth-guard-screen">
     <div class="auth-card">
       <div class="auth-header">
         <div class="auth-icon">
@@ -34,23 +34,23 @@
         <button type="button" class="auth-tab-btn" id="tab-register">Register</button>
       </div>
 
-      <form id="auth-form">
+      <form id="login-form">
         <div class="form-group" id="auth-name-group" style="display: none; margin-bottom: 14px;">
           <label class="form-label" for="auth-name">Full Name</label>
-          <input type="text" id="auth-name" class="form-input" placeholder="e.g. Alex Morgan">
+          <input type="text" id="auth-name" class="form-input" placeholder="e.g. Gaurav Fartiyal" value="Gaurav Fartiyal">
         </div>
 
         <div class="form-group" style="margin-bottom: 14px;">
-          <label class="form-label" for="auth-email">Admin Email Address</label>
-          <input type="email" id="auth-email" class="form-input" placeholder="admin@shortstudy.com" required>
+          <label class="form-label" for="login-email">Admin Email Address</label>
+          <input type="email" id="login-email" class="form-input" placeholder="gauravfartiyal751@gmail.com" value="gauravfartiyal751@gmail.com" required>
         </div>
 
         <div class="form-group" style="margin-bottom: 18px;">
-          <label class="form-label" for="auth-password">Password</label>
-          <input type="password" id="auth-password" class="form-input" placeholder="••••••••••••" required minlength="6">
+          <label class="form-label" for="login-password">Password</label>
+          <input type="password" id="login-password" class="form-input" placeholder="••••••••••••" required minlength="6">
         </div>
 
-        <div id="auth-error-message" style="color: var(--rose); font-size: 12.5px; margin-bottom: 14px; min-height: 18px;"></div>
+        <div id="auth-error" class="hidden" style="color: var(--rose); font-size: 12.5px; margin-bottom: 14px; min-height: 18px;"></div>
 
         <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width: 100%; padding: 12px;">
           Login to Dashboard
@@ -117,7 +117,7 @@
   <!-- =========================================================
        3. CENTRALIZED ADMIN DASHBOARD (AUTHORIZED USERS)
        ========================================================= -->
-  <div id="admin-dashboard-screen" style="display: none; width: 100%;">
+  <div id="dashboard-section" class="admin-dashboard-screen hidden" style="width: 100%;">
 
     <!-- Left Sidebar -->
     <aside class="admin-sidebar">
@@ -178,7 +178,7 @@
             <div class="user-role">VERIFIED ADMIN</div>
           </div>
         </div>
-        <button class="btn-signout" id="btn-signout">
+        <button class="btn-signout" id="logout-btn">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
             <polyline points="16 17 21 12 16 7"></polyline>

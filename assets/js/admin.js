@@ -22,6 +22,8 @@ import { auth, db, firebaseConfig } from "./firebase-config.js";
 import { sanitizeHTML, processYouTubeEmbed, extractYouTubeId } from "./sanitizer.js";
 
 // State Management
+const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
+
 let currentUser = null;
 let currentAdminProfile = null;
 let activeTab = "courses"; // 'overview', 'courses', 'posts', 'preview', 'config'
@@ -32,22 +34,29 @@ let unsubscribePosts = null;
 let editingCourseId = null;
 let editingPostId = null;
 
+// DOM Elements
+const loginSection = document.getElementById('login-section') || document.getElementById('auth-guard-screen');
+const dashboardSection = document.getElementById('dashboard-section') || document.getElementById('admin-dashboard-screen');
+const loginForm = document.getElementById('login-form') || document.getElementById('auth-form');
+const authError = document.getElementById('auth-error') || document.getElementById('auth-error-message');
+const logoutBtn = document.getElementById('logout-btn') || document.getElementById('btn-signout');
+
 // DOM Elements Cache
 const el = {
-  authGuardScreen: document.getElementById("auth-guard-screen"),
+  authGuardScreen: loginSection,
   accessDeniedScreen: document.getElementById("access-denied-screen"),
-  adminDashboard: document.getElementById("admin-dashboard-screen"),
+  adminDashboard: dashboardSection,
   
   // Auth Form Elements
-  authForm: document.getElementById("auth-form"),
+  authForm: loginForm,
   authTitle: document.getElementById("auth-title"),
   authSubtitle: document.getElementById("auth-subtitle"),
-  authEmail: document.getElementById("auth-email"),
-  authPassword: document.getElementById("auth-password"),
+  authEmail: document.getElementById("login-email") || document.getElementById("auth-email"),
+  authPassword: document.getElementById("login-password") || document.getElementById("auth-password"),
   authNameGroup: document.getElementById("auth-name-group"),
   authName: document.getElementById("auth-name"),
   authSubmitBtn: document.getElementById("auth-submit-btn"),
-  authErrorMessage: document.getElementById("auth-error-message"),
+  authErrorMessage: authError,
   tabLogin: document.getElementById("tab-login"),
   tabRegister: document.getElementById("tab-register"),
   
@@ -62,7 +71,7 @@ const el = {
   // Topbar & Sidebar
   userDisplayName: document.getElementById("user-display-name"),
   userAvatarInitial: document.getElementById("user-avatar-initial"),
-  btnSignOut: document.getElementById("btn-signout"),
+  btnSignOut: logoutBtn,
   livePulseStatus: document.getElementById("live-status-text"),
   navLinks: document.querySelectorAll(".nav-link"),
   viewSections: document.querySelectorAll(".view-section"),
@@ -172,163 +181,134 @@ function setAuthMode(mode) {
 el.tabLogin.addEventListener("click", () => setAuthMode("login"));
 el.tabRegister.addEventListener("click", () => setAuthMode("register"));
 
-el.authForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  el.authErrorMessage.textContent = "";
-  const email = el.authEmail.value.trim();
-  const password = el.authPassword.value;
-  const name = el.authName.value.trim();
-
-  if (!email || !password) {
-    el.authErrorMessage.textContent = "Please fill in all required fields.";
-    return;
+function showAuthError(message) {
+  if (authError) {
+    authError.textContent = message;
+    authError.classList.remove('hidden');
+    authError.style.display = 'block';
   }
-
-  el.authSubmitBtn.disabled = true;
-  el.authSubmitBtn.textContent = "Authenticating...";
-
-  try {
-    if (authMode === "login") {
-      await signInWithEmailAndPassword(auth, email, password);
-      showToast("Authentication successful", "success");
-    } else {
-      // Use the term 'Register'
-      const cred = await createUserWithEmailAndPassword(auth, email, password);
-      if (name && cred.user) {
-        await updateProfile(cred.user, { displayName: name });
-      }
-      showToast("Account registered! Awaiting admin privilege verification.", "info");
-    }
-  } catch (error) {
-    console.error("Auth Error:", error);
-    let errorMsg = error.message;
-    if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-      errorMsg = "Invalid email or password.";
-    } else if (error.code === "auth/email-already-in-use") {
-      errorMsg = "An account with this email already exists. Please login instead.";
-    } else if (error.code === "auth/weak-password") {
-      errorMsg = "Password should be at least 6 characters.";
-    } else if (error.code === "auth/invalid-api-key") {
-      errorMsg = "Firebase API key is unconfigured. Please update your Firebase API key in config settings.";
-    }
-    el.authErrorMessage.textContent = errorMsg;
-  } finally {
-    el.authSubmitBtn.disabled = false;
-    el.authSubmitBtn.textContent = authMode === "login" ? "Login to Dashboard" : "Register Account";
-  }
-});
-
-// Guard Check: Verify whether authenticated UID is in the "admins" collection
-async function checkAdminPrivileges(user) {
-  if (!user) return false;
-  try {
-    const adminRef = doc(db, "admins", user.uid);
-    const adminSnap = await getDoc(adminRef);
-
-    if (adminSnap.exists()) {
-      currentAdminProfile = adminSnap.data();
-      return true;
-    }
-    return false;
-  } catch (err) {
-    console.warn("Could not query 'admins' collection:", err);
-    return false;
-  }
+  showToast(message, "error");
 }
 
-// Master Auth State Observer
-onAuthStateChanged(auth, async (user) => {
+// Check Auth State
+onAuthStateChanged(auth, (user) => {
   currentUser = user;
-  if (!user) {
-    // Non-authenticated user -> Force Login or Register screen
-    el.authGuardScreen.style.display = "flex";
-    el.accessDeniedScreen.style.display = "none";
-    el.adminDashboard.style.display = "none";
-    stopRealtimeListeners();
-    return;
-  }
-
-  // User is authenticated, now verify admin collection membership
-  const isAdmin = await checkAdminPrivileges(user);
-
-  if (isAdmin) {
-    // Fully authorized Admin
-    el.authGuardScreen.style.display = "none";
-    el.accessDeniedScreen.style.display = "none";
-    el.adminDashboard.style.display = "flex";
-    
-    // Set user info
-    const displayName = user.displayName || user.email.split("@")[0];
-    el.userDisplayName.textContent = displayName;
-    el.userAvatarInitial.textContent = displayName.charAt(0).toUpperCase();
-
-    // Start real-time listeners for Courses and Posts
-    startRealtimeListeners();
+  if (user && user.email === ADMIN_EMAIL) {
+    if (loginSection) {
+      loginSection.classList.add('hidden');
+      loginSection.style.display = 'none';
+    }
+    if (el.accessDeniedScreen) el.accessDeniedScreen.style.display = 'none';
+    if (dashboardSection) {
+      dashboardSection.classList.remove('hidden');
+      dashboardSection.style.display = 'flex';
+    }
+    loadDashboardData();
+  } else if (user && user.email !== ADMIN_EMAIL) {
+    // If logged in with non-admin email
+    signOut(auth);
+    showAuthError("Access Denied: You are not authorized as Administrator.");
   } else {
-    // Authenticated, but not yet authorized in 'admins' collection
-    el.authGuardScreen.style.display = "none";
-    el.adminDashboard.style.display = "none";
-    el.accessDeniedScreen.style.display = "flex";
-
-    el.deniedEmail.textContent = user.email;
-    el.deniedUid.textContent = user.uid;
+    if (loginSection) {
+      loginSection.classList.remove('hidden');
+      loginSection.style.display = 'flex';
+    }
+    if (dashboardSection) {
+      dashboardSection.classList.add('hidden');
+      dashboardSection.style.display = 'none';
+    }
     stopRealtimeListeners();
   }
 });
 
-// Access Denied Screen Actions
-el.btnCopyUid.addEventListener("click", () => {
-  if (currentUser) {
-    navigator.clipboard.writeText(currentUser.uid).then(() => {
-      showToast("Admin UID copied to clipboard", "success");
-    });
-  }
-});
+// Admin Login Process
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (authError) {
+      authError.textContent = "";
+      authError.classList.add('hidden');
+    }
+    const email = (document.getElementById('login-email') || document.getElementById('auth-email') || {}).value?.trim() || "";
+    const password = (document.getElementById('login-password') || document.getElementById('auth-password') || {}).value || "";
+    const name = (document.getElementById('auth-name') || {}).value?.trim() || "";
 
-el.btnCheckApproval.addEventListener("click", async () => {
-  if (!currentUser) return;
-  el.btnCheckApproval.textContent = "Checking...";
-  const isAdmin = await checkAdminPrivileges(currentUser);
-  el.btnCheckApproval.textContent = "Check Approval Status";
-  if (isAdmin) {
-    showToast("Admin access confirmed!", "success");
-    el.accessDeniedScreen.style.display = "none";
-    el.adminDashboard.style.display = "flex";
-    startRealtimeListeners();
-  } else {
-    showToast("UID is not yet in the 'admins' collection. Please add it in Firestore.", "error");
-  }
-});
+    if (!email || !password) {
+      showAuthError("Please provide both email and password.");
+      return;
+    }
 
-// Self-provision initial Admin document (for initial setup & sandbox validation)
-el.btnDevClaimAdmin.addEventListener("click", async () => {
-  if (!currentUser) return;
-  try {
-    await setDoc(doc(db, "admins", currentUser.uid), {
-      email: currentUser.email,
-      role: "admin",
-      displayName: currentUser.displayName || "Administrator",
-      createdAt: serverTimestamp()
-    });
-    showToast("Admin privileges assigned successfully!", "success");
-    el.accessDeniedScreen.style.display = "none";
-    el.adminDashboard.style.display = "flex";
-    startRealtimeListeners();
-  } catch (err) {
-    console.error("Error setting admin role:", err);
-    showToast(`Failed to claim admin: ${err.message}`, "error");
-  }
-});
+    if (email !== ADMIN_EMAIL) {
+      showAuthError("Access Denied: Invalid Admin Credentials.");
+      return;
+    }
 
-function handleSignOut() {
-  signOut(auth).then(() => {
-    showToast("Signed out successfully", "info");
-    setAuthMode("login");
+    if (el.authSubmitBtn) {
+      el.authSubmitBtn.disabled = true;
+      el.authSubmitBtn.textContent = "Authenticating...";
+    }
+
+    try {
+      if (authMode === "register") {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        if (name && cred.user) {
+          await updateProfile(cred.user, { displayName: name });
+        }
+        showToast("Account registered! Welcome Administrator.", "success");
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+        showToast("Welcome back, Administrator!", "success");
+      }
+      if (authError) authError.classList.add('hidden');
+    } catch (error) {
+      console.error("Auth Error:", error);
+      let errorMsg = error.message;
+      if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        errorMsg = "Invalid email or password.";
+      } else if (error.code === "auth/email-already-in-use") {
+        errorMsg = "Account already registered. Please switch to the Login tab.";
+      } else if (error.code === "auth/weak-password") {
+        errorMsg = "Password should be at least 6 characters.";
+      }
+      showAuthError(errorMsg);
+    } finally {
+      if (el.authSubmitBtn) {
+        el.authSubmitBtn.disabled = false;
+        el.authSubmitBtn.textContent = authMode === "login" ? "Login to Dashboard" : "Register Account";
+      }
+    }
   });
 }
 
-el.btnSignOut.addEventListener("click", handleSignOut);
-el.btnDeniedSignout.addEventListener("click", handleSignOut);
+// Logout Process
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    signOut(auth).then(() => {
+      showToast("Signed out successfully", "info");
+      setAuthMode("login");
+    });
+  });
+}
+
+if (el.btnDeniedSignout) {
+  el.btnDeniedSignout.addEventListener('click', () => {
+    signOut(auth).then(() => {
+      showToast("Signed out successfully", "info");
+      setAuthMode("login");
+    });
+  });
+}
+
+function loadDashboardData() {
+  // Database CRUD operations run here securely via onSnapshot
+  console.log("Admin Dashboard Loaded Successfully");
+  if (currentUser) {
+    const displayName = currentUser.displayName || currentUser.email.split("@")[0];
+    if (el.userDisplayName) el.userDisplayName.textContent = displayName;
+    if (el.userAvatarInitial) el.userAvatarInitial.textContent = displayName.charAt(0).toUpperCase();
+  }
+  startRealtimeListeners();
+}
 
 // -------------------------------------------------------------
 // 2. REAL-TIME DATA SYNCHRONIZATION (onSnapshot listeners)

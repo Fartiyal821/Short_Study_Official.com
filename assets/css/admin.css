@@ -786,7 +786,12 @@ a {
 }
 
 /* Strict Auth Guard Screen */
-#auth-guard-screen {
+.hidden {
+  display: none !important;
+}
+
+#auth-guard-screen,
+#login-section {
   position: fixed;
   inset: 0;
   background: var(--bg-obsidian);
