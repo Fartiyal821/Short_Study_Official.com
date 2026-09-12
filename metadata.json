@@ -1,0 +1,6 @@
+{
+  "name": "ShortStudy",
+  "description": "A free, structured programming curriculum and computer science learning platform with real-time course and lesson management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
