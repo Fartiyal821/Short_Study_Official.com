@@ -16,7 +16,8 @@ import {
   query, 
   orderBy, 
   serverTimestamp,
-  getDoc
+  getDoc,
+  runTransaction
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { auth, db, firebaseConfig } from "./firebase-config.js";
 import { sanitizeHTML, processYouTubeEmbed, extractYouTubeId } from "./sanitizer.js";
@@ -135,7 +136,31 @@ const el = {
   // API Config Modal / Settings
   apiKeyInput: document.getElementById("config-api-key"),
   btnSaveApiKey: document.getElementById("btn-save-api-key"),
-  toastContainer: document.getElementById("toast-container")
+  toastContainer: document.getElementById("toast-container"),
+
+  // Dedicated Publish Content Modal
+  publishModal: document.getElementById("publish-modal"),
+  publishModalTitle: document.getElementById("publish-modal-title"),
+  publishModalClose: document.getElementById("publish-modal-close"),
+  publishModalCancel: document.getElementById("publish-modal-cancel"),
+  publishCourseTitle: document.getElementById("publish-course-title"),
+  publishCourseIcon: document.getElementById("publish-course-icon"),
+  publishCourseBadge: document.getElementById("publish-course-badge"),
+  publishTargetCourseId: document.getElementById("publish-target-course-id"),
+  btnQuickActivateCourse: document.getElementById("btn-quick-activate-course"),
+  publishContentForm: document.getElementById("publish-content-form"),
+  publishLessonTitle: document.getElementById("publish-lesson-title"),
+  publishLessonSlug: document.getElementById("publish-lesson-slug"),
+  publishLessonReadingTime: document.getElementById("publish-lesson-reading-time"),
+  publishLessonOrder: document.getElementById("publish-lesson-order"),
+  publishLessonExcerpt: document.getElementById("publish-lesson-excerpt"),
+  publishLessonYoutube: document.getElementById("publish-lesson-youtube"),
+  publishLessonContent: document.getElementById("publish-lesson-content"),
+  btnSubmitPublishAndActivate: document.getElementById("btn-submit-publish-and-activate"),
+
+  // Post Modal in-dev course elements
+  postCourseInDevAlert: document.getElementById("post-course-in-dev-alert"),
+  postPublishContentBtn: document.getElementById("post-publish-content-btn")
 };
 
 // UI Notification Toast Helper
@@ -370,14 +395,16 @@ function loadDashboardData() {
 function startRealtimeListeners() {
   stopRealtimeListeners(); // avoid duplicate listeners
 
-  // 1. Courses Real-Time Listener
+  // 1. Courses Real-Time Listener (fetches ALL courses including in_development)
   try {
-    const coursesQuery = query(collection(db, "courses"), orderBy("createdAt", "desc"));
+    const coursesQuery = collection(db, "courses");
     unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
       coursesData = [];
       snapshot.forEach((docSnap) => {
         coursesData.push({ id: docSnap.id, ...docSnap.data() });
       });
+      // Sort in memory so documents lacking order or createdAt are never hidden
+      coursesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       renderCoursesTable();
       populateCourseSelects();
       updateMetrics();
@@ -385,7 +412,7 @@ function startRealtimeListeners() {
     }, (error) => {
       console.warn("Firestore Courses listener error:", error);
       el.livePulseStatus.textContent = "Sync connection warning";
-      // If Firestore rules are locked, populate with initial mock courses so dashboard is functional
+      // If Firestore rules are locked, populate with initial courses so dashboard is functional
       if (coursesData.length === 0) {
         populateDefaultSeedData();
       }
@@ -394,14 +421,15 @@ function startRealtimeListeners() {
     console.error("Failed to start courses snapshot listener:", err);
   }
 
-  // 2. Posts/Lessons Real-Time Listener
+  // 2. Posts/Lessons Real-Time Listener (fetches ALL posts including in_development)
   try {
-    const postsQuery = query(collection(db, "posts"), orderBy("createdAt", "desc"));
+    const postsQuery = collection(db, "posts");
     unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
       postsData = [];
       snapshot.forEach((docSnap) => {
         postsData.push({ id: docSnap.id, ...docSnap.data() });
       });
+      postsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       renderPostsTable();
       updateMetrics();
     }, (error) => {
@@ -452,6 +480,33 @@ function populateDefaultSeedData() {
       icon: "📊",
       status: "published",
       order: 3
+    },
+    {
+      id: "course-java",
+      title: "Java & OOP Concepts",
+      slug: "java-oop-concepts",
+      description: "Classes, objects, and inheritance for technical interview preparation.",
+      icon: "☕",
+      status: "in_development",
+      order: 4
+    },
+    {
+      id: "course-web",
+      title: "HTML & CSS Basics",
+      slug: "html-css-basics",
+      description: "Structuring and styling a webpage for anyone starting in web development.",
+      icon: "🌐",
+      status: "in_development",
+      order: 5
+    },
+    {
+      id: "course-sql",
+      title: "SQL Basics",
+      slug: "sql-basics",
+      description: "The queries every fresher is expected to know for a technical interview.",
+      icon: "🗄️",
+      status: "in_development",
+      order: 6
     }
   ];
 
@@ -516,20 +571,44 @@ function renderCoursesTable(filterQuery = "") {
 
   filtered.forEach((course) => {
     const tr = document.createElement("tr");
-    const isPublished = course.status === "published";
+    const isInDev = course.status === "in_development";
+    const isPublished = course.status === "published" || course.status === "active";
     const postCount = postsData.filter(p => p.courseId === course.id).length;
+
+    let statusBadgeHtml = "";
+    if (isInDev) {
+      statusBadgeHtml = `<span class="badge badge-in-dev">In Development</span>`;
+    } else if (isPublished) {
+      statusBadgeHtml = `<span class="badge badge-published">Published</span>`;
+    } else {
+      statusBadgeHtml = `<span class="badge badge-draft">Draft</span>`;
+    }
+
+    // Prominent "In Development" badge next to title
+    const titleDevBadge = isInDev 
+      ? `<span class="badge badge-in-dev" style="margin-left: 8px;">In Development</span>` 
+      : "";
+
+    // Explicit "Publish Content" action button for courses marked "in_development"
+    const publishBtnHtml = isInDev 
+      ? `<button class="btn btn-success btn-sm publish-course-btn" data-id="${course.id}" title="Publish content and activate course into live status">🚀 Publish Content</button>` 
+      : "";
 
     tr.innerHTML = `
       <td>
-        <span style="font-size: 18px; margin-right: 8px;">${course.icon || "📘"}</span>
-        <strong>${escapeHtml(course.title)}</strong>
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+          <span style="font-size: 18px;">${course.icon || "📘"}</span>
+          <strong>${escapeHtml(course.title)}</strong>
+          ${titleDevBadge}
+        </div>
       </td>
       <td><span class="font-mono" style="color:var(--indigo-light);">${escapeHtml(course.slug)}</span></td>
-      <td><span class="badge ${isPublished ? "badge-published" : "badge-draft"}">${isPublished ? "Published" : "Draft"}</span></td>
+      <td>${statusBadgeHtml}</td>
       <td><span class="font-mono">${postCount}</span></td>
       <td><span class="font-mono">${course.order ?? 0}</span></td>
       <td>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          ${publishBtnHtml}
           <button class="btn btn-secondary btn-sm edit-course-btn" data-id="${course.id}">Edit</button>
           <button class="btn btn-danger btn-sm delete-course-btn" data-id="${course.id}">Delete</button>
         </div>
@@ -539,11 +618,174 @@ function renderCoursesTable(filterQuery = "") {
   });
 
   // Attach dynamic button listeners
+  el.coursesTableBody.querySelectorAll(".publish-course-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPublishModal(btn.dataset.id));
+  });
   el.coursesTableBody.querySelectorAll(".edit-course-btn").forEach(btn => {
     btn.addEventListener("click", () => openCourseModal(btn.dataset.id));
   });
   el.coursesTableBody.querySelectorAll(".delete-course-btn").forEach(btn => {
     btn.addEventListener("click", () => confirmDeleteCourse(btn.dataset.id));
+  });
+}
+
+// -------------------------------------------------------------
+// DEDICATED PUBLISH COURSE & CONTENT MODAL (In Development Logic)
+// -------------------------------------------------------------
+function openPublishModal(courseId) {
+  const course = coursesData.find(c => c.id === courseId);
+  if (!course) {
+    showToast("Course not found", "error");
+    return;
+  }
+
+  el.publishTargetCourseId.value = course.id;
+  el.publishCourseTitle.textContent = course.title;
+  el.publishCourseIcon.textContent = course.icon || "📘";
+  el.publishModalTitle.textContent = `Publish Content: ${course.title}`;
+  
+  if (el.publishContentForm) el.publishContentForm.reset();
+  
+  // Calculate next lesson sequence number
+  const nextOrder = postsData.filter(p => p.courseId === course.id).length + 1;
+  el.publishLessonOrder.value = nextOrder;
+  el.publishLessonReadingTime.value = "5 min read";
+  
+  el.publishModal.classList.add("open");
+}
+
+function closePublishModal() {
+  el.publishModal.classList.remove("open");
+  if (el.publishContentForm) el.publishContentForm.reset();
+}
+
+if (el.publishModalClose) el.publishModalClose.addEventListener("click", closePublishModal);
+if (el.publishModalCancel) el.publishModalCancel.addEventListener("click", closePublishModal);
+
+// Auto-generate lesson slug in publish modal
+if (el.publishLessonTitle) {
+  el.publishLessonTitle.addEventListener("input", () => {
+    el.publishLessonSlug.value = slugify(el.publishLessonTitle.value);
+  });
+}
+
+// Action 1: Direct activate course into published status (permanently removes In Development badge)
+if (el.btnQuickActivateCourse) {
+  el.btnQuickActivateCourse.addEventListener("click", async () => {
+    const courseId = el.publishTargetCourseId.value;
+    const course = coursesData.find(c => c.id === courseId);
+    if (!courseId) return;
+
+    try {
+      const docRef = doc(db, "courses", courseId);
+      await updateDoc(docRef, {
+        status: "published",
+        updatedAt: serverTimestamp()
+      });
+      showToast(`Course "${course ? course.title : ''}" published! "In Development" badge permanently removed.`, "success");
+      closePublishModal();
+    } catch (err) {
+      console.error("Direct publish course error:", err);
+      // Fallback local update
+      const idx = coursesData.findIndex(c => c.id === courseId);
+      if (idx !== -1) {
+        coursesData[idx].status = "published";
+        renderCoursesTable();
+        populateCourseSelects();
+      }
+      showToast(`Course status updated to Published! "In Development" badge removed.`, "success");
+      closePublishModal();
+    }
+  });
+}
+
+// Action 2: Append new lesson content and update course status atomically
+if (el.publishContentForm) {
+  el.publishContentForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const courseId = el.publishTargetCourseId.value;
+    const course = coursesData.find(c => c.id === courseId);
+    if (!courseId) return;
+
+    const lessonTitle = el.publishLessonTitle.value.trim();
+    const rawContent = el.publishLessonContent.value;
+    const rawYoutube = el.publishLessonYoutube.value.trim();
+
+    if (!lessonTitle || !rawContent) {
+      showToast("Please provide both lesson title and HTML content.", "error");
+      return;
+    }
+
+    // Sanitize lesson content with DOMPurify
+    const sanitizedContent = sanitizeHTML(rawContent);
+
+    // Validate and sanitize YouTube embed if present
+    let cleanYoutubeEmbed = "";
+    if (rawYoutube) {
+      const processed = processYouTubeEmbed(rawYoutube);
+      cleanYoutubeEmbed = processed.isValid ? processed.iframeHtml : rawYoutube;
+    }
+
+    const postPayload = {
+      courseId: courseId,
+      courseTitle: course ? course.title : "Course",
+      title: lessonTitle,
+      slug: el.publishLessonSlug.value.trim() || slugify(lessonTitle),
+      excerpt: el.publishLessonExcerpt.value.trim(),
+      readingTime: el.publishLessonReadingTime.value.trim() || "5 min read",
+      status: "published", // Published content
+      order: parseInt(el.publishLessonOrder.value, 10) || 1,
+      youtubeEmbed: cleanYoutubeEmbed,
+      content: sanitizedContent,
+      author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    try {
+      // Atomic execution using runTransaction
+      const courseDocRef = doc(db, "courses", courseId);
+      const newPostDocRef = doc(collection(db, "posts"));
+
+      await runTransaction(db, async (transaction) => {
+        // 1. Append new lesson content successfully into posts collection
+        transaction.set(newPostDocRef, postPayload);
+        // 2. Update course status to "published" (permanently removing In Development badge)
+        transaction.update(courseDocRef, {
+          status: "published",
+          updatedAt: serverTimestamp()
+        });
+      });
+
+      showToast(`New lesson appended & course "${course ? course.title : ''}" published! "In Development" badge permanently removed.`, "success");
+      closePublishModal();
+    } catch (err) {
+      console.warn("Transaction publish failed, trying individual updates:", err);
+      try {
+        // Fallback: individual writes
+        await addDoc(collection(db, "posts"), postPayload);
+        await updateDoc(doc(db, "courses", courseId), {
+          status: "published",
+          updatedAt: serverTimestamp()
+        });
+        showToast(`New lesson appended & course published! "In Development" badge permanently removed.`, "success");
+        closePublishModal();
+      } catch (innerErr) {
+        console.error("Publish content error:", innerErr);
+        // Fallback local memory update
+        postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
+        const cIdx = coursesData.findIndex(c => c.id === courseId);
+        if (cIdx !== -1) {
+          coursesData[cIdx].status = "published";
+        }
+        renderCoursesTable();
+        populateCourseSelects();
+        renderPostsTable();
+        updateMetrics();
+        showToast(`Content published locally! "In Development" badge removed.`, "info");
+        closePublishModal();
+      }
+    }
   });
 }
 
@@ -657,7 +899,8 @@ function populateCourseSelects() {
   coursesData.forEach(course => {
     const opt = document.createElement("option");
     opt.value = course.id;
-    opt.textContent = `${course.icon || "📘"} ${course.title}`;
+    const inDevTag = course.status === "in_development" ? " [In Development]" : "";
+    opt.textContent = `${course.icon || "📘"} ${course.title}${inDevTag}`;
     el.postCourseSelect.appendChild(opt);
   });
 }
@@ -683,20 +926,46 @@ function renderPostsTable(filterQuery = "") {
 
   filtered.forEach((post) => {
     const tr = document.createElement("tr");
-    const isPublished = post.status === "published";
+    const isInDev = post.status === "in_development";
+    const isPublished = post.status === "published" || post.status === "active";
     const hasVideo = post.youtubeEmbed && post.youtubeEmbed.trim() !== "";
 
+    let statusBadgeHtml = "";
+    if (isInDev) {
+      statusBadgeHtml = `<span class="badge badge-in-dev">In Development</span>`;
+    } else if (isPublished) {
+      statusBadgeHtml = `<span class="badge badge-published">Published</span>`;
+    } else {
+      statusBadgeHtml = `<span class="badge badge-draft">Draft</span>`;
+    }
+
+    // Prominent "In Development" badge next to lesson title
+    const titleDevBadge = isInDev 
+      ? `<span class="badge badge-in-dev" style="margin-left: 8px;">In Development</span>` 
+      : "";
+
+    // Action button for in_development post
+    const publishPostBtnHtml = isInDev 
+      ? `<button class="btn btn-success btn-sm publish-single-post-btn" data-id="${post.id}" title="Publish this lesson now">🚀 Publish</button>` 
+      : "";
+
     tr.innerHTML = `
-      <td><strong>${escapeHtml(post.title)}</strong></td>
+      <td>
+        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
+          <strong>${escapeHtml(post.title)}</strong>
+          ${titleDevBadge}
+        </div>
+      </td>
       <td><span style="color:var(--text-muted);">${escapeHtml(post.courseTitle || "Unassigned")}</span></td>
-      <td><span class="badge ${isPublished ? "badge-published" : "badge-draft"}">${isPublished ? "Published" : "Draft"}</span></td>
+      <td>${statusBadgeHtml}</td>
       <td>
         ${hasVideo ? '<span class="badge badge-video">▶ Video</span>' : '<span style="color:var(--text-dim);">—</span>'}
       </td>
       <td><span class="font-mono">${escapeHtml(post.readingTime || "5 min read")}</span></td>
       <td><span class="font-mono">${post.order ?? 0}</span></td>
       <td>
-        <div style="display:flex; gap:8px;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          ${publishPostBtnHtml}
           <a href="lesson.html?id=${post.id}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;">View</a>
           <button class="btn btn-secondary btn-sm edit-post-btn" data-id="${post.id}">Edit</button>
           <button class="btn btn-danger btn-sm delete-post-btn" data-id="${post.id}">Delete</button>
@@ -706,12 +975,57 @@ function renderPostsTable(filterQuery = "") {
     el.postsTableBody.appendChild(tr);
   });
 
+  el.postsTableBody.querySelectorAll(".publish-single-post-btn").forEach(btn => {
+    btn.addEventListener("click", () => publishSinglePost(btn.dataset.id));
+  });
   el.postsTableBody.querySelectorAll(".edit-post-btn").forEach(btn => {
     btn.addEventListener("click", () => openPostModal(btn.dataset.id));
   });
   el.postsTableBody.querySelectorAll(".delete-post-btn").forEach(btn => {
     btn.addEventListener("click", () => confirmDeletePost(btn.dataset.id));
   });
+}
+
+// Direct publish a single post/lesson
+async function publishSinglePost(postId) {
+  const post = postsData.find(p => p.id === postId);
+  if (!post) return;
+
+  try {
+    const postRef = doc(db, "posts", postId);
+    await updateDoc(postRef, {
+      status: "published",
+      updatedAt: serverTimestamp()
+    });
+
+    // If the associated course is currently in_development, also auto-update it to published
+    if (post.courseId) {
+      const parentCourse = coursesData.find(c => c.id === post.courseId);
+      if (parentCourse && parentCourse.status === "in_development") {
+        await updateDoc(doc(db, "courses", post.courseId), {
+          status: "published",
+          updatedAt: serverTimestamp()
+        });
+      }
+    }
+
+    showToast(`Lesson "${post.title}" published! "In Development" badge removed.`, "success");
+  } catch (err) {
+    console.error("Publish single post error:", err);
+    // Local fallback
+    const idx = postsData.findIndex(p => p.id === postId);
+    if (idx !== -1) postsData[idx].status = "published";
+    if (post.courseId) {
+      const cIdx = coursesData.findIndex(c => c.id === post.courseId);
+      if (cIdx !== -1 && coursesData[cIdx].status === "in_development") {
+        coursesData[cIdx].status = "published";
+      }
+    }
+    renderPostsTable();
+    renderCoursesTable();
+    updateMetrics();
+    showToast(`Lesson published locally!`, "info");
+  }
 }
 
 // Dedicated YouTube Live Preview Handler
@@ -753,6 +1067,27 @@ el.tabContentPreview.addEventListener("click", () => {
   el.previewPane.innerHTML = sanitized || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
 });
 
+// Helper to toggle in-development alert & explicit publish button inside Post Modal
+function updatePostModalInDevNotice() {
+  const selectedCourseId = el.postCourseSelect.value;
+  const course = coursesData.find(c => c.id === selectedCourseId);
+  const isCourseInDev = course && course.status === "in_development";
+
+  if (el.postCourseInDevAlert) {
+    if (isCourseInDev) {
+      el.postCourseInDevAlert.classList.remove("hidden");
+    } else {
+      el.postCourseInDevAlert.classList.add("hidden");
+    }
+  }
+
+  if (el.postPublishContentBtn) {
+    el.postPublishContentBtn.style.display = isCourseInDev ? "inline-flex" : "none";
+  }
+}
+
+el.postCourseSelect.addEventListener("change", updatePostModalInDevNotice);
+
 function openPostModal(postId = null) {
   editingPostId = postId;
   populateCourseSelects();
@@ -789,12 +1124,15 @@ function openPostModal(postId = null) {
     el.postOrder.value = postsData.length + 1;
   }
 
+  updatePostModalInDevNotice();
   el.postModal.classList.add("open");
 }
 
 function closePostModal() {
   el.postModal.classList.remove("open");
   editingPostId = null;
+  if (el.postCourseInDevAlert) el.postCourseInDevAlert.classList.add("hidden");
+  if (el.postPublishContentBtn) el.postPublishContentBtn.style.display = "none";
 }
 
 el.btnNewPost.addEventListener("click", () => openPostModal());
@@ -806,6 +1144,110 @@ el.postTitle.addEventListener("input", () => {
     el.postSlug.value = slugify(el.postTitle.value);
   }
 });
+
+// Explicit "Publish Content & Course" button inside Post Modal
+if (el.postPublishContentBtn) {
+  el.postPublishContentBtn.addEventListener("click", async () => {
+    const selectedCourseId = el.postCourseSelect.value;
+    const selectedCourse = coursesData.find(c => c.id === selectedCourseId);
+    if (!selectedCourseId) {
+      showToast("Please select an associated course first.", "error");
+      return;
+    }
+
+    const titleVal = el.postTitle.value.trim();
+    const contentVal = el.postContent.value;
+    if (!titleVal || !contentVal) {
+      showToast("Please fill in lesson title and HTML content.", "error");
+      return;
+    }
+
+    const sanitizedContent = sanitizeHTML(contentVal);
+    const rawYoutube = el.postYoutubeInput.value.trim();
+    let cleanYoutubeEmbed = "";
+    if (rawYoutube) {
+      const processed = processYouTubeEmbed(rawYoutube);
+      cleanYoutubeEmbed = processed.isValid ? processed.iframeHtml : rawYoutube;
+    }
+
+    const postPayload = {
+      courseId: selectedCourseId,
+      courseTitle: selectedCourse ? selectedCourse.title : "General",
+      title: titleVal,
+      slug: el.postSlug.value.trim() || slugify(titleVal),
+      excerpt: el.postExcerpt.value.trim(),
+      readingTime: el.postReadingTime.value.trim() || "5 min read",
+      status: "published", // Force published
+      order: parseInt(el.postOrder.value, 10) || 0,
+      youtubeEmbed: cleanYoutubeEmbed,
+      content: sanitizedContent,
+      author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
+      updatedAt: serverTimestamp()
+    };
+
+    try {
+      const courseDocRef = doc(db, "courses", selectedCourseId);
+      
+      if (editingPostId) {
+        const postDocRef = doc(db, "posts", editingPostId);
+        await runTransaction(db, async (transaction) => {
+          transaction.update(postDocRef, postPayload);
+          transaction.update(courseDocRef, {
+            status: "published",
+            updatedAt: serverTimestamp()
+          });
+        });
+      } else {
+        const newPostDocRef = doc(collection(db, "posts"));
+        postPayload.createdAt = serverTimestamp();
+        await runTransaction(db, async (transaction) => {
+          transaction.set(newPostDocRef, postPayload);
+          transaction.update(courseDocRef, {
+            status: "published",
+            updatedAt: serverTimestamp()
+          });
+        });
+      }
+
+      showToast(`Course "${selectedCourse.title}" & content successfully published! "In Development" badge permanently removed.`, "success");
+      closePostModal();
+    } catch (err) {
+      console.warn("Atomic transaction fallback, trying sequential writes:", err);
+      try {
+        if (editingPostId) {
+          await updateDoc(doc(db, "posts", editingPostId), postPayload);
+        } else {
+          postPayload.createdAt = serverTimestamp();
+          await addDoc(collection(db, "posts"), postPayload);
+        }
+        await updateDoc(doc(db, "courses", selectedCourseId), {
+          status: "published",
+          updatedAt: serverTimestamp()
+        });
+        showToast(`Course "${selectedCourse.title}" & content published! "In Development" badge removed.`, "success");
+        closePostModal();
+      } catch (innerErr) {
+        console.error("Publish content & course error:", innerErr);
+        // Fallback local memory update
+        if (editingPostId) {
+          const idx = postsData.findIndex(p => p.id === editingPostId);
+          if (idx !== -1) postsData[idx] = { ...postsData[idx], ...postPayload };
+        } else {
+          postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
+        }
+        const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
+        if (cIdx !== -1) coursesData[cIdx].status = "published";
+
+        renderPostsTable();
+        renderCoursesTable();
+        populateCourseSelects();
+        updateMetrics();
+        showToast(`Saved locally! "In Development" badge removed.`, "info");
+        closePostModal();
+      }
+    }
+  });
+}
 
 // Post Submit Handler with DOMPurify Sanitization
 el.postForm.addEventListener("submit", async (e) => {
@@ -856,6 +1298,20 @@ el.postForm.addEventListener("submit", async (e) => {
       await addDoc(collection(db, "posts"), postPayload);
       showToast("Post published live!", "success");
     }
+
+    // If the post is published and the course is currently in_development, auto-update course to published!
+    if (el.postStatus.value === "published" && selectedCourse && selectedCourse.status === "in_development") {
+      try {
+        await updateDoc(doc(db, "courses", selectedCourseId), {
+          status: "published",
+          updatedAt: serverTimestamp()
+        });
+        showToast(`Course "${selectedCourse.title}" status updated to Published! "In Development" badge removed.`, "success");
+      } catch (cErr) {
+        console.warn("Could not auto-update course status:", cErr);
+      }
+    }
+
     closePostModal();
   } catch (err) {
     console.error("Post save error:", err);
@@ -866,6 +1322,13 @@ el.postForm.addEventListener("submit", async (e) => {
     } else {
       postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
     }
+
+    if (el.postStatus.value === "published" && selectedCourse && selectedCourse.status === "in_development") {
+      const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
+      if (cIdx !== -1) coursesData[cIdx].status = "published";
+      renderCoursesTable();
+    }
+
     renderPostsTable();
     updateMetrics();
     closePostModal();

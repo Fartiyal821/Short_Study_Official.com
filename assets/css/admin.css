@@ -365,6 +365,18 @@ a {
   color: #fff;
 }
 
+.btn-success {
+  background: rgba(16, 185, 129, 0.16);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.btn-success:hover {
+  background: #10b981;
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+}
+
 .btn-sm {
   padding: 6px 12px;
   font-size: 12px;
@@ -532,6 +544,15 @@ a {
   background: var(--amber-dim);
   color: var(--amber);
   border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-in-dev {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+  letter-spacing: 0.02em;
 }
 
 .badge-video {
