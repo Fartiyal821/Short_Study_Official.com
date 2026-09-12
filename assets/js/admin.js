@@ -21,6 +21,16 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { auth, db, firebaseConfig } from "./firebase-config.js";
 import { sanitizeHTML, processYouTubeEmbed, extractYouTubeId } from "./sanitizer.js";
+import { 
+  parseAndFormatLessonContent, 
+  calculateReadingTime, 
+  generateExcerpt, 
+  slugify 
+} from "./content-format.js";
+import { 
+  PRE_EXISTING_COURSES, 
+  PRE_EXISTING_LESSONS 
+} from "./catalog-data.js";
 
 // State Management
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
@@ -28,10 +38,16 @@ const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 let currentUser = null;
 let currentAdminProfile = null;
 let activeTab = "courses"; // 'overview', 'courses', 'posts', 'preview', 'config'
-let coursesData = [];
-let postsData = [];
+let coursesData = [...PRE_EXISTING_COURSES];
+let postsData = [...PRE_EXISTING_LESSONS];
 let unsubscribeCourses = null;
 let unsubscribePosts = null;
+let unsubscribeLessons = null;
+
+const firestoreCoursesMap = new Map();
+const firestorePostsMap = new Map();
+const firestoreLessonsMap = new Map();
+
 let editingCourseId = null;
 let editingPostId = null;
 
@@ -390,53 +406,169 @@ function loadDashboardData() {
 }
 
 // -------------------------------------------------------------
-// 2. REAL-TIME DATA SYNCHRONIZATION (onSnapshot listeners)
+// 2. REAL-TIME DATA SYNCHRONIZATION (Multi-Collection broad listeners)
 // -------------------------------------------------------------
+
+/**
+ * Synthesizes courses and lessons from base catalog and Firestore maps.
+ * Ensures ALL pre-existing courses and lessons appear immediately upon load.
+ */
+function rebuildAndRenderContent() {
+  // 1. Synthesize Courses: start with PRE_EXISTING_COURSES as base
+  const courseMap = new Map();
+  PRE_EXISTING_COURSES.forEach(c => courseMap.set(c.id, { ...c }));
+
+  firestoreCoursesMap.forEach((cData, docId) => {
+    // Match by ID or slug so documents from either naming convention sync properly
+    const existing = courseMap.get(docId) || Array.from(courseMap.values()).find(item => item.slug === cData.slug);
+    if (existing) {
+      courseMap.set(existing.id, { ...existing, ...cData, id: existing.id });
+    } else {
+      courseMap.set(docId, { id: docId, ...cData });
+    }
+  });
+
+  coursesData = Array.from(courseMap.values());
+  coursesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+  // 2. Synthesize Posts & Lessons: start with PRE_EXISTING_LESSONS as base
+  const postMap = new Map();
+  PRE_EXISTING_LESSONS.forEach(l => postMap.set(l.id, { ...l }));
+
+  const normalizeAndMerge = (docId, data) => {
+    const rawContent = data.content || data.body || data.text || "";
+    const titleVal = data.title || data.name || data.topic || "Untitled Lesson";
+    const courseIdVal = data.courseId || data.parentCourse || data.course || "";
+
+    const normalized = {
+      id: docId,
+      title: titleVal,
+      courseId: courseIdVal,
+      courseTitle: data.courseTitle || "",
+      content: rawContent,
+      formattedHtml: data.formattedHtml || parseAndFormatLessonContent(rawContent),
+      order: parseInt(data.order ?? data.sequence ?? data.orderNumber ?? data.seq ?? 1, 10),
+      status: data.status || "published",
+      slug: data.slug || slugify(titleVal),
+      readingTime: data.readingTime || calculateReadingTime(rawContent),
+      excerpt: data.excerpt || generateExcerpt(rawContent),
+      youtubeEmbed: data.youtubeEmbed || data.youtube || data.video || "",
+      author: data.author || "ShortStudy Editorial",
+      updatedAt: data.updatedAt || null
+    };
+
+    // Auto-resolve parent course title if empty
+    if (!normalized.courseTitle && normalized.courseId) {
+      const parent = coursesData.find(c => c.id === normalized.courseId || c.slug === normalized.courseId);
+      if (parent) normalized.courseTitle = parent.title;
+    }
+
+    const existing = postMap.get(docId) || Array.from(postMap.values()).find(item => item.slug === normalized.slug && item.courseId === normalized.courseId);
+    if (existing) {
+      postMap.set(existing.id, { ...existing, ...normalized, id: existing.id });
+    } else {
+      postMap.set(docId, normalized);
+    }
+  };
+
+  // Merge both posts and lessons collections without restrictive filters
+  firestorePostsMap.forEach((val, key) => normalizeAndMerge(key, val));
+  firestoreLessonsMap.forEach((val, key) => normalizeAndMerge(key, val));
+
+  postsData = Array.from(postMap.values());
+  postsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+  // Render UI
+  renderCoursesTable();
+  populateCourseSelects();
+  renderPostsTable();
+  updateMetrics();
+
+  // Background sync: write missing catalog items to Firestore
+  syncCatalogToFirestore();
+}
+
+let isSyncingCatalog = false;
+async function syncCatalogToFirestore() {
+  if (isSyncingCatalog || !currentUser) return;
+  isSyncingCatalog = true;
+
+  try {
+    for (const c of PRE_EXISTING_COURSES) {
+      if (!firestoreCoursesMap.has(c.id)) {
+        await setDoc(doc(db, "courses", c.id), c, { merge: true }).catch(() => {});
+      }
+    }
+    for (const l of PRE_EXISTING_LESSONS) {
+      if (!firestorePostsMap.has(l.id)) {
+        await setDoc(doc(db, "posts", l.id), l, { merge: true }).catch(() => {});
+      }
+      if (!firestoreLessonsMap.has(l.id)) {
+        await setDoc(doc(db, "lessons", l.id), l, { merge: true }).catch(() => {});
+      }
+    }
+  } catch (e) {
+    console.debug("Catalog sync note:", e);
+  } finally {
+    isSyncingCatalog = false;
+  }
+}
+
 function startRealtimeListeners() {
   stopRealtimeListeners(); // avoid duplicate listeners
 
-  // 1. Courses Real-Time Listener (fetches ALL courses including in_development)
+  // Immediately render from memory / base catalog
+  rebuildAndRenderContent();
+  el.livePulseStatus.textContent = "Connecting real-time sync...";
+
+  // 1. Broad Courses Listener (fetches ALL courses including in_development)
   try {
     const coursesQuery = collection(db, "courses");
     unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
-      coursesData = [];
+      firestoreCoursesMap.clear();
       snapshot.forEach((docSnap) => {
-        coursesData.push({ id: docSnap.id, ...docSnap.data() });
+        firestoreCoursesMap.set(docSnap.id, docSnap.data());
       });
-      // Sort in memory so documents lacking order or createdAt are never hidden
-      coursesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      renderCoursesTable();
-      populateCourseSelects();
-      updateMetrics();
+      rebuildAndRenderContent();
       el.livePulseStatus.textContent = "Real-time sync active";
     }, (error) => {
-      console.warn("Firestore Courses listener error:", error);
-      el.livePulseStatus.textContent = "Sync connection warning";
-      // If Firestore rules are locked, populate with initial courses so dashboard is functional
-      if (coursesData.length === 0) {
-        populateDefaultSeedData();
-      }
+      console.warn("Firestore Courses listener note:", error);
+      el.livePulseStatus.textContent = "Local offline sync active";
     });
   } catch (err) {
     console.error("Failed to start courses snapshot listener:", err);
   }
 
-  // 2. Posts/Lessons Real-Time Listener (fetches ALL posts including in_development)
+  // 2. Broad Posts Listener (fetches ALL posts without restrictive where filters)
   try {
     const postsQuery = collection(db, "posts");
     unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
-      postsData = [];
+      firestorePostsMap.clear();
       snapshot.forEach((docSnap) => {
-        postsData.push({ id: docSnap.id, ...docSnap.data() });
+        firestorePostsMap.set(docSnap.id, docSnap.data());
       });
-      postsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      renderPostsTable();
-      updateMetrics();
+      rebuildAndRenderContent();
     }, (error) => {
-      console.warn("Firestore Posts listener error:", error);
+      console.warn("Firestore Posts listener note:", error);
     });
   } catch (err) {
     console.error("Failed to start posts snapshot listener:", err);
+  }
+
+  // 3. Broad Lessons Listener (fetches ALL documents from lessons collection)
+  try {
+    const lessonsQuery = collection(db, "lessons");
+    unsubscribeLessons = onSnapshot(lessonsQuery, (snapshot) => {
+      firestoreLessonsMap.clear();
+      snapshot.forEach((docSnap) => {
+        firestoreLessonsMap.set(docSnap.id, docSnap.data());
+      });
+      rebuildAndRenderContent();
+    }, (error) => {
+      console.warn("Firestore Lessons listener note:", error);
+    });
+  } catch (err) {
+    console.error("Failed to start lessons snapshot listener:", err);
   }
 }
 
@@ -449,87 +581,10 @@ function stopRealtimeListeners() {
     unsubscribePosts();
     unsubscribePosts = null;
   }
-}
-
-// Fallback seed courses in memory if database is empty on first run
-function populateDefaultSeedData() {
-  coursesData = [
-    {
-      id: "course-python",
-      title: "Python Basics",
-      slug: "python-basics",
-      description: "Variables, data types, logic and control flow for beginners.",
-      icon: "🐍",
-      status: "published",
-      order: 1
-    },
-    {
-      id: "course-c",
-      title: "C Programming Basics",
-      slug: "c-basics",
-      description: "How memory, pointers, and compilation logic operate under the hood.",
-      icon: "⚡",
-      status: "published",
-      order: 2
-    },
-    {
-      id: "course-dsa",
-      title: "Data Structures: Arrays",
-      slug: "data-structures-arrays",
-      description: "The core foundation of algorithms and technical coding interviews.",
-      icon: "📊",
-      status: "published",
-      order: 3
-    },
-    {
-      id: "course-java",
-      title: "Java & OOP Concepts",
-      slug: "java-oop-concepts",
-      description: "Classes, objects, and inheritance for technical interview preparation.",
-      icon: "☕",
-      status: "in_development",
-      order: 4
-    },
-    {
-      id: "course-web",
-      title: "HTML & CSS Basics",
-      slug: "html-css-basics",
-      description: "Structuring and styling a webpage for anyone starting in web development.",
-      icon: "🌐",
-      status: "in_development",
-      order: 5
-    },
-    {
-      id: "course-sql",
-      title: "SQL Basics",
-      slug: "sql-basics",
-      description: "The queries every fresher is expected to know for a technical interview.",
-      icon: "🗄️",
-      status: "in_development",
-      order: 6
-    }
-  ];
-
-  postsData = [
-    {
-      id: "post-python-1",
-      courseId: "course-python",
-      courseTitle: "Python Basics",
-      title: "Python Variables and Data Types Explained",
-      slug: "python-variables-guide",
-      excerpt: "Deep dive into dynamic typing, memory references, and built-in types in Python 3.",
-      content: "<h2>Understanding Python Variables</h2><p>In Python, variables are symbolic names that reference objects in memory.</p><pre><code># Variable assignment\nx = 42\nname = \"ShortStudy\"\nprint(f\"{name} answer: {x}\")</code></pre>",
-      youtubeEmbed: "https://www.youtube.com/watch?v=kqtD5dpn9C8",
-      readingTime: "6 min read",
-      status: "published",
-      order: 1
-    }
-  ];
-
-  renderCoursesTable();
-  populateCourseSelects();
-  renderPostsTable();
-  updateMetrics();
+  if (unsubscribeLessons) {
+    unsubscribeLessons();
+    unsubscribeLessons = null;
+  }
 }
 
 // Update Overview Metrics
@@ -712,12 +767,18 @@ if (el.publishContentForm) {
     const rawYoutube = el.publishLessonYoutube.value.trim();
 
     if (!lessonTitle || !rawContent) {
-      showToast("Please provide both lesson title and HTML content.", "error");
+      showToast("Please provide both lesson title and lesson content.", "error");
       return;
     }
 
-    // Sanitize lesson content with DOMPurify
-    const sanitizedContent = sanitizeHTML(rawContent);
+    // Automatically align with design system using semantic formatting engine
+    const formattedHtml = parseAndFormatLessonContent(rawContent);
+    const readingTime = (el.publishLessonReadingTime && el.publishLessonReadingTime.value.trim()) 
+      ? el.publishLessonReadingTime.value.trim() 
+      : calculateReadingTime(rawContent);
+    const excerpt = (el.publishLessonExcerpt && el.publishLessonExcerpt.value.trim())
+      ? el.publishLessonExcerpt.value.trim()
+      : generateExcerpt(rawContent);
 
     // Validate and sanitize YouTube embed if present
     let cleanYoutubeEmbed = "";
@@ -730,13 +791,14 @@ if (el.publishContentForm) {
       courseId: courseId,
       courseTitle: course ? course.title : "Course",
       title: lessonTitle,
-      slug: el.publishLessonSlug.value.trim() || slugify(lessonTitle),
-      excerpt: el.publishLessonExcerpt.value.trim(),
-      readingTime: el.publishLessonReadingTime.value.trim() || "5 min read",
+      slug: (el.publishLessonSlug && el.publishLessonSlug.value.trim()) || slugify(lessonTitle),
+      excerpt: excerpt,
+      readingTime: readingTime,
       status: "published", // Published content
       order: parseInt(el.publishLessonOrder.value, 10) || 1,
       youtubeEmbed: cleanYoutubeEmbed,
-      content: sanitizedContent,
+      content: rawContent,
+      formattedHtml: formattedHtml,
       author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -746,16 +808,25 @@ if (el.publishContentForm) {
       // Atomic execution using runTransaction
       const courseDocRef = doc(db, "courses", courseId);
       const newPostDocRef = doc(collection(db, "posts"));
+      const newLessonDocRef = doc(db, "lessons", newPostDocRef.id);
 
       await runTransaction(db, async (transaction) => {
-        // 1. Append new lesson content successfully into posts collection
+        // 1. Append new lesson content successfully into both posts and lessons collections
         transaction.set(newPostDocRef, postPayload);
-        // 2. Update course status to "published" (permanently removing In Development badge)
+        transaction.set(newLessonDocRef, postPayload);
+        // 2. Update course status to "published" (permanently removing In Development badge across Admin & Public)
         transaction.update(courseDocRef, {
           status: "published",
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          latestLessonTitle: lessonTitle
         });
       });
+
+      // Update in-memory state immediately for instant responsive feedback
+      firestorePostsMap.set(newPostDocRef.id, postPayload);
+      const cExisting = firestoreCoursesMap.get(courseId) || course;
+      firestoreCoursesMap.set(courseId, { ...cExisting, status: "published" });
+      rebuildAndRenderContent();
 
       showToast(`New lesson appended & course "${course ? course.title : ''}" published! "In Development" badge permanently removed.`, "success");
       closePublishModal();
@@ -763,17 +834,26 @@ if (el.publishContentForm) {
       console.warn("Transaction publish failed, trying individual updates:", err);
       try {
         // Fallback: individual writes
-        await addDoc(collection(db, "posts"), postPayload);
+        const addedPost = await addDoc(collection(db, "posts"), postPayload);
+        await setDoc(doc(db, "lessons", addedPost.id), postPayload, { merge: true }).catch(() => {});
         await updateDoc(doc(db, "courses", courseId), {
           status: "published",
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          latestLessonTitle: lessonTitle
         });
+
+        firestorePostsMap.set(addedPost.id, postPayload);
+        const cExisting = firestoreCoursesMap.get(courseId) || course;
+        firestoreCoursesMap.set(courseId, { ...cExisting, status: "published" });
+        rebuildAndRenderContent();
+
         showToast(`New lesson appended & course published! "In Development" badge permanently removed.`, "success");
         closePublishModal();
       } catch (innerErr) {
         console.error("Publish content error:", innerErr);
         // Fallback local memory update
-        postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
+        const localId = "post-" + Date.now();
+        postsData.unshift({ id: localId, ...postPayload });
         const cIdx = coursesData.findIndex(c => c.id === courseId);
         if (cIdx !== -1) {
           coursesData[cIdx].status = "published";
@@ -1061,10 +1141,10 @@ el.tabContentPreview.addEventListener("click", () => {
   el.editorPane.style.display = "none";
   el.previewPane.style.display = "block";
 
-  // Sanitize with DOMPurify before previewing
+  // Parse and format with semantic formatting engine and DOMPurify
   const rawHtml = el.postContent.value;
-  const sanitized = sanitizeHTML(rawHtml);
-  el.previewPane.innerHTML = sanitized || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
+  const formattedHtml = parseAndFormatLessonContent(rawHtml);
+  el.previewPane.innerHTML = formattedHtml || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
 });
 
 // Helper to toggle in-development alert & explicit publish button inside Post Modal
@@ -1156,13 +1236,20 @@ if (el.postPublishContentBtn) {
     }
 
     const titleVal = el.postTitle.value.trim();
-    const contentVal = el.postContent.value;
-    if (!titleVal || !contentVal) {
-      showToast("Please fill in lesson title and HTML content.", "error");
+    const rawContent = el.postContent.value;
+    if (!titleVal || !rawContent) {
+      showToast("Please fill in lesson title and lesson content.", "error");
       return;
     }
 
-    const sanitizedContent = sanitizeHTML(contentVal);
+    const formattedHtml = parseAndFormatLessonContent(rawContent);
+    const readingTime = (el.postReadingTime && el.postReadingTime.value.trim())
+      ? el.postReadingTime.value.trim()
+      : calculateReadingTime(rawContent);
+    const excerpt = (el.postExcerpt && el.postExcerpt.value.trim())
+      ? el.postExcerpt.value.trim()
+      : generateExcerpt(rawContent);
+
     const rawYoutube = el.postYoutubeInput.value.trim();
     let cleanYoutubeEmbed = "";
     if (rawYoutube) {
@@ -1174,13 +1261,14 @@ if (el.postPublishContentBtn) {
       courseId: selectedCourseId,
       courseTitle: selectedCourse ? selectedCourse.title : "General",
       title: titleVal,
-      slug: el.postSlug.value.trim() || slugify(titleVal),
-      excerpt: el.postExcerpt.value.trim(),
-      readingTime: el.postReadingTime.value.trim() || "5 min read",
+      slug: (el.postSlug && el.postSlug.value.trim()) || slugify(titleVal),
+      excerpt: excerpt,
+      readingTime: readingTime,
       status: "published", // Force published
-      order: parseInt(el.postOrder.value, 10) || 0,
+      order: parseInt(el.postOrder.value, 10) || 1,
       youtubeEmbed: cleanYoutubeEmbed,
-      content: sanitizedContent,
+      content: rawContent,
+      formattedHtml: formattedHtml,
       author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
       updatedAt: serverTimestamp()
     };
@@ -1190,24 +1278,37 @@ if (el.postPublishContentBtn) {
       
       if (editingPostId) {
         const postDocRef = doc(db, "posts", editingPostId);
+        const lessonDocRef = doc(db, "lessons", editingPostId);
         await runTransaction(db, async (transaction) => {
           transaction.update(postDocRef, postPayload);
+          transaction.set(lessonDocRef, postPayload, { merge: true });
           transaction.update(courseDocRef, {
             status: "published",
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
+            latestLessonTitle: titleVal
           });
         });
+        firestorePostsMap.set(editingPostId, postPayload);
       } else {
         const newPostDocRef = doc(collection(db, "posts"));
+        const newLessonDocRef = doc(db, "lessons", newPostDocRef.id);
         postPayload.createdAt = serverTimestamp();
         await runTransaction(db, async (transaction) => {
           transaction.set(newPostDocRef, postPayload);
+          transaction.set(newLessonDocRef, postPayload);
           transaction.update(courseDocRef, {
             status: "published",
-            updatedAt: serverTimestamp()
+            updatedAt: serverTimestamp(),
+            latestLessonTitle: titleVal
           });
         });
+        firestorePostsMap.set(newPostDocRef.id, postPayload);
       }
+
+      // Update in-memory state and re-render
+      const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
+      firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
+      rebuildAndRenderContent();
 
       showToast(`Course "${selectedCourse.title}" & content successfully published! "In Development" badge permanently removed.`, "success");
       closePostModal();
@@ -1216,14 +1317,22 @@ if (el.postPublishContentBtn) {
       try {
         if (editingPostId) {
           await updateDoc(doc(db, "posts", editingPostId), postPayload);
+          await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
         } else {
           postPayload.createdAt = serverTimestamp();
-          await addDoc(collection(db, "posts"), postPayload);
+          const addedDoc = await addDoc(collection(db, "posts"), postPayload);
+          await setDoc(doc(db, "lessons", addedDoc.id), postPayload, { merge: true }).catch(() => {});
         }
         await updateDoc(doc(db, "courses", selectedCourseId), {
           status: "published",
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          latestLessonTitle: titleVal
         });
+
+        const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
+        firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
+        rebuildAndRenderContent();
+
         showToast(`Course "${selectedCourse.title}" & content published! "In Development" badge removed.`, "success");
         closePostModal();
       } catch (innerErr) {
@@ -1249,7 +1358,7 @@ if (el.postPublishContentBtn) {
   });
 }
 
-// Post Submit Handler with DOMPurify Sanitization
+// Post Submit Handler with Semantic Formatting
 el.postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
@@ -1258,8 +1367,8 @@ el.postForm.addEventListener("submit", async (e) => {
   const rawContent = el.postContent.value;
   const rawYoutube = el.postYoutubeInput.value.trim();
 
-  // 1. Sanitize HTML Content using DOMPurify
-  const sanitizedContent = sanitizeHTML(rawContent);
+  // 1. Format content using semantic formatting engine
+  const formattedHtml = parseAndFormatLessonContent(rawContent);
 
   // 2. Validate and sanitize YouTube Embed
   let cleanYoutubeEmbed = "";
@@ -1273,29 +1382,44 @@ el.postForm.addEventListener("submit", async (e) => {
     }
   }
 
+  const readingTime = (el.postReadingTime && el.postReadingTime.value.trim())
+    ? el.postReadingTime.value.trim()
+    : calculateReadingTime(rawContent);
+  const excerpt = (el.postExcerpt && el.postExcerpt.value.trim())
+    ? el.postExcerpt.value.trim()
+    : generateExcerpt(rawContent);
+  const titleVal = el.postTitle.value.trim();
+
   const postPayload = {
     courseId: selectedCourseId,
     courseTitle: selectedCourse ? selectedCourse.title : "General",
-    title: el.postTitle.value.trim(),
-    slug: el.postSlug.value.trim() || slugify(el.postTitle.value),
-    excerpt: el.postExcerpt.value.trim(),
-    readingTime: el.postReadingTime.value.trim() || "5 min read",
+    title: titleVal,
+    slug: (el.postSlug && el.postSlug.value.trim()) || slugify(titleVal),
+    excerpt: excerpt,
+    readingTime: readingTime,
     status: el.postStatus.value,
-    order: parseInt(el.postOrder.value, 10) || 0,
+    order: parseInt(el.postOrder.value, 10) || 1,
     youtubeEmbed: cleanYoutubeEmbed,
-    content: sanitizedContent,
+    content: rawContent,
+    formattedHtml: formattedHtml,
     author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
     updatedAt: serverTimestamp()
   };
 
   try {
+    let targetDocId = editingPostId;
     if (editingPostId) {
       const docRef = doc(db, "posts", editingPostId);
       await updateDoc(docRef, postPayload);
+      await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
+      firestorePostsMap.set(editingPostId, postPayload);
       showToast("Post updated live!", "success");
     } else {
       postPayload.createdAt = serverTimestamp();
-      await addDoc(collection(db, "posts"), postPayload);
+      const added = await addDoc(collection(db, "posts"), postPayload);
+      targetDocId = added.id;
+      await setDoc(doc(db, "lessons", added.id), postPayload, { merge: true }).catch(() => {});
+      firestorePostsMap.set(added.id, postPayload);
       showToast("Post published live!", "success");
     }
 
@@ -1304,14 +1428,18 @@ el.postForm.addEventListener("submit", async (e) => {
       try {
         await updateDoc(doc(db, "courses", selectedCourseId), {
           status: "published",
-          updatedAt: serverTimestamp()
+          updatedAt: serverTimestamp(),
+          latestLessonTitle: titleVal
         });
+        const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
+        firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
         showToast(`Course "${selectedCourse.title}" status updated to Published! "In Development" badge removed.`, "success");
       } catch (cErr) {
         console.warn("Could not auto-update course status:", cErr);
       }
     }
 
+    rebuildAndRenderContent();
     closePostModal();
   } catch (err) {
     console.error("Post save error:", err);

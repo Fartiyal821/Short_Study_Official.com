@@ -481,98 +481,115 @@
   </div>
 
   <!-- =========================================================
-       MODAL: CREATE / EDIT POST & LESSON + YOUTUBE EMBED
+       MODAL: CREATE / EDIT LESSON CONTENT (STREAMLINED UX)
        ========================================================= -->
   <div class="modal-overlay" id="post-modal">
     <div class="modal-card" style="max-width: 820px;">
       <div class="modal-header">
-        <h3 class="modal-title" id="post-modal-title">Create New Lesson</h3>
+        <div>
+          <h3 class="modal-title" id="post-modal-title">Create / Edit Content</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0;">
+            Simple content authoring — write formatted text, Markdown, or HTML. Styling, responsive tables, and typography are automatically aligned.
+          </p>
+        </div>
         <button class="modal-close" id="post-modal-close" aria-label="Close modal">✕</button>
       </div>
 
       <form id="post-form">
         <div class="modal-body">
+          <!-- 1. PARENT COURSE & LESSON SEQUENCE -->
           <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="post-course-select">Associated Course *</label>
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="post-course-select">1. Select Parent Course *</label>
               <select id="post-course-select" class="form-select" required>
                 <!-- Populated dynamically -->
               </select>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="post-title">Lesson Title *</label>
-              <input type="text" id="post-title" class="form-input" placeholder="e.g. Memory & Variables in C" required>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label" for="post-order">2. Sequence / Order # *</label>
+              <input type="number" id="post-order" class="form-input font-mono" value="1" min="1" required>
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="post-slug">URL Slug *</label>
-              <input type="text" id="post-slug" class="form-input font-mono" placeholder="e.g. memory-and-variables" required>
-            </div>
-            <div class="form-group">
-              <label class="form-label" for="post-reading-time">Estimated Reading Time</label>
-              <input type="text" id="post-reading-time" class="form-input" placeholder="e.g. 7 min read" value="6 min read">
-            </div>
-          </div>
-
+          <!-- 2. LESSON / TOPIC TITLE -->
           <div class="form-group">
-            <label class="form-label" for="post-excerpt">Lesson Excerpt / Meta Description</label>
-            <textarea id="post-excerpt" class="form-textarea" style="min-height: 70px;" placeholder="Brief synopsis of what this lesson teaches..."></textarea>
+            <label class="form-label" for="post-title">3. Lesson / Topic Title *</label>
+            <input type="text" id="post-title" class="form-input" placeholder="e.g. Memory Layout & Pointer Arithmetic" required>
           </div>
 
-          <!-- DEDICATED YOUTUBE EMBED INPUT FIELD (STRICT REQUIREMENT) -->
-          <div class="youtube-field-wrapper">
-            <div class="youtube-field-header">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-              </svg>
-              <span>YouTube Video Embed Code (<code>&lt;iframe&gt;</code>) or Video URL</span>
-            </div>
-            <input type="text" id="post-youtube-input" class="form-input font-mono" placeholder="Paste full &lt;iframe ...&gt;&lt;/iframe&gt; code or URL: https://www.youtube.com/watch?v=...">
-            <span class="form-hint">Supports full <code>&lt;iframe&gt;</code> embeds, standard YouTube URLs, short URLs, and YouTube Shorts. Sanitized via DOMPurify.</span>
-
-            <div id="post-youtube-preview" class="youtube-preview-box">
-              <!-- Live Video Preview Rendered Here -->
-            </div>
-          </div>
-
-          <!-- Rich Educational HTML Content with Preview -->
+          <!-- 3. CONTENT BODY (FORMATTED TEXT / MARKDOWN / HTML) -->
           <div class="form-group">
-            <div class="form-label">
-              <span>Lesson Content (Sanitized HTML) *</span>
+            <div class="form-label" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+              <span>4. Content Body (Formatted Text / Markdown / HTML) *</span>
               <div class="tab-row" style="margin: 0; border: none; padding: 0;">
-                <button type="button" class="tab-btn active" id="tab-content-editor">Edit HTML</button>
-                <button type="button" class="tab-btn" id="tab-content-preview">Live Preview</button>
+                <button type="button" class="tab-btn active" id="tab-content-editor">Write Content</button>
+                <button type="button" class="tab-btn" id="tab-content-preview">Live Formatted Preview</button>
               </div>
             </div>
 
+            <p class="form-hint" style="margin-bottom: 8px; font-size: 11.5px; color: var(--text-muted);">
+              Type naturally using Markdown (<code>## Headings</code>, <code>```code```</code>, bullet points <code>- </code>, tables <code>| col |</code>) or standard HTML. No manual CSS classes or layout wrappers needed.
+            </p>
+
             <div id="editor-pane">
-              <textarea id="post-content" class="form-textarea code-editor" style="min-height: 240px;" placeholder="Write your full written lesson in HTML...
-<h2>Introduction</h2>
-<p>Variables store data values in memory.</p>
-<pre><code>int age = 21;</code></pre>" required></textarea>
+              <textarea id="post-content" class="form-textarea code-editor" style="min-height: 250px; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.6;" placeholder="## 1. Introduction
+Explain the topic in clear terms.
+
+```python
+# Code example
+numbers = [10, 20, 30]
+print(sum(numbers))
+```
+
+### Key Takeaways
+- Arrays allocate contiguous blocks in RAM
+- Instantaneous O(1) index lookup" required></textarea>
             </div>
 
-            <div id="preview-pane" class="html-preview-pane" style="display: none;">
-              <!-- Live Sanitized DOMPurify preview rendered here -->
+            <div id="preview-pane" class="html-preview-pane" style="display: none; background: #ffffff; color: var(--ink); padding: 22px 26px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); max-height: 380px; overflow-y: auto;">
+              <!-- Live Sanitized & Semantically Formatted Preview Rendered Here -->
             </div>
           </div>
 
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="post-status">Publication Status</label>
-              <select id="post-status" class="form-select">
-                <option value="published">Published</option>
-                <option value="in_development">In Development</option>
-                <option value="draft">Draft</option>
-              </select>
+          <!-- OPTIONAL DETAILS ACCORDION (Keeps main form clean & simple) -->
+          <details style="margin-top: 14px; background: var(--bg-slate-800); border: 1px solid var(--border-slate); border-radius: var(--radius-sm); padding: 10px 14px;">
+            <summary style="font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; user-select: none;">
+              + Optional Settings (Video Embed, Status, Custom URL Slug)
+            </summary>
+            
+            <div style="margin-top: 14px; display: grid; gap: 12px;">
+              <!-- DEDICATED YOUTUBE EMBED INPUT FIELD -->
+              <div class="youtube-field-wrapper" style="margin: 0;">
+                <div class="youtube-field-header">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  <span>Companion YouTube Video URL or &lt;iframe&gt;</span>
+                </div>
+                <input type="text" id="post-youtube-input" class="form-input font-mono" placeholder="https://www.youtube.com/watch?v=...">
+                <div id="post-youtube-preview" class="youtube-preview-box"></div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="post-status">Publication Status</label>
+                  <select id="post-status" class="form-select">
+                    <option value="published">Published</option>
+                    <option value="in_development">In Development</option>
+                    <option value="draft">Draft</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="post-slug">URL Slug (Auto-generated if empty)</label>
+                  <input type="text" id="post-slug" class="form-input font-mono" placeholder="auto-generated-from-title">
+                </div>
+              </div>
             </div>
-            <div class="form-group">
-              <label class="form-label" for="post-order">Lesson Order in Course</label>
-              <input type="number" id="post-order" class="form-input font-mono" value="1" min="1">
-            </div>
-          </div>
+          </details>
+
+          <!-- Hidden auto-computed meta fields -->
+          <input type="hidden" id="post-reading-time" value="5 min read">
+          <textarea id="post-excerpt" style="display: none;"></textarea>
 
           <!-- Alert when selected course is In Development -->
           <div id="post-course-in-dev-alert" class="hidden" style="background: rgba(245, 158, 11, 0.12); border: 1px dashed rgba(245, 158, 11, 0.45); border-radius: var(--radius-sm); padding: 12px 14px; margin-top: 14px;">
@@ -580,7 +597,7 @@
               <span>🚧 Associated Course is currently "In Development"</span>
             </div>
             <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0;">
-              Clicking <strong>"Publish Content & Activate Course"</strong> below will add this lesson, update the course status to <em>Published</em>, and <strong>permanently remove</strong> the "In Development" badge across both Admin and Public sites.
+              Clicking <strong>"Publish Content & Activate Course"</strong> will save this content under the course document, update the course status to <em>Published</em>, and <strong>permanently remove</strong> the "In Development" badge across both Admin and Public sites.
             </p>
           </div>
 
@@ -592,7 +609,7 @@
             <button type="button" class="btn btn-success" id="post-publish-content-btn" style="display: none;">
               🚀 Publish Content &amp; Course
             </button>
-            <button type="submit" class="btn btn-primary" id="post-submit-btn">Save Lesson</button>
+            <button type="submit" class="btn btn-primary" id="post-submit-btn">Save &amp; Publish Lesson</button>
           </div>
         </div>
       </form>
@@ -600,7 +617,7 @@
   </div>
 
   <!-- =========================================================
-       MODAL: PUBLISH COURSE CONTENT & AUTO-UPDATE STATUS
+       MODAL: PUBLISH COURSE CONTENT & AUTO-UPDATE STATUS (STREAMLINED)
        ========================================================= -->
   <div class="modal-overlay" id="publish-modal">
     <div class="modal-card" style="max-width: 720px;">
@@ -635,62 +652,56 @@
           </div>
         </div>
 
-        <!-- Add Content Form -->
+        <!-- Add Content Form (Simplified Inputs Only) -->
         <form id="publish-content-form">
           <input type="hidden" id="publish-target-course-id">
           
           <div style="border-top: 1px solid var(--border-slate); padding-top: 16px; margin-top: 6px;">
             <span style="font-size: 12px; font-weight: 600; color: var(--text-white); display: block; margin-bottom: 12px;">
-              Add New Lesson Content to Publish:
+              Add Lesson Content to Publish:
             </span>
 
             <div class="form-row" style="margin-bottom: 12px;">
-              <div class="form-group">
-                <label class="form-label" for="publish-lesson-title">Lesson Title *</label>
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label" for="publish-lesson-title">1. Lesson / Topic Title *</label>
                 <input type="text" id="publish-lesson-title" class="form-input" placeholder="e.g. Introduction & Setup" required>
               </div>
-              <div class="form-group">
-                <label class="form-label" for="publish-lesson-slug">Lesson Slug *</label>
-                <input type="text" id="publish-lesson-slug" class="form-input font-mono" placeholder="e.g. intro-and-setup" required>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label" for="publish-lesson-order">2. Sequence # *</label>
+                <input type="number" id="publish-lesson-order" class="form-input font-mono" value="1" min="1" required>
               </div>
-            </div>
-
-            <div class="form-row" style="margin-bottom: 12px;">
-              <div class="form-group">
-                <label class="form-label" for="publish-lesson-reading-time">Reading Time</label>
-                <input type="text" id="publish-lesson-reading-time" class="form-input" placeholder="e.g. 6 min read" value="6 min read">
-              </div>
-              <div class="form-group">
-                <label class="form-label" for="publish-lesson-order">Lesson Order</label>
-                <input type="number" id="publish-lesson-order" class="form-input font-mono" value="1" min="1">
-              </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 12px;">
-              <label class="form-label" for="publish-lesson-excerpt">Lesson Excerpt</label>
-              <textarea id="publish-lesson-excerpt" class="form-textarea" style="min-height: 60px;" placeholder="Brief summary of this lesson..."></textarea>
-            </div>
-
-            <div class="youtube-field-wrapper" style="margin-bottom: 12px;">
-              <div class="youtube-field-header">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-                <span>YouTube Video Embed (Optional URL or &lt;iframe&gt;)</span>
-              </div>
-              <input type="text" id="publish-lesson-youtube" class="form-input font-mono" placeholder="https://www.youtube.com/watch?v=...">
             </div>
 
             <div class="form-group" style="margin-bottom: 14px;">
-              <label class="form-label" for="publish-lesson-content">Full Lesson HTML Content *</label>
-              <textarea id="publish-lesson-content" class="form-textarea code-editor" style="min-height: 160px;" placeholder="<h2>Lesson Overview</h2><p>Content goes here...</p>" required></textarea>
+              <label class="form-label" for="publish-lesson-content">3. Content Body (Formatted Text / Markdown / HTML) *</label>
+              <p class="form-hint" style="margin-bottom: 6px; font-size: 11.5px; color: var(--text-muted);">
+                Write formatted text, Markdown, or HTML. The system automatically formats typography, code blocks, and tables.
+              </p>
+              <textarea id="publish-lesson-content" class="form-textarea code-editor" style="min-height: 180px; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; line-height: 1.6;" placeholder="## Overview
+Content goes here in plain text, Markdown, or HTML...
+
+```python
+print('Hello ShortStudy')
+```" required></textarea>
             </div>
+
+            <!-- Optional Video Field & Hidden Meta -->
+            <details style="margin-bottom: 14px; background: var(--bg-slate-800); border: 1px solid var(--border-slate); border-radius: var(--radius-sm); padding: 8px 12px;">
+              <summary style="font-size: 11.5px; color: var(--text-muted); cursor: pointer;">+ Optional Companion Video URL</summary>
+              <div style="margin-top: 8px;">
+                <input type="text" id="publish-lesson-youtube" class="form-input font-mono" placeholder="https://www.youtube.com/watch?v=...">
+              </div>
+            </details>
+
+            <input type="hidden" id="publish-lesson-slug">
+            <input type="hidden" id="publish-lesson-reading-time" value="5 min read">
+            <textarea id="publish-lesson-excerpt" style="display: none;"></textarea>
           </div>
 
           <div class="modal-footer" style="padding-top: 14px; margin-top: 14px; border-top: 1px solid var(--border-slate);">
             <button type="button" class="btn btn-secondary" id="publish-modal-cancel">Cancel</button>
             <button type="submit" class="btn btn-success" id="btn-submit-publish-and-activate">
-              🚀 Append Content &amp; Publish Course
+              🚀 Publish Content &amp; Course
             </button>
           </div>
         </form>

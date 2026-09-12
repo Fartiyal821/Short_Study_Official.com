@@ -776,34 +776,129 @@ a {
 }
 
 .html-preview-pane {
-  background: #fff;
+  background: #fdfcf9;
   color: #243029;
-  padding: 20px;
+  padding: 22px;
   border-radius: var(--radius-sm);
-  min-height: 180px;
-  max-height: 280px;
+  min-height: 200px;
+  max-height: 380px;
   overflow-y: auto;
-  font-size: 14px;
+  font-size: 14.5px;
+  line-height: 1.7;
+  border: 1px solid var(--border-light);
 }
 
-.html-preview-pane h1, .html-preview-pane h2, .html-preview-pane h3 {
+.html-preview-pane h1 {
+  font-size: 22px;
   color: #1a202c;
-  margin-top: 12px;
+  margin-top: 14px;
   margin-bottom: 8px;
+  font-weight: 700;
+}
+
+.html-preview-pane h2 {
+  font-size: 18px;
+  color: #1a202c;
+  margin-top: 20px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  font-weight: 700;
+}
+
+.html-preview-pane h3 {
+  font-size: 15px;
+  color: #2d3748;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-weight: 600;
 }
 
 .html-preview-pane p {
-  margin-bottom: 10px;
+  margin-bottom: 12px;
+  color: #2d3748;
+}
+
+.html-preview-pane ul, .html-preview-pane ol {
+  margin: 0 0 14px 20px;
+  color: #4a5568;
+}
+
+.html-preview-pane li {
+  margin-bottom: 4px;
+}
+
+.html-preview-pane code {
+  font-family: 'JetBrains Mono', monospace;
+  background: rgba(0,0,0,0.06);
+  color: #0f172a;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-size: 13px;
 }
 
 .html-preview-pane pre {
   background: #1e293b;
-  color: #e2e8f0;
-  padding: 12px;
+  color: #f8fafc;
+  padding: 14px;
   border-radius: 6px;
   overflow-x: auto;
   font-family: 'JetBrains Mono', monospace;
-  margin-bottom: 10px;
+  font-size: 13px;
+  margin-bottom: 14px;
+  border: 1px solid #334155;
+}
+
+.html-preview-pane pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+.html-preview-pane .notes-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin: 16px 0;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+}
+
+.html-preview-pane table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.html-preview-pane th {
+  background: #f1f5f9;
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 2px solid #cbd5e1;
+  color: #1e293b;
+}
+
+.html-preview-pane td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+}
+
+.html-preview-pane .callout-box {
+  padding: 12px 16px;
+  background: #f0fdf4;
+  border-left: 4px solid #16a34a;
+  border-radius: 4px;
+  margin: 14px 0;
+  font-size: 13.5px;
+}
+
+.html-preview-pane blockquote {
+  border-left: 3px solid #6366f1;
+  padding-left: 12px;
+  margin: 12px 0;
+  color: #475569;
+  font-style: italic;
 }
 
 /* Strict Auth Guard Screen */

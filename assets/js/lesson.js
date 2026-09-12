@@ -8,11 +8,14 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { db } from "./firebase-config.js";
 import { sanitizeHTML, processYouTubeEmbed } from "./sanitizer.js";
+import { parseAndFormatLessonContent } from "./content-format.js";
+import { PRE_EXISTING_LESSONS, PRE_EXISTING_COURSES } from "./catalog-data.js";
 
 // Parse URL Parameters
 const urlParams = new URLSearchParams(window.location.search);
 const lessonId = urlParams.get("id");
 const lessonSlug = urlParams.get("slug");
+const courseParam = urlParams.get("course");
 
 // Elements
 const el = {
@@ -35,79 +38,52 @@ const el = {
 let currentPost = null;
 let siblingLessons = [];
 
-// Fallback lesson for initial preview if Firestore doc doesn't exist yet
-const sampleLesson = {
-  id: "sample-python",
-  title: "Python Variables, Scope & Data Types",
-  courseTitle: "Python Basics",
-  courseId: "course-python",
-  readingTime: "6 min read",
-  author: "Gaurav Fartiyal",
-  excerpt: "Master how Python allocates memory for variables, handles dynamic typing, and executes control flow constructs from scratch.",
-  youtubeEmbed: '<iframe src="https://www.youtube-nocookie.com/embed/kqtD5dpn9C8" title="Python Tutorial" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>',
-  content: `
-    <h2>1. What is a Variable in Python?</h2>
-    <p>Unlike languages like C or Java where variables are strongly typed memory containers, in Python a variable is simply a <strong>name (or reference)</strong> attached to an object in memory.</p>
-    <pre><code># Creating variables
-student_name = "Alex"
-student_age = 20
-gpa = 3.85
-is_enrolled = True
+// Fallback lesson for initial preview
+const sampleLesson = PRE_EXISTING_LESSONS[0];
 
-print(f"Student: {student_name}, Age: {student_age}")
-print(f"Type of gpa: {type(gpa)}")</code></pre>
-
-    <h2>2. Dynamic Typing &amp; Reassignment</h2>
-    <p>Python variables are dynamically typed. The interpreter determines the variable type at runtime based on the value assigned.</p>
-    <pre><code>val = 100         # val is an integer
-val = "Now a string" # val now references a string object</code></pre>
-
-    <h2>3. Common Built-in Data Types</h2>
-    <ul>
-      <li><strong>Numeric:</strong> <code>int</code>, <code>float</code>, <code>complex</code></li>
-      <li><strong>Sequence:</strong> <code>list</code>, <code>tuple</code>, <code>range</code></li>
-      <li><strong>Text:</strong> <code>str</code></li>
-      <li><strong>Mapping:</strong> <code>dict</code></li>
-      <li><strong>Set:</strong> <code>set</code>, <code>frozenset</code></li>
-      <li><strong>Boolean:</strong> <code>bool</code> (True / False)</li>
-    </ul>
-
-    <h2>4. Variable Naming Rules &amp; Best Practices</h2>
-    <p>Always use <em>snake_case</em> for standard variables and functions, according to PEP 8 conventions. Never use reserved keywords such as <code>def</code>, <code>class</code>, <code>if</code>, or <code>import</code> as identifier names.</p>
-  `
-};
+/**
+ * Find fallback lesson from catalog
+ */
+function findCatalogLesson(idOrSlug, courseId) {
+  if (idOrSlug) {
+    const found = PRE_EXISTING_LESSONS.find(l => l.id === idOrSlug || l.slug === idOrSlug);
+    if (found) return found;
+  }
+  if (courseId) {
+    const foundByCourse = PRE_EXISTING_LESSONS.find(l => l.courseId === courseId || l.courseId === `course-${courseId}`);
+    if (foundByCourse) return foundByCourse;
+  }
+  return sampleLesson;
+}
 
 /**
  * Start Real-Time Listener on the requested Lesson Document
  */
 function initLessonListener() {
-  if (!lessonId && !lessonSlug) {
-    // Render sample default lesson
-    renderLesson(sampleLesson);
+  const catalogFallback = findCatalogLesson(lessonId || lessonSlug, courseParam);
+  // Render catalog fallback immediately for fast perceived performance
+  renderLesson(catalogFallback);
+  loadCourseSiblings(catalogFallback.courseId);
+
+  if (!lessonId && !lessonSlug && !courseParam) {
     return;
   }
 
   if (lessonId) {
     try {
       const docRef = doc(db, "posts", lessonId);
-      // Real-time listener: onSnapshot
       onSnapshot(docRef, (docSnap) => {
         if (docSnap.exists()) {
           currentPost = { id: docSnap.id, ...docSnap.data() };
           renderLesson(currentPost);
           loadCourseSiblings(currentPost.courseId);
           if (el.liveSyncStatus) el.liveSyncStatus.textContent = "Live Synced with Firestore";
-        } else {
-          // If document not found in Firestore, fallback to sample
-          renderLesson({ ...sampleLesson, title: "Lesson Not Found (Showing Sample)", id: lessonId });
         }
       }, (error) => {
         console.warn("Firestore lesson listener warning:", error);
-        renderLesson(sampleLesson);
       });
     } catch (err) {
       console.error("Failed to bind snapshot listener:", err);
-      renderLesson(sampleLesson);
     }
   } else if (lessonSlug) {
     try {
@@ -118,13 +94,10 @@ function initLessonListener() {
           currentPost = { id: docSnap.id, ...docSnap.data() };
           renderLesson(currentPost);
           loadCourseSiblings(currentPost.courseId);
-        } else {
-          renderLesson(sampleLesson);
         }
       });
     } catch (err) {
       console.error("Slug query error:", err);
-      renderLesson(sampleLesson);
     }
   }
 }
@@ -134,14 +107,28 @@ function initLessonListener() {
  */
 function loadCourseSiblings(courseId) {
   if (!courseId) return;
+
+  const catalogSiblings = PRE_EXISTING_LESSONS.filter(l => l.courseId === courseId || l.courseId === `course-${courseId}`);
+  renderCourseSidebar(catalogSiblings);
+
   try {
     const siblingsQuery = query(collection(db, "posts"), where("courseId", "==", courseId), orderBy("order", "asc"));
     onSnapshot(siblingsQuery, (snapshot) => {
-      siblingLessons = [];
-      snapshot.forEach((snap) => {
-        siblingLessons.push({ id: snap.id, ...snap.data() });
-      });
-      renderCourseSidebar(siblingLessons);
+      if (!snapshot.empty) {
+        const firestoreSiblings = [];
+        snapshot.forEach((snap) => {
+          firestoreSiblings.push({ id: snap.id, ...snap.data() });
+        });
+
+        // Merge with catalog
+        const map = new Map();
+        catalogSiblings.forEach(s => map.set(s.id, s));
+        firestoreSiblings.forEach(s => map.set(s.id, s));
+
+        siblingLessons = Array.from(map.values());
+        siblingLessons.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+        renderCourseSidebar(siblingLessons);
+      }
     }, (err) => {
       console.warn("Siblings listener warning:", err);
     });
@@ -151,9 +138,10 @@ function loadCourseSiblings(courseId) {
 }
 
 /**
- * Render Lesson Details with DOMPurify sanitization
+ * Render Lesson Details with semantic alignment & DOMPurify
  */
 function renderLesson(post) {
+  if (!post) return;
   document.title = `${post.title} — ShortStudy`;
 
   // Breadcrumbs & Meta
@@ -183,7 +171,6 @@ function renderLesson(post) {
       el.videoFrameWrapper.innerHTML = processed.iframeHtml;
       el.videoContainer.style.display = "block";
     } else {
-      // Direct raw embed sanitized via DOMPurify
       el.videoFrameWrapper.innerHTML = sanitizeHTML(post.youtubeEmbed);
       el.videoContainer.style.display = "block";
     }
@@ -192,9 +179,10 @@ function renderLesson(post) {
     el.videoFrameWrapper.innerHTML = "";
   }
 
-  // Educational Content Sanitization via DOMPurify
-  const cleanContent = sanitizeHTML(post.content);
-  el.lessonContent.innerHTML = cleanContent;
+  // Parse and format educational content to guarantee semantic alignment
+  const rawOrFormatted = post.formattedHtml || post.content || "";
+  const alignedContent = parseAndFormatLessonContent(rawOrFormatted);
+  el.lessonContent.innerHTML = alignedContent;
 
   // Enhance Code Blocks with Copy Button
   enhanceCodeBlocks();

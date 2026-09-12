@@ -1,15 +1,15 @@
 import { 
   collection, 
   onSnapshot, 
-  query, 
-  orderBy 
+  query 
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { db } from "./firebase-config.js";
+import { PRE_EXISTING_COURSES, PRE_EXISTING_LESSONS } from "./catalog-data.js";
 
 const pathwayGrid = document.getElementById("dynamic-pathway-grid") || document.querySelector(".class-grid");
 
-let liveCourses = [];
-let livePosts = [];
+let liveCourses = [...PRE_EXISTING_COURSES];
+let livePosts = [...PRE_EXISTING_LESSONS];
 
 /**
  * Real-Time Listener for Courses on Public Index Page
@@ -17,20 +17,28 @@ let livePosts = [];
 export function initPublicRealtimeSync() {
   if (!pathwayGrid) return;
 
+  // Initial render from base catalog
+  renderDynamicPathway();
+
   try {
     // 1. Subscribe to real-time courses
     const coursesQuery = query(collection(db, "courses"));
     onSnapshot(coursesQuery, (snapshot) => {
       if (!snapshot.empty) {
-        liveCourses = [];
+        const firestoreCourses = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          // Include published and in_development courses in public curriculum
           if (data.status !== "draft") {
-            liveCourses.push({ id: docSnap.id, ...data });
+            firestoreCourses.push({ id: docSnap.id, ...data });
           }
         });
-        // Sort courses by curriculum order
+
+        // Merge with pre-existing catalog so pre-existing courses are never lost
+        const merged = new Map();
+        PRE_EXISTING_COURSES.forEach(c => merged.set(c.id, { ...c }));
+        firestoreCourses.forEach(c => merged.set(c.id, { ...(merged.get(c.id) || {}), ...c }));
+
+        liveCourses = Array.from(merged.values());
         liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
@@ -42,13 +50,19 @@ export function initPublicRealtimeSync() {
     const postsQuery = query(collection(db, "posts"));
     onSnapshot(postsQuery, (snapshot) => {
       if (!snapshot.empty) {
-        livePosts = [];
+        const firestorePosts = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
           if (data.status !== "draft") {
-            livePosts.push({ id: docSnap.id, ...data });
+            firestorePosts.push({ id: docSnap.id, ...data });
           }
         });
+
+        const mergedPosts = new Map();
+        PRE_EXISTING_LESSONS.forEach(l => mergedPosts.set(l.id, { ...l }));
+        firestorePosts.forEach(p => mergedPosts.set(p.id, { ...(mergedPosts.get(p.id) || {}), ...p }));
+
+        livePosts = Array.from(mergedPosts.values());
         livePosts.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
@@ -71,7 +85,7 @@ function renderDynamicPathway() {
 
   liveCourses.forEach((course, index) => {
     const isInDevelopment = course.status === "in_development";
-    const courseLessons = livePosts.filter(p => p.courseId === course.id);
+    const courseLessons = livePosts.filter(p => p.courseId === course.id || p.courseId === course.slug);
     const firstLesson = courseLessons[0];
     const targetUrl = firstLesson ? `lesson.html?id=${firstLesson.id}` : `lesson.html?course=${course.id}`;
     const lessonCount = courseLessons.length;
@@ -85,7 +99,7 @@ function renderDynamicPathway() {
         <span class="num">COURSE 0${index + 1}</span>
         <div style="display:flex; gap:6px; align-items:center;">
           ${hasVideo ? '<span style="font-family:\'JetBrains Mono\',monospace; font-size:11px; color:#e11d48; background:rgba(225,29,72,0.1); padding:2px 8px; border-radius:12px;">▶ Video</span>' : ''}
-          ${isInDevelopment ? '<span style="font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:600; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; padding:2px 8px; border-radius:12px;">🚧 In Development</span>' : ''}
+          ${isInDevelopment ? '<span class="badge-in-dev-live" style="font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:600; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; padding:2px 8px; border-radius:12px;">🚧 In Development</span>' : ''}
         </div>
       </div>
       <h3>
