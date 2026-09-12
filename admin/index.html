@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal — ShortStudy</title>
+  <link rel="icon" type="image/png" href="../favicon.png">
+  <script>
+    // Seamlessly redirect to admin.html in the repository root preserving query & hash
+    (function() {
+      var target = "../admin.html" + window.location.search + window.location.hash;
+      window.location.replace(target);
+    })();
+  </script>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
+  <div>
+    <h2 style="font-size: 20px; font-weight: 600; margin-bottom: 8px;">ShortStudy Admin Portal</h2>
+    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 16px;">Redirecting to Admin Portal...</p>
+    <a href="../admin.html" style="color: #6366f1; text-decoration: underline; font-size: 14px;">Click here if not redirected automatically</a>
+  </div>
+</body>
+</html>

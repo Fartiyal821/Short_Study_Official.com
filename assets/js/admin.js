@@ -181,13 +181,28 @@ function setAuthMode(mode) {
 el.tabLogin.addEventListener("click", () => setAuthMode("login"));
 el.tabRegister.addEventListener("click", () => setAuthMode("register"));
 
-function showAuthError(message) {
+function showAuthError(message, isHtml = false) {
   if (authError) {
-    authError.textContent = message;
+    if (isHtml || (typeof message === "string" && message.includes("<"))) {
+      authError.innerHTML = message;
+      // Bind any copy buttons created inside message
+      const btnCopy = authError.querySelector("#btn-copy-domain");
+      if (btnCopy) {
+        btnCopy.addEventListener("click", () => {
+          const domain = window.location.hostname;
+          navigator.clipboard.writeText(domain).then(() => {
+            showToast(`Copied domain: ${domain}`, "success");
+          });
+        });
+      }
+    } else {
+      authError.textContent = message;
+    }
     authError.classList.remove('hidden');
     authError.style.display = 'block';
   }
-  showToast(message, "error");
+  const cleanToastMsg = typeof message === "string" ? message.replace(/<[^>]*>/g, "").slice(0, 80) : "Authentication error";
+  showToast(cleanToastMsg, "error");
 }
 
 // Check Auth State
@@ -266,22 +281,50 @@ if (loginForm) {
                             error.code === "auth/api-key-not-valid" || 
                             (error.message && (error.message.includes("api-key-not-valid") || error.message.includes("API key not valid")));
 
-      if (isApiKeyError) {
+      const currentHost = window.location.hostname || "fartiyal821.github.io";
+
+      if (error.code === "auth/unauthorized-domain" || (error.message && error.message.includes("unauthorized-domain"))) {
+        console.warn("Firebase Auth Notice: Unauthorized Domain", currentHost);
+        errorMsg = `
+          <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 12px; margin-top: 4px; text-align: left;">
+            <div style="font-weight: 600; color: #fbbf24; margin-bottom: 5px; font-size: 13px;">⚠️ GitHub Domain Authorization Needed</div>
+            <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px;">
+              Firebase has blocked authentication from <strong>${currentHost}</strong> because it is not in your Authorized Domains list.
+            </div>
+            <div style="font-size: 11.5px; color: var(--text-white); background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; line-height: 1.6;">
+              <strong>Step 1:</strong> Open <a href="https://console.firebase.google.com/project/shortstudy-de7d4/authentication/settings" target="_blank" rel="noopener noreferrer" style="color: var(--indigo-light); text-decoration: underline;">Firebase Console &gt; Auth &gt; Settings</a><br>
+              <strong>Step 2:</strong> Scroll to <em>Authorized domains</em> &gt; click <em>Add domain</em><br>
+              <strong>Step 3:</strong> Enter <code class="font-mono" style="color: #6ee7b7;">${currentHost}</code> and Save.
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-domain" style="font-size: 11px; padding: 5px 10px; width: 100%;">
+              📋 Copy Domain (${currentHost})
+            </button>
+          </div>
+        `;
+      } else if (isApiKeyError) {
         console.warn("Firebase Auth Notice: API key invalid or unconfigured", error.code);
-        errorMsg = "Firebase Web API Key is invalid or contains placeholder characters. Please paste your valid Web API Key from Firebase Console below.";
+        errorMsg = "Firebase Web API Key is invalid. Please paste your valid Web API Key from Firebase Console below.";
         const fixPanel = document.getElementById("api-key-fix-panel");
         if (fixPanel) fixPanel.classList.remove("hidden");
       } else if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
         console.warn("Auth Notice: Invalid credentials");
-        errorMsg = "Invalid email or password.";
+        errorMsg = authMode === "login" 
+          ? "Invalid email or password. If you have not created your password yet, click the 'Register' tab above." 
+          : "Invalid credentials. Please verify your email and password.";
       } else if (error.code === "auth/email-already-in-use") {
-        errorMsg = "Account already registered. Please switch to the Login tab.";
+        errorMsg = "This admin account is already registered! Please switch to the 'Login' tab to enter your password.";
       } else if (error.code === "auth/weak-password") {
-        errorMsg = "Password should be at least 6 characters.";
+        errorMsg = "Password must be at least 6 characters long.";
+      } else if (error.code === "auth/operation-not-allowed") {
+        errorMsg = "Email/Password sign-in provider is disabled in Firebase Console. Go to Firebase Console > Authentication > Sign-in method and enable Email/Password.";
+      } else if (error.code === "auth/network-request-failed") {
+        errorMsg = "Network request failed. Please check your internet connection or disable ad-blockers blocking Google APIs.";
+      } else if (error.code === "auth/too-many-requests") {
+        errorMsg = "Too many failed attempts. Access to this account has been temporarily disabled. Please wait a few minutes.";
       } else {
         console.error("Auth Error:", error);
       }
-      showAuthError(errorMsg);
+      showAuthError(errorMsg, true);
     } finally {
       if (el.authSubmitBtn) {
         el.authSubmitBtn.disabled = false;
@@ -976,3 +1019,34 @@ function escapeHtml(str) {
 
 // Global initialization
 setAuthMode("login");
+
+// Host / Environment Detection & Display
+const envHostName = document.getElementById("env-host-name");
+const envBadge = document.getElementById("env-badge");
+if (envHostName) {
+  const host = window.location.hostname;
+  if (host.includes("github.io")) {
+    envHostName.textContent = `GitHub Pages (${host})`;
+    envHostName.style.color = "#818cf8";
+  } else if (host === "localhost" || host === "127.0.0.1") {
+    envHostName.textContent = `Local Server (${host})`;
+  } else if (host.includes("run.app")) {
+    envHostName.textContent = `Cloud Preview (${host.slice(0, 18)}...)`;
+  } else if (window.location.protocol === "file:") {
+    envHostName.textContent = "Local File (file://)";
+    envHostName.style.color = "#f43f5e";
+  } else {
+    envHostName.textContent = host || "Active Host";
+  }
+}
+
+if (envBadge) {
+  envBadge.addEventListener("click", () => {
+    const host = window.location.hostname;
+    if (host) {
+      navigator.clipboard.writeText(host).then(() => {
+        showToast(`Domain copied: ${host}`, "success");
+      });
+    }
+  });
+}

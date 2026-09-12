@@ -9,6 +9,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/admin.css">
+  <script>
+    // Immediate diagnostics for file protocol or GitHub Pages hosting
+    if (window.location.protocol === 'file:') {
+      document.addEventListener('DOMContentLoaded', function() {
+        var err = document.getElementById('auth-error');
+        if (err) {
+          err.innerHTML = '⚠️ <strong>Local File Notice:</strong> You opened this file using <code>file://</code> protocol. Browser security blocks JavaScript Modules and Firebase Auth on direct local files. Please run a local web server (e.g., VS Code Live Server, <code>npx serve</code>, or <code>python -m http.server</code>) or open through GitHub Pages.';
+          err.classList.remove('hidden');
+          err.style.display = 'block';
+        }
+      });
+    }
+  </script>
 </head>
 <body>
 
@@ -79,6 +92,13 @@
         <a href="index.html" style="display: inline-flex; align-items: center; gap: 4px; color: var(--indigo-light);">
           ← Return to Public Website
         </a>
+      </div>
+
+      <div id="env-badge-container" style="text-align: center; margin-top: 14px; font-size: 11px; color: var(--text-muted); padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06);">
+        <span id="env-badge" style="display: inline-flex; align-items: center; gap: 6px; cursor: pointer;" title="Click to copy host domain">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
+          <span id="env-host-name">Detecting host...</span>
+        </span>
       </div>
     </div>
   </div>
