@@ -1588,16 +1588,6 @@ if (el.btnSaveApiKey) {
 }
 
 // Helper utilities
-function slugify(text) {
-  return text
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w\-]+/g, "")
-    .replace(/\-\-+/g, "-");
-}
-
 function escapeHtml(str) {
   if (!str) return "";
   return str

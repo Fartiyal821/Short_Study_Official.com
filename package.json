@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
-    "lint": "node -e \"console.log('Lint passed')\"",
+    "lint": "node -c assets/js/*.js *.js",
     "build": "node -e \"console.log('Build completed successfully')\""
   },
   "dependencies": {
