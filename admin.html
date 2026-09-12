@@ -50,14 +50,32 @@
           <input type="password" id="login-password" class="form-input" placeholder="••••••••••••" required minlength="6">
         </div>
 
-        <div id="auth-error" class="hidden" style="color: var(--rose); font-size: 12.5px; margin-bottom: 14px; min-height: 18px;"></div>
+        <div id="auth-error" class="hidden" style="color: var(--rose); font-size: 12.5px; margin-bottom: 14px; min-height: 18px; line-height: 1.5;"></div>
+
+        <!-- Inline Web API Key Updater (shown when Firebase API key needs update or configuration) -->
+        <div id="api-key-fix-panel" class="hidden" style="background: rgba(99, 102, 241, 0.08); border: 1px dashed var(--indigo-border); border-radius: 8px; padding: 14px; margin-bottom: 16px; text-align: left;">
+          <div style="font-size: 12px; font-weight: 600; color: var(--indigo-light); margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between;">
+            <span>Firebase Web API Key</span>
+            <span style="font-size: 10.5px; color: var(--text-muted);">Firebase Console &gt; Project Settings</span>
+          </div>
+          <p style="font-size: 11.5px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px;">
+            Paste your active Web API Key from Firebase Console to authenticate project <code class="font-mono" style="color: var(--text-white);">shortstudy-de7d4</code>:
+          </p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="quick-api-key-input" class="form-input font-mono" style="font-size: 12px; padding: 7px 10px; flex: 1;" placeholder="AIzaSy...">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-save-quick-api-key" style="white-space: nowrap; font-size: 12px;">Save &amp; Reload</button>
+          </div>
+        </div>
 
         <button type="submit" class="btn btn-primary" id="auth-submit-btn" style="width: 100%; padding: 12px;">
           Login to Dashboard
         </button>
       </form>
 
-      <div style="text-align: center; margin-top: 22px; font-size: 12px; color: var(--text-muted);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 18px; font-size: 11.5px;">
+        <a href="#" id="btn-toggle-api-key" style="color: var(--text-muted); text-decoration: underline;">
+          Update API Key
+        </a>
         <a href="index.html" style="display: inline-flex; align-items: center; gap: 4px; color: var(--indigo-light);">
           ← Return to Public Website
         </a>

@@ -261,14 +261,25 @@ if (loginForm) {
       }
       if (authError) authError.classList.add('hidden');
     } catch (error) {
-      console.error("Auth Error:", error);
       let errorMsg = error.message;
-      if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+      const isApiKeyError = error.code === "auth/invalid-api-key" || 
+                            error.code === "auth/api-key-not-valid" || 
+                            (error.message && (error.message.includes("api-key-not-valid") || error.message.includes("API key not valid")));
+
+      if (isApiKeyError) {
+        console.warn("Firebase Auth Notice: API key invalid or unconfigured", error.code);
+        errorMsg = "Firebase Web API Key is invalid or contains placeholder characters. Please paste your valid Web API Key from Firebase Console below.";
+        const fixPanel = document.getElementById("api-key-fix-panel");
+        if (fixPanel) fixPanel.classList.remove("hidden");
+      } else if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
+        console.warn("Auth Notice: Invalid credentials");
         errorMsg = "Invalid email or password.";
       } else if (error.code === "auth/email-already-in-use") {
         errorMsg = "Account already registered. Please switch to the Login tab.";
       } else if (error.code === "auth/weak-password") {
         errorMsg = "Password should be at least 6 characters.";
+      } else {
+        console.error("Auth Error:", error);
       }
       showAuthError(errorMsg);
     } finally {
@@ -878,6 +889,52 @@ el.menuBurger.addEventListener("click", () => {
 });
 
 // API Key Custom Configuration
+const quickApiKeyInput = document.getElementById("quick-api-key-input");
+const btnSaveQuickApiKey = document.getElementById("btn-save-quick-api-key");
+const btnToggleApiKey = document.getElementById("btn-toggle-api-key");
+const apiKeyFixPanel = document.getElementById("api-key-fix-panel");
+
+if (btnToggleApiKey && apiKeyFixPanel) {
+  btnToggleApiKey.addEventListener("click", (e) => {
+    e.preventDefault();
+    apiKeyFixPanel.classList.toggle("hidden");
+  });
+}
+
+async function saveApiKeyToSystem(rawKey) {
+  const key = rawKey.trim();
+  if (!key.startsWith("AIzaSy")) {
+    showToast("Invalid key format: Google API keys must begin with AIzaSy", "error");
+    return;
+  }
+
+  localStorage.setItem("shortstudy_firebase_api_key", key);
+
+  try {
+    const res = await fetch("/api/save-firebase-key", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ apiKey: key })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showToast("Firebase API Key updated successfully! Reloading...", "success");
+    } else {
+      showToast("Key saved locally. Reloading...", "info");
+    }
+  } catch (err) {
+    showToast("Key saved in browser. Reloading...", "info");
+  }
+
+  setTimeout(() => window.location.reload(), 900);
+}
+
+if (btnSaveQuickApiKey && quickApiKeyInput) {
+  btnSaveQuickApiKey.addEventListener("click", () => {
+    saveApiKeyToSystem(quickApiKeyInput.value);
+  });
+}
+
 if (el.apiKeyInput) {
   const currentKey = localStorage.getItem("shortstudy_firebase_api_key") || "";
   el.apiKeyInput.value = currentKey;
@@ -887,12 +944,11 @@ if (el.btnSaveApiKey) {
   el.btnSaveApiKey.addEventListener("click", () => {
     const key = el.apiKeyInput.value.trim();
     if (key) {
-      localStorage.setItem("shortstudy_firebase_api_key", key);
-      showToast("API Key saved. Refreshing to re-initialize...", "success");
-      setTimeout(() => window.location.reload(), 1200);
+      saveApiKeyToSystem(key);
     } else {
       localStorage.removeItem("shortstudy_firebase_api_key");
       showToast("API Key reset to default.", "info");
+      setTimeout(() => window.location.reload(), 900);
     }
   });
 }

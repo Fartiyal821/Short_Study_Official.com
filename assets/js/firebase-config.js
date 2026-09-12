@@ -11,6 +11,16 @@ const firebaseConfig = {
   appId: "1:766812137638:web:c6fdff7b473170cd116c67"
 };
 
+// Allow runtime override via localStorage for active development or credential updates
+try {
+  const localKey = localStorage.getItem("shortstudy_firebase_api_key");
+  if (localKey && typeof localKey === "string" && localKey.trim().startsWith("AIzaSy")) {
+    firebaseConfig.apiKey = localKey.trim();
+  }
+} catch (e) {
+  // localStorage may be unavailable in some iframe sandboxes
+}
+
 export const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
