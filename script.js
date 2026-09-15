@@ -88,55 +88,70 @@ function initDoubtSolverWidget() {
   }
 
   function extractPageOverview() {
-    var rawTitle = document.title ? document.title.split('|')[0].trim() : "ShortStudy";
+    var rawTitle = document.title ? document.title.split('—')[0].split('|')[0].trim() : "ShortStudy";
     var navLinks = [];
-    var navEls = document.querySelectorAll('nav a, header .nav-link, .nav-menu a, .header-right a');
+    var navEls = document.querySelectorAll('header .nav-links a, nav a, .nav a');
     navEls.forEach(function(el) {
-      var txt = el.textContent.trim();
-      if (txt && txt.length > 1 && txt.length < 25 && navLinks.indexOf(txt) === -1) {
+      var txt = el.textContent.replace(/\s+/g, ' ').trim();
+      if (txt && txt.length > 1 && txt.length < 30 && navLinks.indexOf(txt) === -1) {
         navLinks.push(txt);
       }
     });
     if (navLinks.length === 0) {
-      navLinks = ["Home", "Courses", "Video Lectures", "Online Test", "Contact"];
+      navLinks = ["Home", "Programming Video's", "Test", "About", "Contact"];
     }
 
     var headings = [];
-    var headingEls = document.querySelectorAll('h1, h2, h3, .lesson-title, .class-card h3');
+    var headingEls = document.querySelectorAll('.class-card h3, .lesson-title, .course-card h3, .curriculum-card h3, h2, h3');
     headingEls.forEach(function(el) {
       if (el.closest && el.closest('.ai-doubt-modal')) return;
-      var txt = el.textContent.trim().replace(/^[0-9.]+\s*/, '');
-      if (txt && txt.length > 2 && txt.length < 65 && headings.indexOf(txt) === -1) {
+      var txt = el.textContent.replace(/\s+/g, ' ').trim().replace(/^[0-9.]+\s*/, '');
+      var lower = txt.toLowerCase();
+      if (lower === 'shortstudy' || lower.indexOf('learning pathway') !== -1 || lower.indexOf('curriculum & method') !== -1 || txt.length < 3 || txt.length > 70) {
+        return;
+      }
+      if (headings.indexOf(txt) === -1) {
         headings.push(txt);
       }
     });
 
+    if (headings.length === 0) {
+      headings = [
+        "🐍 Python Basics & Data Structures",
+        "⚡ C Programming & Memory Pointers",
+        "📊 Data Structures: Arrays, Stacks & Queues",
+        "☕ Java OOP & Design Principles",
+        "🌐 HTML5 & CSS3 Flexbox/Grid",
+        "🗄️ SQL Relational Databases"
+      ];
+    }
+
     return {
       title: rawTitle,
       navLinks: navLinks.slice(0, 5),
-      headings: headings.slice(0, 5)
+      headings: headings.slice(0, 6)
     };
   }
 
   var pageOverview = extractPageOverview();
 
   var welcomeContent = '👋 <strong>Welcome to ShortStudy AI Assistant!</strong><br>' +
-    'I am here to guide you through this page and answer any question.<br><br>' +
+    'I am your interactive coding tutor and guide for this page.<br><br>' +
     '📍 <strong>Current Page:</strong> ' + escapeHtml(pageOverview.title) + '<br>';
 
   if (pageOverview.navLinks.length > 0) {
-    welcomeContent += '🧭 <strong>Page Navigation Menu:</strong> ' + pageOverview.navLinks.join(' • ') + '<br>';
+    welcomeContent += '🧭 <strong>Navigation Menu:</strong> ' + pageOverview.navLinks.join(' • ') + '<br>';
   }
 
   if (pageOverview.headings.length > 0) {
-    welcomeContent += '📚 <strong>Topics & Sections on this Page:</strong><ul style="margin:4px 0 6px 16px; padding:0; font-size:12.5px; color:var(--yellow);">';
+    welcomeContent += '📚 <strong>Topics Covered on this Page:</strong><ul style="margin:4px 0 6px 16px; padding:0; font-size:12.5px; color:var(--yellow);">';
     pageOverview.headings.forEach(function(h) {
       welcomeContent += '<li>' + escapeHtml(h) + '</li>';
     });
     welcomeContent += '</ul>';
   }
 
-  welcomeContent += 'Ask me any question about the topics above, code syntax, or menu options!';
+  welcomeContent += 'Feel free to ask me anything about these topics, code syntax, debugging, or how to navigate!';
 
   // Create FAB
   var fab = document.createElement('div');
@@ -297,163 +312,181 @@ function initDoubtSolverWidget() {
   }
 
   function getLocalKnowledgeAnswer(query, currentTopic, pageInfo) {
-    var lower = query.toLowerCase();
+    var lower = query.toLowerCase().trim();
 
-    // 1. Page / Menu overview query
-    if (lower.indexOf('explain this page') !== -1 || lower.indexOf('what is this page') !== -1 || lower.indexOf('menu') !== -1 || lower.indexOf('topics are covered') !== -1 || lower.indexOf('about this page') !== -1) {
-      var res = "### Overview of " + pageInfo.title + "\n\n";
-      res += "You are currently on the **" + pageInfo.title + "** section of ShortStudy.\n\n";
+    // 1. Casual Greetings & Conversational check
+    if (/^(hi|hello|hey|greetings|howdy|good\s*(morning|afternoon|evening)|sup|yo|hii+|helloo+)\b/i.test(lower)) {
+      return "Hello! 👋 Welcome to ShortStudy. How can I help you today?\n\n" +
+        "You can ask me to:\n" +
+        "- Explain any topic on this page (**" + pageInfo.title + "**)\n" +
+        "- Solve programming doubts in **Python, C, Java, HTML/CSS, SQL, or DSA**\n" +
+        "- Explain syntax, algorithms, or debug error messages\n" +
+        "- Guide you through our **Online Tests** and **Programming Video Courses**\n\n" +
+        "What would you like to explore?";
+    }
+
+    if (/^(who are you|what are you|what can you do|help me|what is your name)/i.test(lower)) {
+      return "I am the **ShortStudy AI Assistant**, built to help you master computer science and programming.\n\n" +
+        "I can explain concepts, provide clean code snippets, help you prepare for technical interviews, and guide you through the courses and tests on this platform!";
+    }
+
+    if (/^(thanks|thank you|thx|great|awesome|cool|nice|ok|okay)\b/i.test(lower)) {
+      return "You're very welcome! 😊 Always happy to help. Let me know if you have any other questions or need more code examples!";
+    }
+
+    // 2. Page / Menu overview query
+    if (lower.indexOf('explain this page') !== -1 || lower.indexOf('what is this page') !== -1 || lower.indexOf('menu') !== -1 || lower.indexOf('topics are covered') !== -1 || lower.indexOf('about this page') !== -1 || lower.indexOf('guide me') !== -1) {
+      var res = "### 📖 Welcome to " + pageInfo.title + "\n\n";
+      res += "Here is a quick guide to what you can explore on this page:\n\n";
       if (pageInfo.navLinks && pageInfo.navLinks.length > 0) {
-        res += "**Navigation Menu:** " + pageInfo.navLinks.join(' | ') + "\n\n";
+        res += "**🧭 Navigation Menu:** " + pageInfo.navLinks.join(' • ') + "\n\n";
       }
       if (pageInfo.headings && pageInfo.headings.length > 0) {
-        res += "**Key Curriculum Sections Available:**\n";
+        res += "**📚 Core Topics Available:**\n";
         pageInfo.headings.forEach(function(h) {
           res += "- " + h + "\n";
         });
         res += "\n";
       }
-      res += "You can ask me to explain any of these topics, solve coding questions, or clarify syntax!";
+      res += "You can ask me to explain any of these topics in detail, show working code examples, or test your knowledge!";
       return res;
     }
 
-    // 2. C & Memory Pointers
-    if (lower.indexOf('pointer') !== -1 || lower.indexOf('malloc') !== -1 || lower.indexOf('memory') !== -1) {
+    // 3. C & Memory Pointers
+    if (lower.indexOf('pointer') !== -1 || lower.indexOf('malloc') !== -1 || lower.indexOf('memory') !== -1 || lower.indexOf('c lang') !== -1 || lower.indexOf('c prog') !== -1) {
       return "### Understanding Pointers & Memory in C\n\n" +
-        "A **pointer** is a variable that stores the memory address of another variable.\n\n" +
+        "A **pointer** is a variable that stores the direct memory address of another variable.\n\n" +
         "```c\n" +
         "int num = 42;\n" +
-        "int *ptr = &num; // ptr stores address of num\n\n" +
-        "printf(\"Address: %p\\n\", ptr);   // Memory address\n" +
+        "int *ptr = &num; // ptr holds memory address of num\n\n" +
+        "printf(\"Address: %p\\n\", ptr);   // Outputs hexadecimal address\n" +
         "printf(\"Value: %d\\n\", *ptr);    // Dereferencing outputs 42\n" +
         "```\n\n" +
-        "**Key Functions:**\n" +
-        "- `malloc(bytes)`: Allocates uninitialized memory on the heap.\n" +
-        "- `calloc(n, size)`: Allocates and zero-initializes memory.\n" +
-        "- `free(ptr)`: Releases allocated heap memory back to the OS to prevent memory leaks.";
+        "**Core Memory Functions in `<stdlib.h>`:**\n" +
+        "- `malloc(size)`: Allocates raw uninitialized bytes on the heap.\n" +
+        "- `calloc(n, size)`: Allocates and initializes memory to zero.\n" +
+        "- `free(ptr)`: Releases heap memory back to the OS to avoid memory leaks.";
     }
 
-    // 3. Java & OOP
+    // 4. Java & OOP
     if (lower.indexOf('oop') !== -1 || lower.indexOf('pillar') !== -1 || lower.indexOf('polymorphism') !== -1 || lower.indexOf('encapsulation') !== -1 || lower.indexOf('inheritance') !== -1 || lower.indexOf('abstraction') !== -1) {
       return "### The 4 Pillars of Object-Oriented Programming (OOP)\n\n" +
-        "1. **Encapsulation**: Bundling data (private fields) and methods together with getters/setters to protect state.\n" +
-        "2. **Inheritance**: Subclass deriving attributes and methods from a superclass using `extends`.\n" +
-        "3. **Polymorphism**: Ability of a method or object to take multiple forms (Compile-time overloading & Runtime method overriding with `@Override`).\n" +
-        "4. **Abstraction**: Hiding internal complexities and exposing essential interfaces via `abstract` classes and `interface` definitions.\n\n" +
+        "1. **Encapsulation**: Bundling fields into private variables and exposing them via public getter/setter methods.\n" +
+        "2. **Inheritance**: Reusing code where a child class inherits properties from a parent class using `extends`.\n" +
+        "3. **Polymorphism**: The ability for methods to behave differently based on the object calling them (e.g., method overloading and overriding).\n" +
+        "4. **Abstraction**: Hiding complex internal implementation details and exposing only the essential interface (`abstract class` or `interface`).\n\n" +
         "```java\n" +
-        "abstract class Shape {\n" +
-        "    abstract double getArea();\n" +
+        "abstract class Animal {\n" +
+        "    abstract void makeSound();\n" +
         "}\n\n" +
-        "class Circle extends Shape {\n" +
-        "    private double radius;\n" +
-        "    public Circle(double r) { this.radius = r; }\n" +
+        "class Dog extends Animal {\n" +
         "    @Override\n" +
-        "    double getArea() { return Math.PI * radius * radius; }\n" +
+        "    void makeSound() { System.out.println(\"Woof!\"); }\n" +
         "}\n" +
         "```";
     }
 
-    // 4. Interface vs Abstract Class
+    // 5. Interface vs Abstract Class
     if (lower.indexOf('interface vs abstract') !== -1 || lower.indexOf('abstract vs interface') !== -1) {
       return "### Interface vs. Abstract Class in Java\n\n" +
         "| Feature | Interface | Abstract Class |\n" +
         "| :--- | :--- | :--- |\n" +
-        "| **Inheritance** | Multiple interfaces can be implemented (`implements A, B`) | Single inheritance only (`extends Base`) |\n" +
-        "| **State/Variables** | `public static final` constants only | Can have instance variables with any access modifier |\n" +
-        "| **Constructors** | Cannot have constructors | Can define constructors for subclasses |\n" +
+        "| **Inheritance** | Multiple interfaces supported (`implements A, B`) | Single class inheritance only (`extends Base`) |\n" +
+        "| **Variables** | `public static final` constants only | Any instance variables (private, protected, public) |\n" +
+        "| **Constructors** | Cannot define constructors | Can have constructors for subclasses |\n" +
         "| **Methods** | Abstract, `default`, or `static` methods | Abstract or fully implemented concrete methods |";
     }
 
-    // 5. HTML / CSS
+    // 6. HTML / CSS / Flexbox / Grid
     if (lower.indexOf('flexbox') !== -1 || lower.indexOf('grid') !== -1 || lower.indexOf('box model') !== -1 || lower.indexOf('z-index') !== -1 || lower.indexOf('css') !== -1 || lower.indexOf('html') !== -1) {
-      return "### Modern CSS Layout & Box Model\n\n" +
+      return "### Modern CSS Layout & The Box Model\n\n" +
         "**The Box Model**: Content ➔ Padding ➔ Border ➔ Margin.\n\n" +
         "**Flexbox vs Grid:**\n" +
-        "- **Flexbox (1D)**: Perfect for aligning elements along a single row or column.\n" +
-        "- **Grid (2D)**: Ideal for complex grid systems with both rows and columns simultaneously.\n\n" +
+        "- **Flexbox (1-Dimensional)**: Ideal for aligning items along a single axis (either a row or a column).\n" +
+        "- **Grid (2-Dimensional)**: Best for complex layouts with simultaneous rows and columns.\n\n" +
         "```css\n" +
         "/* Modern Centering with Flexbox */\n" +
-        ".container {\n" +
+        ".hero-container {\n" +
         "  display: flex;\n" +
-        "  justify-content: center; /* Main axis */\n" +
-        "  align-items: center;     /* Cross axis */\n" +
+        "  justify-content: center; /* Horizontally center */\n" +
+        "  align-items: center;     /* Vertically center */\n" +
         "  gap: 16px;\n" +
         "}\n" +
         "```";
     }
 
-    // 6. SQL Queries & Joins
+    // 7. SQL Queries & Joins
     if (lower.indexOf('sql') !== -1 || lower.indexOf('join') !== -1 || lower.indexOf('where') !== -1 || lower.indexOf('having') !== -1) {
-      return "### SQL Query Fundamentals\n\n" +
+      return "### SQL Query Essentials\n\n" +
         "**WHERE vs HAVING:**\n" +
-        "- `WHERE` filters individual rows **before** any aggregation (`GROUP BY`) takes place.\n" +
-        "- `HAVING` filters aggregated groups **after** `GROUP BY`.\n\n" +
+        "- `WHERE` filters individual rows **before** any aggregation (`GROUP BY`) is calculated.\n" +
+        "- `HAVING` filters aggregated summary groups **after** `GROUP BY`.\n\n" +
         "```sql\n" +
         "SELECT department_id, COUNT(*) AS employee_count\n" +
         "FROM employees\n" +
         "WHERE salary > 50000        -- Filter rows first\n" +
         "GROUP BY department_id\n" +
-        "HAVING COUNT(*) >= 5;       -- Filter groups\n" +
+        "HAVING COUNT(*) >= 5;       -- Filter resulting groups\n" +
         "```\n\n" +
-        "**Relational JOINs:**\n" +
+        "**Common JOINs:**\n" +
         "- `INNER JOIN`: Returns records matching both tables.\n" +
-        "- `LEFT JOIN`: Returns all records from the left table and matched records from the right table.";
+        "- `LEFT JOIN`: Returns all records from the left table plus matching rows from the right table.";
     }
 
-    // 7. Data Structures & Big-O
+    // 8. Data Structures & Big-O
     if (lower.indexOf('big-o') !== -1 || lower.indexOf('time complexity') !== -1 || lower.indexOf('stack') !== -1 || lower.indexOf('queue') !== -1 || lower.indexOf('array') !== -1 || lower.indexOf('data structure') !== -1) {
-      return "### Data Structures & Complexity Overview\n\n" +
-        "**Big-O Hierarchy (Fastest to Slowest):**\n" +
+      return "### Data Structures & Big-O Notation\n\n" +
+        "**Big-O Time Complexity (Fastest to Slowest):**\n" +
         "`O(1)` (Constant) ➔ `O(log n)` (Binary Search) ➔ `O(n)` (Linear) ➔ `O(n log n)` (MergeSort) ➔ `O(n²)` (Nested Loops).\n\n" +
-        "**Core Linear Structures:**\n" +
-        "- **Array**: Contiguous memory, `O(1)` random index access.\n" +
-        "- **Stack**: **LIFO** (Last In, First Out) with `push()` and `pop()` operations (e.g. browser history, undo stack).\n" +
-        "- **Queue**: **FIFO** (First In, First Out) with `enqueue()` and `dequeue()` operations (e.g. CPU task scheduling).";
+        "**Key Data Structures:**\n" +
+        "- **Array**: Contiguous memory allocation, `O(1)` instant index lookup.\n" +
+        "- **Stack (LIFO)**: Last-In, First-Out (e.g., undo history, call stack). Operations: `push()`, `pop()`.\n" +
+        "- **Queue (FIFO)**: First-In, First-Out (e.g., printer queue, task scheduler). Operations: `enqueue()`, `dequeue()`.";
     }
 
-    // 8. Python Basics
+    // 9. Python Basics & Mutability
     if (lower.indexOf('python') !== -1 || lower.indexOf('mutable') !== -1 || lower.indexOf('tuple') !== -1 || lower.indexOf('list') !== -1) {
       return "### Python Data Types & Mutability\n\n" +
-        "**Mutable vs. Immutable:**\n" +
+        "**Mutable vs Immutable:**\n" +
         "- **Mutable** (Can be modified in place): `list`, `dict`, `set`.\n" +
-        "- **Immutable** (Cannot be altered after creation): `int`, `float`, `str`, `tuple`, `bool`.\n\n" +
+        "- **Immutable** (Cannot be changed once created): `int`, `float`, `str`, `tuple`, `bool`.\n\n" +
         "```python\n" +
-        "# List vs Tuple\n" +
-        "my_list = [1, 2, 3]\n" +
-        "my_list.append(4)  # Allowed\n\n" +
-        "my_tuple = (1, 2, 3)\n" +
-        "# my_tuple[0] = 99 -> Raises TypeError (immutable)\n" +
+        "# Lists are mutable\n" +
+        "fruits = ['apple', 'banana']\n" +
+        "fruits.append('cherry')  # Works perfectly\n\n" +
+        "# Tuples are immutable\n" +
+        "coords = (10, 20)\n" +
+        "# coords[0] = 15 -> Raises TypeError\n" +
         "```";
     }
 
-    // 9. Online Test / Quizzes
+    // 10. Online Test & Quizzes
     if (lower.indexOf('test') !== -1 || lower.indexOf('quiz') !== -1 || lower.indexOf('exam') !== -1) {
       return "### ShortStudy Online Testing Portal\n\n" +
         "You can practice multiple-choice assessments across programming tracks:\n" +
-        "- Head over to the **Online Test** tab (`/test.html`).\n" +
-        "- Select your subject (Python, C, Java, HTML/CSS, SQL, DSA).\n" +
-        "- Pick a difficulty: **Easy** (10 questions), **Medium** (15 questions), or **Hard** (20 questions).\n" +
-        "- Tests feature live countdown timers and immediate score analysis upon submission.";
+        "- Head over to the **Test** menu item (`/test.html`).\n" +
+        "- Select your track: **Python, C, Java, HTML/CSS, SQL, or Data Structures**.\n" +
+        "- Choose a difficulty: **Easy** (10 questions), **Medium** (15 questions), or **Hard** (20 questions).\n" +
+        "- Includes live countdown timers and instant result breakdowns!";
     }
 
-    // 10. Video Masterclasses & Courses
+    // 11. Video Masterclasses & Courses
     if (lower.indexOf('video') !== -1 || lower.indexOf('masterclass') !== -1 || lower.indexOf('paid course') !== -1) {
       return "### Programming Video Masterclasses Hub\n\n" +
-        "Our video library on the **Programming Video's** menu is built for hands-on, visual learning:\n" +
-        "- **Step-by-Step Walkthroughs**: Watch experienced engineers build full-stack projects, write clean code, and debug real errors in real-time.\n" +
-        "- **Lifetime On-Demand Access**: Learn at your own pace without time pressure or arbitrary deadlines.\n" +
-        "- **Complete Source Code**: Download all project repositories, cheatsheets, and starter templates to code along side-by-side.\n" +
-        "- **Instant Enrollment**: Seamless enrollment with cloud receipts and instant student dashboard access.";
+        "Our video library on the **Programming Video's** menu offers:\n" +
+        "- **Hands-On Walkthroughs**: Watch experienced engineers build full-stack projects from scratch.\n" +
+        "- **Lifetime On-Demand Access**: Learn at your own pace without arbitrary deadlines.\n" +
+        "- **Downloadable Source Code**: Access complete GitHub repositories and companion starter templates.\n" +
+        "- **Instant Enrollment**: Cloud receipts and instant student access.";
     }
 
-    // Default intelligent programming guidance
-    return "### ShortStudy AI Assistant (" + currentTopic + ")\n\n" +
-      "Thank you for asking: **\"" + escapeHtml(query) + "\"**.\n\n" +
-      "Here is a complete breakdown:\n" +
-      "- **Context**: In `" + currentTopic + "`, understanding core principles and applying clean syntax is key.\n" +
-      "- **Best Practice**: Always break complex problems into smaller sub-tasks, write unit test cases, and verify edge conditions (like `null` checks or array boundaries).\n" +
-      "- **Curriculum Access**: Check the free lecture notes on this page for in-depth diagrams and runnable examples!\n\n" +
-      "Feel free to ask for specific code snippets or step-by-step algorithms on any programming topic.";
+    // Conversational, intelligent fallback
+    return "### ShortStudy AI Assistant\n\n" +
+      "Here is how to approach **\"" + escapeHtml(query) + "\"**:\n\n" +
+      "- **Fundamental Concept**: In " + currentTopic + ", breaking problems down into small functions and clean syntax is the most effective approach.\n" +
+      "- **Practical Implementation**: Structure your code clearly, handle edge conditions (such as empty or invalid inputs), and test each module incrementally.\n" +
+      "- **Curriculum Notes**: Check the free lessons on this page for detailed code examples and explanations!\n\n" +
+      "Ask me for a specific code snippet or step-by-step walkthrough if you'd like to dive deeper!";
   }
 
   function escapeHtml(str) {

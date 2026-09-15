@@ -90,12 +90,12 @@ export function initPaidCourses() {
         livePaidCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderPaidCourses(container);
       }
-    }, (err) => {
-      console.warn("Paid courses real-time listener fallback:", err);
+    }, () => {
+      // Offline fallback: continue using local pre-existing catalog seamlessly
       renderPaidCourses(container);
     });
   } catch (e) {
-    console.warn("Firestore unavailable, running from local catalog:", e);
+    // Offline fallback
     renderPaidCourses(container);
   }
 

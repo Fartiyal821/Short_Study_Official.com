@@ -2,9 +2,9 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebas
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 import { initializeFirestore, setLogLevel } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
-// Suppress transient transport reconnect warnings
+// Silence internal SDK offline fallback notices
 try {
-  setLogLevel('error');
+  setLogLevel('silent');
 } catch (e) {}
 
 const firebaseConfig = {

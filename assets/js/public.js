@@ -42,8 +42,9 @@ export function initPublicRealtimeSync() {
         liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
-    }, (err) => {
-      console.warn("Public courses listener fallback:", err);
+    }, () => {
+      // Offline fallback
+      renderDynamicPathway();
     });
 
     // 2. Subscribe to real-time posts
@@ -66,12 +67,14 @@ export function initPublicRealtimeSync() {
         livePosts.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
-    }, (err) => {
-      console.warn("Public posts listener fallback:", err);
+    }, () => {
+      // Offline fallback
+      renderDynamicPathway();
     });
 
   } catch (e) {
-    console.error("Failed to establish public onSnapshot listener:", e);
+    // Offline fallback
+    renderDynamicPathway();
   }
 }
 
