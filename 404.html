@@ -3,34 +3,64 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ShortStudy — Redirecting</title>
+  <title>404 — Page Not Found · Short Study</title>
+  <meta name="robots" content="noindex, follow">
   <link rel="icon" type="image/png" href="favicon.png">
-  <script>
-    // GitHub Pages SPA router fallback
-    (function() {
-      var path = window.location.pathname;
-      // If user typed /admin or /admin/
-      if (path.endsWith('/admin') || path.endsWith('/admin/')) {
-        var repoBase = path.replace(/\/admin\/?$/, '');
-        window.location.replace((repoBase || '') + '/admin.html' + window.location.search + window.location.hash);
-        return;
-      }
-      // If user typed a page without .html extension
-      if (!path.endsWith('.html') && !path.endsWith('/')) {
-        window.location.replace(path + '.html' + window.location.search + window.location.hash);
-        return;
-      }
-    })();
-  </script>
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0b0f19; color: #f8fafc; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
-  <div style="padding: 28px; max-width: 440px; background: #131b2e; border: 1px solid #1e293b; border-radius: 12px;">
-    <h2 style="font-size: 20px; font-weight: 600; margin-top: 0; margin-bottom: 8px;">ShortStudy</h2>
-    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 18px;">Redirecting you to the requested page...</p>
-    <div style="display: flex; justify-content: center; gap: 14px;">
-      <a href="admin.html" style="color: #6366f1; text-decoration: underline; font-size: 14px;">Admin Portal</a>
-      <a href="index.html" style="color: #94a3b8; text-decoration: underline; font-size: 14px;">Home Page</a>
+<body>
+
+<!-- ============ HEADER / NAVBAR ============ -->
+<header>
+  <div class="nav">
+    <a class="brand" href="/">Short<span>Study</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming</a></li>
+      <li><a href="test.html">Test</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ============ 404 HERO SECTION ============ -->
+<section class="hero" style="min-height: 60vh; display: flex; align-items: center; justify-content: center;">
+  <div class="wrap" style="max-width: 680px;">
+    <span class="eyebrow">ERROR 404 · PAGE NOT FOUND</span>
+    <h1 style="font-size: clamp(38px, 6vw, 64px); margin-bottom: 16px;">Off the Blackboard!</h1>
+    <p class="tagline" style="margin-bottom: 32px;">
+      The lesson, notes, or page you were looking for doesn't exist or may have been relocated during our curriculum update.
+    </p>
+    <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+      <a href="/" class="cta-btn" style="margin-top: 0;">Back to Homepage</a>
+      <a href="programming-videos.html" class="cta-btn" style="margin-top: 0; background: #fff; color: var(--board-dark); border-color: var(--board-dark); box-shadow: 4px 4px 0 rgba(0,0,0,0.2);">Browse All Lessons</a>
     </div>
   </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="footer-inner">
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming</a></li>
+      <li><a href="test.html">Take a Test</a></li>
+      <li><a href="about.html">About Us</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+      <li><a href="disclaimer.html">Disclaimer</a></li>
+      <li><a href="privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+    </ul>
+    <div class="footer-bottom">@ short study copyright all rights reserved</div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
 </body>
 </html>

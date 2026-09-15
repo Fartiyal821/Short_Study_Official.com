@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Java &amp; OOP Concepts Complete Masterclass — Short Study</title>
+<meta name="description" content="Master Java and Object-Oriented Programming (OOP) fundamentals. Comprehensive tutorial covering classes, objects, encapsulation, inheritance, polymorphism, abstraction, JVM architecture, and interview questions.">
+<link rel="canonical" href="https://shortstudy.in/java-oop-basics.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "Java & Object-Oriented Programming (OOP) Complete Masterclass",
+  "description": "Comprehensive tutorial covering Java syntax, classes, objects, the four pillars of OOP (Encapsulation, Inheritance, Polymorphism, Abstraction), JVM memory model, and interview prep.",
+  "author": {
+    "@type": "Person",
+    "name": "Gaurav Fartiyal"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Short Study",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://shortstudy.in/apple-touch-icon.png"
+    }
+  },
+  "datePublished": "2026-09-14",
+  "dateModified": "2026-09-14"
+}
+</script>
+</head>
+<body>
+
+<!-- ============ HEADER / NAVBAR ============ -->
+<header>
+  <div class="nav">
+    <a class="brand" href="/">Short<span>Study</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming Video's</a></li>
+      <li><a href="test.html">Test</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ============ PAGE HEADER ============ -->
+<section class="page-header">
+  <span class="kicker">Curriculum Track · Module 05</span>
+  <h1>Java &amp; OOP Concepts Masterclass</h1>
+  <p>An exhaustive architectural guide to Java fundamentals, class modeling, the four pillars of OOP, JVM internals, and interview problem-solving.</p>
+</section>
+
+<!-- ============ MAIN LESSON ============ -->
+<section class="paper">
+  <div class="wrap">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="sep">/</span>
+      <a href="programming-videos.html">Programming Track</a>
+      <span class="sep">/</span>
+      <span>Java &amp; OOP Concepts</span>
+    </div>
+
+    <div class="lesson-meta">
+      <span class="tag">Topic: Java &amp; Object-Oriented Programming</span>
+      <span class="tag">Target Audience: Beginners, Students &amp; Freshers</span>
+      <span class="tag">Estimated Reading Time: 25 Minutes</span>
+      <span class="tag">Language Version: Java 17 / 21 LTS</span>
+    </div>
+
+    <!-- Ad Placeholder Top (Zero CLS) -->
+    <div class="ad-slot-wrapper ad-banner-desktop" aria-hidden="true">
+      <span class="ad-slot-label">Advertisement · Supports Free Curriculum</span>
+      <div style="color:var(--ink-soft); font-size:13px; text-align:center; padding:10px;">Reserved Editorial Placement Container</div>
+    </div>
+
+    <div class="lesson-content fade-up">
+
+      <div class="topic-block">
+        <h2>1. Introduction to Java and the JVM Ecosystem</h2>
+        <p>Java is an object-oriented, class-based, statically typed, concurrent programming language developed by James Gosling and Sun Microsystems (now Oracle Corporation) in 1995. Engineered with the philosophy of <em>"Write Once, Run Anywhere" (WORA)</em>, Java revolutionized software engineering by divorcing compiled application logic from underlying microprocessor architectures.</p>
+        <p>In traditional native languages like C and C++, source code is compiled directly into machine-level binary instructions specifically targeted to the host CPU (e.g., x86_64, ARM64). A binary compiled on macOS will not execute on Windows or Linux without cross-compilation. Java solves this fragmentation by inserting an intermediate abstraction layer: the <strong>Java Virtual Machine (JVM)</strong>.</p>
+
+        <h3>The Triad: JDK, JRE, and JVM</h3>
+        <ul>
+          <li><strong>Java Development Kit (JDK):</strong> The comprehensive software developer bundle containing the Java compiler (<code>javac</code>), debugging utilities, documentation generators (<code>javadoc</code>), archiving tools (<code>jar</code>), and the complete runtime environment. Developers require the JDK to author and compile source files.</li>
+          <li><strong>Java Runtime Environment (JRE):</strong> The software package required exclusively to execute pre-compiled Java applications. It includes standard runtime core class libraries (<code>java.lang</code>, <code>java.util</code>, <code>java.io</code>) and an implementation of the JVM. In modern Java versions (Java 11+), the modular JDK has largely superseded standalone JRE downloads.</li>
+          <li><strong>Java Virtual Machine (JVM):</strong> The platform-specific software engine that executes compiled Java bytecode. While bytecode is globally universal across all operating systems, each operating system requires a custom JVM built for its kernel (Windows JVM, macOS JVM, Linux JVM). The JVM includes a ClassLoader subsystem, Bytecode Verifier, and Execution Engine with a Just-In-Time (JIT) compiler and Garbage Collector.</li>
+        </ul>
+
+        <div class="code-block">
+<span class="cm">// Step 1: Human-readable source code (Main.java)</span>
+<span class="cm">// Step 2: Compiled by javac -> Platform-independent bytecode (Main.class)</span>
+<span class="cm">// Step 3: Executed by JVM -> High-speed JIT converted to Native CPU Machine Code</span>
+public class HelloWorld {
+    public static void main(String[] args) {
+        System.out.println("Hello, Java Virtual Machine!");
+    }
+}</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>2. Anatomy of a Java Application: Syntax &amp; Memory Layout</h2>
+        <p>Every executable Java statement must reside within a class. Java enforces strict file naming parity: a file containing <code>public class PaymentGateway</code> must be named identically as <code>PaymentGateway.java</code>. The entry point of every standalone Java program is the canonical method signature:</p>
+        <div class="code-block">public static void main(String[] args)</div>
+        <p>Let us deconstruct each keyword of this signature with architectural precision:</p>
+        <ul>
+          <li><strong>public:</strong> An access modifier that makes the method globally visible to the JVM runtime from outside the package boundaries.</li>
+          <li><strong>static:</strong> Declares that the method belongs to the class itself rather than an instantiated object. This allows the JVM to invoke <code>main()</code> without having to first instantiate the enclosing class into memory.</li>
+          <li><strong>void:</strong> The return type indicator declaring that this method terminates without producing a return value back to the JVM caller.</li>
+          <li><strong>main:</strong> The standardized identifier that the JVM's execution engine seeks as the entry hook upon process boot.</li>
+          <li><strong>String[] args:</strong> An array of String objects representing command-line parameters supplied by the operating system shell when launching the program.</li>
+        </ul>
+
+        <h3>Memory Segments: Stack vs. Heap</h3>
+        <p>Java organizes application runtime memory into distinct logical regions managed by the JVM:</p>
+        <ul>
+          <li><strong>Stack Memory:</strong> Allocates temporary storage for primitive variables (such as <code>int</code>, <code>double</code>, <code>boolean</code>) and active references to objects. Stack memory operates strictly in LIFO (Last-In, First-Out) order per thread. When a method scope terminates, its stack frame is instantly popped and deallocated with zero overhead.</li>
+          <li><strong>Heap Memory:</strong> The shared storage arena where all objects, class instances, and array payloads are allocated via the <code>new</code> operator. Objects in the Heap persist independently of method stack lifecycles and are cleaned up asynchronously by the automatic <strong>Garbage Collector (GC)</strong> when no active references to them remain.</li>
+        </ul>
+      </div>
+
+      <div class="topic-block">
+        <h2>3. Classes, Objects, and Constructor Mechanics</h2>
+        <p>In object-oriented programming, a <strong>Class</strong> serves as an architectural blueprint or user-defined type that defines the data attributes (state) and member methods (behavior) common to entities of that kind. An <strong>Object</strong> is a concrete, living instance of that class materialized in Heap memory.</p>
+
+        <div class="code-block">
+public class BankAccount {
+    <span class="cm">// Instance variables (State)</span>
+    private String accountNumber;
+    private String accountHolder;
+    private double balance;
+
+    <span class="cm">// 1. Default Constructor</span>
+    public BankAccount() {
+        this.accountNumber = "UNASSIGNED";
+        this.accountHolder = "UNKNOWN";
+        this.balance = 0.0;
+    }
+
+    <span class="cm">// 2. Parameterized Constructor with 'this' keyword disambiguation</span>
+    public BankAccount(String accountNumber, String accountHolder, double initialDeposit) {
+        this.accountNumber = accountNumber;
+        this.accountHolder = accountHolder;
+        if (initialDeposit >= 0.0) {
+            this.balance = initialDeposit;
+        } else {
+            System.err.println("Warning: Negative opening balance rejected. Initializing to $0.00.");
+            this.balance = 0.0;
+        }
+    }
+
+    <span class="cm">// Instance Methods (Behavior)</span>
+    public void deposit(double amount) {
+        if (amount <= 0) {
+            System.out.println("Deposit amount must be strictly positive.");
+            return;
+        }
+        this.balance += amount;
+        System.out.println("Successfully deposited $" + amount + ". New balance: $" + this.balance);
+    }
+
+    public boolean withdraw(double amount) {
+        if (amount > this.balance) {
+            System.out.println("Transaction declined: Insufficient funds. Current balance: $" + this.balance);
+            return false;
+        }
+        this.balance -= amount;
+        System.out.println("Successfully withdrew $" + amount + ". Remaining balance: $" + this.balance);
+        return true;
+    }
+
+    public double getBalance() {
+        return this.balance;
+    }
+}</div>
+
+        <p>The <code>this</code> keyword is a reference variable in Java that refers directly to the current executing object instance. It is indispensable for resolving shadowing collisions between method parameters and instance attributes.</p>
+      </div>
+
+      <div class="topic-block">
+        <h2>4. The Four Pillars of Object-Oriented Programming (OOP)</h2>
+        <p>Modern software engineering relies upon four core paradigms to manage code complexity, isolate business domains, and facilitate scalable code reusability. Let us examine each pillar with rigorous real-world examples.</p>
+
+        <h3>Pillar 1: Encapsulation (Data Hiding &amp; Invariants)</h3>
+        <p>Encapsulation is the technique of packaging data attributes and the methods that manipulate them into a cohesive unit (class) while restricting unauthorized direct access to internal representations. By declaring fields <code>private</code> and exposing access solely through controlled <code>public</code> accessor (getter) and mutator (setter) methods, we enforce <em>business invariants</em>.</p>
+        <div class="code-block">
+public class Employee {
+    private int id;
+    private String name;
+    private double monthlySalary;
+
+    public Employee(int id, String name, double monthlySalary) {
+        this.id = id;
+        this.name = name;
+        setMonthlySalary(monthlySalary); <span class="cm">// Enforces validation logic</span>
+    }
+
+    <span class="cm">// Getter for name</span>
+    public String getName() {
+        return name;
+    }
+
+    <span class="cm">// Setter enforcing invariant validation</span>
+    public void setMonthlySalary(double salary) {
+        if (salary < 1000.0) {
+            throw new IllegalArgumentException("Salary cannot fall below minimum statutory base ($1,000).");
+        }
+        this.monthlySalary = salary;
+    }
+
+    public double getMonthlySalary() {
+        return monthlySalary;
+    }
+}</div>
+
+        <h3>Pillar 2: Inheritance (Reusability &amp; The 'IS-A' Hierarchy)</h3>
+        <p>Inheritance permits a new class (derived class or subclass) to acquire the attributes and methods of an existing class (base class or superclass) using the <code>extends</code> keyword. It models an <em>"IS-A"</em> relationship (e.g., a <code>SoftwareEngineer</code> IS-A <code>Employee</code>) and eliminates duplicate code.</p>
+        <p>In Java, a class can directly inherit from only one parent class—Java deliberately forbids multiple class inheritance to eliminate the infamous "Diamond Problem" of ambiguous method inheritance. However, multiple inheritance of interface contracts is fully supported.</p>
+
+        <div class="code-block">
+<span class="cm">// Superclass</span>
+public class Vehicle {
+    protected String brand;
+    protected int maxSpeed;
+
+    public Vehicle(String brand, int maxSpeed) {
+        this.brand = brand;
+        this.maxSpeed = maxSpeed;
+    }
+
+    public void startEngine() {
+        System.out.println(brand + " engine ignited.");
+    }
+}
+
+<span class="cm">// Subclass inheriting from Vehicle</span>
+public class ElectricCar extends Vehicle {
+    private int batteryCapacityKWh;
+
+    public ElectricCar(String brand, int maxSpeed, int batteryCapacityKWh) {
+        <span class="cm">// Invoke superclass constructor using 'super'</span>
+        super(brand, maxSpeed);
+        this.batteryCapacityKWh = batteryCapacityKWh;
+    }
+
+    <span class="cm">// Method overriding with annotation</span>
+    @Override
+    public void startEngine() {
+        System.out.println(brand + " silently activated electric drive train. Battery: " + batteryCapacityKWh + " kWh.");
+    }
+
+    public void recharge() {
+        System.out.println("Connected to Supercharger. Charging " + brand + "...");
+    }
+}</div>
+
+        <h3>Pillar 3: Polymorphism (Compile-Time vs. Runtime)</h3>
+        <p>The term polymorphism originates from Greek, meaning "many forms." In computer science, it describes the ability of a single interface or reference type to control entities of varying underlying implementations. Java features two primary classifications of polymorphism:</p>
+        <ul>
+          <li><strong>Compile-Time (Static) Polymorphism — Method Overloading:</strong> Occurs when multiple methods within the same class share an identical name but differ in parameter count, parameter types, or sequence. The compiler binds the correct invocation at compilation time based on the argument signatures.</li>
+          <li><strong>Runtime (Dynamic) Polymorphism — Method Overriding:</strong> Occurs when a subclass provides a specific implementation of a method already declared in its superclass. The JVM determines which method implementation to execute at runtime based on the actual object instance present on the Heap, a mechanism known as <em>Dynamic Method Dispatch</em>.</li>
+        </ul>
+
+        <div class="code-block">
+<span class="cm">// Compile-time Polymorphism: Method Overloading</span>
+public class MathUtility {
+    public int multiply(int a, int b) {
+        return a * b;
+    }
+
+    public double multiply(double a, double b) {
+        return a * b;
+    }
+
+    public int multiply(int a, int b, int c) {
+        return a * b * c;
+    }
+}
+
+<span class="cm">// Runtime Polymorphism in action:</span>
+public class PolymorphismDemo {
+    public static void main(String[] args) {
+        <span class="cm">// Reference variable of type Vehicle pointing to an ElectricCar object</span>
+        Vehicle myVehicle = new ElectricCar("Tesla", 250, 85);
+
+        <span class="cm">// Dynamically resolves to ElectricCar's overridden method!</span>
+        myVehicle.startEngine(); 
+    }
+}</div>
+
+        <h3>Pillar 4: Abstraction (Interfaces vs. Abstract Classes)</h3>
+        <p>Abstraction is the discipline of hiding intricate internal implementation mechanics and presenting only the essential, high-level behavioral contract to external clients. For example, a driver interacts with an accelerator pedal and steering wheel without needing to comprehend fuel injection manifolds or electronic valve timings.</p>
+        <p>Java facilitates abstraction through two structural constructs: <strong>Abstract Classes</strong> and <strong>Interfaces</strong>.</p>
+        <ul>
+          <li><strong>Abstract Class:</strong> Declared with the <code>abstract</code> keyword; cannot be instantiated directly. May contain a mixture of implemented methods (with concrete code bodies) and abstract methods (method signatures without bodies). Subclasses must implement the abstract methods unless they are also abstract. Abstract classes can maintain instance state fields.</li>
+          <li><strong>Interface:</strong> A pure formal blueprint of behavior declared with the <code>interface</code> keyword. All fields in an interface are implicitly <code>public static final</code> (constants). Methods are implicitly <code>public abstract</code> (though Java 8 introduced <code>default</code> and <code>static</code> methods with bodies, and Java 9 added private helper methods). Classes bind to interfaces using the <code>implements</code> keyword.</li>
+        </ul>
+
+        <div class="code-block">
+<span class="cm">// 1. Defining an Interface</span>
+public interface PaymentMethod {
+    void authorizePayment(double amount);
+    boolean verifyTransaction(String transactionId);
+}
+
+<span class="cm">// 2. Concrete Implementation A</span>
+public class CreditCardPayment implements PaymentMethod {
+    private String cardNumber;
+
+    public CreditCardPayment(String cardNumber) {
+        this.cardNumber = cardNumber;
+    }
+
+    @Override
+    public void authorizePayment(double amount) {
+        System.out.println("Processing credit card charge of $" + amount + " for card " + cardNumber.substring(cardNumber.length() - 4));
+    }
+
+    @Override
+    public boolean verifyTransaction(String transactionId) {
+        return transactionId != null &amp;&amp; transactionId.startsWith("CC-");
+    }
+}
+
+<span class="cm">// 3. Concrete Implementation B</span>
+public class CryptoPayment implements PaymentMethod {
+    private String walletAddress;
+
+    public CryptoPayment(String walletAddress) {
+        this.walletAddress = walletAddress;
+    }
+
+    @Override
+    public void authorizePayment(double amount) {
+        System.out.println("Broadcasting transaction for $" + amount + " to blockchain ledger address: " + walletAddress);
+    }
+
+    @Override
+    public boolean verifyTransaction(String transactionId) {
+        return transactionId != null &amp;&amp; transactionId.length() == 64;
+    }
+}</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>5. Access Modifiers Summary Table</h2>
+        <p>Java provides four distinct visibility levels to safeguard structural boundaries:</p>
+        <div class="notes-table-wrap" style="margin:20px 0;">
+          <table class="notes-table">
+            <thead>
+              <tr>
+                <th style="width:20%;">Modifier</th>
+                <th style="width:20%;">Same Class</th>
+                <th style="width:20%;">Same Package</th>
+                <th style="width:20%;">Subclass (Outside Package)</th>
+                <th style="width:20%;">Global (World)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>public</code></td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td>Yes</td>
+              </tr>
+              <tr>
+                <td><code>protected</code></td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td>Yes (via inheritance)</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><code>default</code> (no modifier)</td>
+                <td>Yes</td>
+                <td>Yes</td>
+                <td>No</td>
+                <td>No</td>
+              </tr>
+              <tr>
+                <td><code>private</code></td>
+                <td>Yes</td>
+                <td>No</td>
+                <td>No</td>
+                <td>No</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>6. Common Beginner Pitfalls &amp; Compilation Traps</h2>
+        <div class="mistake-list">
+          <ul>
+            <li><strong>NullPointerException (NPE):</strong> Occurs when attempting to invoke a method or access an attribute on a reference variable that currently points to <code>null</code> in Heap memory. Guard against this using explicit null checks, defensive copying, or Java 8's <code>Optional&lt;T&gt;</code> container.</li>
+            <li><strong>Comparing Strings with == instead of .equals():</strong> The equality operator <code>==</code> tests whether two object references point to the exact same physical memory address on the Heap. The <code>.equals()</code> method evaluates logical character value equality. Always write <code>stringA.equals(stringB)</code>.</li>
+            <li><strong>Forgetting the super() Constructor Invocation:</strong> If a superclass defines only parameterized constructors and lacks a no-argument constructor, every subclass constructor must explicitly invoke <code>super(args...)</code> as its very first statement; failing to do so causes a compilation failure.</li>
+            <li><strong>ConcurrentModificationException:</strong> Triggered when modifying a Java Collection (such as removing elements from an <code>ArrayList</code>) while actively iterating through it using an enhanced for-each loop. Use an explicit <code>Iterator.remove()</code> or Java 8's <code>removeIf()</code> method instead.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>7. Hands-On Practice Exercises</h2>
+        <div class="exercise-list">
+          <ol>
+            <li><strong>Design a Library Catalog Hierarchy:</strong> Implement a base abstract class <code>LibraryItem</code> with attributes <code>title</code>, <code>itemId</code>, and abstract method <code>calculateLateFee(int daysOverdue)</code>. Create concrete derived classes <code>Book</code> ($0.25/day) and <code>DVD</code> ($1.00/day). Demonstrate dynamic method dispatch with an array of items.</li>
+            <li><strong>Thread-Safe Singleton Pattern:</strong> Write a class <code>ConfigurationManager</code> implementing the classic Double-Checked Locking Singleton design pattern with a <code>private static volatile</code> instance variable and a private constructor.</li>
+            <li><strong>Immutable Value Object:</strong> Create an immutable class <code>GeoCoordinate</code> with <code>final double latitude</code> and <code>final double longitude</code>. Ensure all fields are private and final, provide no setters, make the class final, and implement proper <code>equals()</code> and <code>hashCode()</code> methods.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>8. Frequently Asked Technical Interview Questions</h2>
+        <div class="hard-q-list">
+          <ol>
+            <li>
+              <strong>Why are Java Strings immutable, and what are the security and performance implications?</strong><br>
+              Java Strings are immutable (their underlying <code>char[]</code> or byte array cannot be mutated once allocated) for three critical architectural reasons:
+              <br>1) <em>String Constant Pool:</em> Immutability allows the JVM to share string literals among thousands of threads without synchronization hazards, saving vast amounts of Heap memory.
+              <br>2) <em>Security:</em> Network socket addresses, database URLs, and file path parameters are transmitted as Strings; mutable strings would allow malicious threads to tamper with parameters after authorization checks.
+              <br>3) <em>HashCode Caching:</em> Because characters never shift, the <code>hashCode</code> can be computed once lazily and cached, providing O(1) performance in <code>HashMap</code> lookups.
+            </li>
+            <li>
+              <strong>What is the fundamental difference between an Abstract Class and an Interface in Java 8+?</strong><br>
+              An abstract class represents identity (an <em>"IS-A"</em> relationship) and can maintain state via non-static, non-final instance variables and private constructors. A class can extend only one abstract class. In contrast, an interface defines behavioral capability (a <em>"CAN-DO"</em> contract). While Java 8 added default and static methods with code bodies, interfaces cannot possess non-final instance fields or constructors. A class can implement multiple interfaces.
+            </li>
+            <li>
+              <strong>Explain Garbage Collection algorithms and how the JVM detects unreachable objects.</strong><br>
+              The JVM employs a generational garbage collection model based on the "Weak Generational Hypothesis" (most objects die shortly after creation). Heap memory is divided into Young Generation (Eden space and Survivor spaces S0/S1) and Old (Tenured) Generation. The JVM determines object reachability using <strong>Root Tracing (GC Roots)</strong>—which includes local stack variables, active thread references, and static class variables. Any object graph disconnected from GC Roots is considered unreachable and safely swept by the Mark-and-Sweep or G1 GC collectors.
+            </li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Lesson Navigation -->
+    <div class="lesson-nav">
+      <a href="data-structures-arrays.html">← Previous: Data Structures &amp; Arrays</a>
+      <a href="html-css-basics.html">Next: HTML &amp; CSS Fundamentals →</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="footer-inner">
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming Video's</a></li>
+      <li><a href="test.html">Take a Test</a></li>
+      <li><a href="about.html">About Us</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+      <li><a href="disclaimer.html">Disclaimer</a></li>
+      <li><a href="privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+    </ul>
+    <div class="footer-bottom">@ short study copyright all rights reserved</div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

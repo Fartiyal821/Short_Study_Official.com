@@ -164,16 +164,74 @@ function renderLesson(post) {
     el.lessonAuthor.textContent = post.author || "ShortStudy Editorial";
   }
 
-  // YouTube Video Embed Section
-  if (post.youtubeEmbed && post.youtubeEmbed.trim() !== "") {
-    const processed = processYouTubeEmbed(post.youtubeEmbed);
-    if (processed.isValid && processed.iframeHtml) {
-      el.videoFrameWrapper.innerHTML = processed.iframeHtml;
-      el.videoContainer.style.display = "block";
-    } else {
-      el.videoFrameWrapper.innerHTML = sanitizeHTML(post.youtubeEmbed);
-      el.videoContainer.style.display = "block";
-    }
+  // Multiple Videos or Single YouTube Video Embed Section
+  const videosList = (Array.isArray(post.videos) && post.videos.length > 0)
+    ? post.videos
+    : (post.youtubeEmbed && post.youtubeEmbed.trim() !== "")
+      ? [{ id: "v-1", title: post.title || "Lesson Video", videoUrl: post.youtubeEmbed, description: "" }]
+      : [];
+
+  if (videosList.length > 0) {
+    el.videoContainer.style.display = "block";
+
+    const renderActiveVideo = (index) => {
+      const v = videosList[index];
+      if (!v) return;
+
+      let processed = processYouTubeEmbed(v.videoUrl || v.url || "");
+      let embedHtml = (processed.isValid && processed.iframeHtml) ? processed.iframeHtml : sanitizeHTML(v.videoUrl || "");
+      if (!embedHtml && v.videoUrl) {
+        let embedSrc = v.videoUrl.replace("watch?v=", "embed/");
+        embedHtml = `<iframe src="${escapeHtml(embedSrc)}" frameborder="0" allowfullscreen style="width:100%; height:100%; border-radius:8px;"></iframe>`;
+      }
+
+      // Format plain text description (convert line breaks to <br>)
+      const rawDesc = v.description || "";
+      const formattedDesc = escapeHtml(rawDesc).replace(/\n/g, "<br>");
+
+      const playlistHtml = videosList.length > 1 ? `
+        <div style="margin-top: 14px; background: rgba(0, 0, 0, 0.03); border: 1px solid var(--paper-line); border-radius: 8px; padding: 12px;">
+          <div style="font-size: 12px; font-weight: 700; color: var(--ink); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <span>📹 Lesson Videos (${videosList.length})</span>
+            <span style="font-size: 11px; color: var(--ink-soft); font-weight: 400;">Select video to play</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; max-height: 200px; overflow-y: auto;">
+            ${videosList.map((item, idx) => `
+              <button type="button" class="lesson-v-playlist-btn" data-idx="${idx}" style="display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border-radius: 6px; font-size: 13px; border: 1px solid ${idx === index ? 'var(--pink-dark)' : 'var(--paper-line)'}; background: ${idx === index ? 'rgba(225, 29, 72, 0.08)' : 'var(--paper)'}; color: var(--ink); cursor: pointer; font-weight: ${idx === index ? '700' : '500'}; transition: all 0.2s;">
+                <span>▶ ${idx + 1}. ${escapeHtml(item.title || `Video ${idx + 1}`)}</span>
+                <span style="font-size: 11px; color: ${idx === index ? 'var(--pink-dark)' : 'var(--ink-soft)'}; font-weight: 700;">${idx === index ? 'Now Playing' : 'Play'}</span>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      ` : '';
+
+      const descHtml = rawDesc.trim() !== "" ? `
+        <div style="margin-top: 12px; padding: 12px 14px; background: rgba(0, 0, 0, 0.02); border-left: 3px solid var(--pink-dark); border-radius: 4px; font-size: 13.5px; line-height: 1.6; color: var(--ink);">
+          <div style="font-size: 11px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; margin-bottom: 4px;">Video Overview</div>
+          <div>${formattedDesc}</div>
+        </div>
+      ` : '';
+
+      el.videoFrameWrapper.innerHTML = `
+        <div class="video-aspect" style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background: #000;">
+          <div style="position: absolute; top:0; left:0; width:100%; height:100%;">
+            ${embedHtml}
+          </div>
+        </div>
+        ${descHtml}
+        ${playlistHtml}
+      `;
+
+      el.videoFrameWrapper.querySelectorAll(".lesson-v-playlist-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const idx = parseInt(btn.dataset.idx, 10);
+          renderActiveVideo(idx);
+        });
+      });
+    };
+
+    renderActiveVideo(0);
   } else {
     el.videoContainer.style.display = "none";
     el.videoFrameWrapper.innerHTML = "";

@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Allow read, write, and delete on paid_courses
+    match /paid_courses/{courseId} {
+      allow read, write, delete: if true;
+    }
+
+    // Allow read, write, and delete on courses
+    match /courses/{courseId} {
+      allow read, write, delete: if true;
+    }
+
+    // Allow read, write, and delete on posts
+    match /posts/{postId} {
+      allow read, write, delete: if true;
+    }
+
+    // Allow read, write, and delete on course_orders
+    match /course_orders/{orderId} {
+      allow read, write, delete: if true;
+    }
+
+    // Allow read, write, and delete on admins
+    match /admins/{adminId} {
+      allow read, write, delete: if true;
+    }
+
+    // Default fallback
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

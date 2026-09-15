@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>SQL Basics &amp; Relational Databases Masterclass — Short Study</title>
+<meta name="description" content="Master SQL and Relational Database design. Comprehensive guide covering DDL, DML, DQL, Joins (INNER, LEFT, RIGHT, FULL), GROUP BY, HAVING, subqueries, ACID transactions, and database interview prep.">
+<link rel="canonical" href="https://shortstudy.in/sql-basics.html">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "TechArticle",
+  "headline": "SQL Basics & Relational Databases Complete Masterclass",
+  "description": "Comprehensive tutorial covering Structured Query Language (SQL), relational schemas, joins, aggregations, window functions, ACID transactions, and database interview questions.",
+  "author": {
+    "@type": "Person",
+    "name": "Gaurav Fartiyal"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Short Study",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://shortstudy.in/apple-touch-icon.png"
+    }
+  },
+  "datePublished": "2026-09-14",
+  "dateModified": "2026-09-14"
+}
+</script>
+</head>
+<body>
+
+<!-- ============ HEADER / NAVBAR ============ -->
+<header>
+  <div class="nav">
+    <a class="brand" href="/">Short<span>Study</span></a>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming Video's</a></li>
+      <li><a href="test.html">Test</a></li>
+      <li><a href="about.html">About</a></li>
+      <li><a href="contact.html">Contact</a></li>
+    </ul>
+    <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+  </div>
+</header>
+
+<!-- ============ PAGE HEADER ============ -->
+<section class="page-header">
+  <span class="kicker">Curriculum Track · Module 07</span>
+  <h1>SQL &amp; Relational Databases Masterclass</h1>
+  <p>The comprehensive engineering guide to SQL syntax, relational schema design, complex multi-table joins, ACID transactions, and database query optimization.</p>
+</section>
+
+<!-- ============ MAIN LESSON ============ -->
+<section class="paper">
+  <div class="wrap">
+
+    <div class="breadcrumb">
+      <a href="/">Home</a>
+      <span class="sep">/</span>
+      <a href="programming-videos.html">Programming Track</a>
+      <span class="sep">/</span>
+      <span>SQL &amp; Relational Databases</span>
+    </div>
+
+    <div class="lesson-meta">
+      <span class="tag">Topic: Databases &amp; Structured Query Language</span>
+      <span class="tag">Target Audience: Beginners, Backend Developers &amp; Freshers</span>
+      <span class="tag">Estimated Reading Time: 26 Minutes</span>
+      <span class="tag">Standard: ANSI / ISO SQL (PostgreSQL, MySQL, SQLite)</span>
+    </div>
+
+    <!-- Ad Placeholder Top (Zero CLS) -->
+    <div class="ad-slot-wrapper ad-banner-desktop" aria-hidden="true">
+      <span class="ad-slot-label">Advertisement · Supports Free Curriculum</span>
+      <div style="color:var(--ink-soft); font-size:13px; text-align:center; padding:10px;">Reserved Editorial Placement Container</div>
+    </div>
+
+    <div class="lesson-content fade-up">
+
+      <div class="topic-block">
+        <h2>1. The Relational Model &amp; Database Architecture</h2>
+        <p>Before the invention of relational databases, early software systems persisted data in sequential flat files or hierarchical network databases. In 1970, Dr. Edgar F. Codd published his landmark paper, <em>"A Relational Model of Data for Large Shared Data Banks,"</em> proposing that data be organized mathematically into <strong>relations</strong> (tables) consisting of <strong>tuples</strong> (rows) and <strong>attributes</strong> (columns). This mathematical foundation led directly to the creation of <strong>Structured Query Language (SQL)</strong>.</p>
+        <p>Unlike procedural languages (such as C, Java, or Python) where developers write step-by-step algorithms instructing the computer <em>how</em> to locate and process memory buffers, SQL is a <strong>declarative language</strong>. In SQL, you describe <em>what</em> data you want to retrieve or mutate, and the database engine's internal <strong>Query Planner and Cost-Based Optimizer (CBO)</strong> computes the most efficient execution plan using indexes, hash joins, or sequential scans.</p>
+
+        <h3>Core Relational Building Blocks</h3>
+        <ul>
+          <li><strong>Tables (Relations):</strong> Two-dimensional structured matrices holding records of a specific entity type (e.g., <code>users</code>, <code>orders</code>, <code>products</code>).</li>
+          <li><strong>Rows (Records / Tuples):</strong> Individual horizontal entries representing a single entity instance.</li>
+          <li><strong>Columns (Fields / Attributes):</strong> Vertical data properties enforced with strict data types (e.g., <code>VARCHAR</code>, <code>INTEGER</code>, <code>DECIMAL</code>, <code>TIMESTAMP</code>, <code>BOOLEAN</code>).</li>
+          <li><strong>Primary Key (PK):</strong> A column (or combination of columns) that uniquely identifies each record in a table. Primary keys must be strictly unique and cannot contain <code>NULL</code> values.</li>
+          <li><strong>Foreign Key (FK):</strong> A column that references the primary key of another table, establishing a verifiable relationship and enforcing <strong>Referential Integrity</strong> (preventing orphan records).</li>
+        </ul>
+      </div>
+
+      <div class="topic-block">
+        <h2>2. The Sub-Divisions of SQL Commands</h2>
+        <p>SQL is categorized into five distinct functional command sub-languages:</p>
+        <div class="notes-table-wrap" style="margin:20px 0;">
+          <table class="notes-table">
+            <thead>
+              <tr>
+                <th style="width:20%;">Category</th>
+                <th style="width:30%;">Full Name</th>
+                <th style="width:50%;">Core Keywords &amp; Purpose</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>DDL</strong></td>
+                <td>Data Definition Language</td>
+                <td><code>CREATE</code>, <code>ALTER</code>, <code>DROP</code>, <code>TRUNCATE</code>, <code>RENAME</code> — Defines and modifies database schema structure.</td>
+              </tr>
+              <tr>
+                <td><strong>DML</strong></td>
+                <td>Data Manipulation Language</td>
+                <td><code>INSERT</code>, <code>UPDATE</code>, <code>DELETE</code> — Modifies data records stored inside tables.</td>
+              </tr>
+              <tr>
+                <td><strong>DQL</strong></td>
+                <td>Data Query Language</td>
+                <td><code>SELECT</code> — Retrieves data from one or more tables without altering stored state.</td>
+              </tr>
+              <tr>
+                <td><strong>TCL</strong></td>
+                <td>Transaction Control Language</td>
+                <td><code>COMMIT</code>, <code>ROLLBACK</code>, <code>SAVEPOINT</code> — Manages transactional boundaries and state persistence.</td>
+              </tr>
+              <tr>
+                <td><strong>DCL</strong></td>
+                <td>Data Control Language</td>
+                <td><code>GRANT</code>, <code>REVOKE</code> — Configures user permissions, role security, and database access controls.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>3. DDL: Schema Definition &amp; Table Creation</h2>
+        <p>Let us construct a production-ready e-commerce relational schema demonstrating primary keys, auto-incrementing surrogate identifiers, foreign key constraints, default timestamps, and check constraints:</p>
+
+        <div class="code-block">
+<span class="cm">-- 1. Create the Customers table</span>
+CREATE TABLE customers (
+    customer_id SERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    country VARCHAR(50) DEFAULT 'India',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+<span class="cm">-- 2. Create the Products table with check constraint</span>
+CREATE TABLE products (
+    product_id SERIAL PRIMARY KEY,
+    product_name VARCHAR(150) NOT NULL,
+    unit_price DECIMAL(10, 2) NOT NULL CHECK (unit_price >= 0.00),
+    stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+    is_active BOOLEAN DEFAULT TRUE
+);
+
+<span class="cm">-- 3. Create the Orders table with Foreign Key constraint</span>
+CREATE TABLE orders (
+    order_id SERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL,
+    order_date TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    order_status VARCHAR(30) DEFAULT 'Pending' CHECK (order_status IN ('Pending', 'Shipped', 'Delivered', 'Cancelled')),
+    total_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
+    CONSTRAINT fk_customer 
+        FOREIGN KEY (customer_id) 
+        REFERENCES customers(customer_id) 
+        ON DELETE CASCADE
+);</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>4. DML: Inserting, Updating, and Deleting Records</h2>
+        <p>Data Manipulation Language commands alter the actual rows inside your tables. Always take precautions when issuing <code>UPDATE</code> and <code>DELETE</code> statements to ensure appropriate <code>WHERE</code> clauses are included.</p>
+
+        <div class="code-block">
+<span class="cm">-- 1. Inserting multiple rows in a single statement</span>
+INSERT INTO customers (full_name, email, country) 
+VALUES 
+    ('Arjun Sharma', 'arjun@example.com', 'India'),
+    ('Priya Patel', 'priya@example.com', 'India'),
+    ('John Smith', 'john@example.com', 'United States');
+
+<span class="cm">-- 2. Inserting products</span>
+INSERT INTO products (product_name, unit_price, stock_quantity)
+VALUES
+    ('Mechanical Keyboard', 4500.00, 25),
+    ('Ergonomic Mouse', 2200.00, 40),
+    ('USB-C Hub', 1800.00, 0);
+
+<span class="cm">-- 3. Updating records with defensive WHERE clause</span>
+UPDATE products 
+SET unit_price = unit_price * 0.90, stock_quantity = stock_quantity + 15
+WHERE product_name = 'Mechanical Keyboard';
+
+<span class="cm">-- 4. Deleting records safely</span>
+DELETE FROM products 
+WHERE stock_quantity = 0 AND is_active = FALSE;</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>5. DQL: Mastering Data Queries with Filtering &amp; Sorting</h2>
+        <p>The <code>SELECT</code> query is the backbone of relational data retrieval. The logical processing order executed by database engines differs from the syntactic order written by developers:</p>
+        <div class="code-block">
+<span class="cm">-- Syntactic Order written by Developer:</span>
+SELECT column_name, COUNT(*)
+FROM table_name
+WHERE condition
+GROUP BY column_name
+HAVING aggregate_condition
+ORDER BY count DESC
+LIMIT 10;
+
+<span class="cm">-- Logical Execution Order executed by Query Engine:</span>
+<span class="cm">-- 1. FROM &amp; JOINs (identify source tables and form Cartesian product)</span>
+<span class="cm">-- 2. WHERE (filter rows at record level)</span>
+<span class="cm">-- 3. GROUP BY (aggregate records into buckets)</span>
+<span class="cm">-- 4. HAVING (filter aggregated groups)</span>
+<span class="cm">-- 5. SELECT (project requested columns and evaluate expressions)</span>
+<span class="cm">-- 6. DISTINCT (eliminate duplicate projected rows)</span>
+<span class="cm">-- 7. ORDER BY (sort output rows)</span>
+<span class="cm">-- 8. LIMIT / OFFSET (slice final result page)</span></div>
+      </div>
+
+      <div class="topic-block">
+        <h2>6. Relational Joins Deep-Dive</h2>
+        <p>Relational databases excel because data is normalized across specialized tables to eliminate redundancy. When retrieving consolidated reports, we employ <strong>Joins</strong> to recombine normalized tables based on shared key relationships.</p>
+
+        <div class="notes-table-wrap" style="margin:20px 0;">
+          <table class="notes-table">
+            <thead>
+              <tr>
+                <th style="width:22%;">Join Type</th>
+                <th style="width:40%;">Venn Diagram Behavior</th>
+                <th style="width:38%;">Common Engineering Use Case</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>INNER JOIN</strong></td>
+                <td>Returns only records that have matching keys in BOTH tables.</td>
+                <td>Find all orders with a valid, verified customer account.</td>
+              </tr>
+              <tr>
+                <td><strong>LEFT (OUTER) JOIN</strong></td>
+                <td>Returns ALL records from the left table, plus matched right records (or NULL if unmatched).</td>
+                <td>Find all registered customers, including those who have never placed an order.</td>
+              </tr>
+              <tr>
+                <td><strong>RIGHT (OUTER) JOIN</strong></td>
+                <td>Returns ALL records from the right table, plus matched left records.</td>
+                <td>Rarely needed (equivalent to flipping a LEFT JOIN).</td>
+              </tr>
+              <tr>
+                <td><strong>FULL (OUTER) JOIN</strong></td>
+                <td>Returns all records when there is a match in either table (combines LEFT and RIGHT).</td>
+                <td>Data reconciliation audits across legacy and modern systems.</td>
+              </tr>
+              <tr>
+                <td><strong>CROSS JOIN</strong></td>
+                <td>Produces the full Cartesian product (N × M combinations).</td>
+                <td>Generating test matrices, t-shirt size × color variations.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="code-block">
+<span class="cm">-- Comprehensive Multi-Table INNER &amp; LEFT JOIN Query</span>
+SELECT 
+    c.customer_id,
+    c.full_name,
+    c.email,
+    COUNT(o.order_id) AS total_orders_placed,
+    COALESCE(SUM(o.total_amount), 0.00) AS total_revenue_generated
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE c.country = 'India'
+GROUP BY c.customer_id, c.full_name, c.email
+HAVING COUNT(o.order_id) >= 1
+ORDER BY total_revenue_generated DESC;</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>7. Subqueries, Common Table Expressions (CTEs), and Window Functions</h2>
+        <p>When solving intricate analytical challenges, modern SQL provides <strong>Common Table Expressions (CTEs)</strong> via the <code>WITH</code> clause, replacing unreadable nested subqueries with clean, modular queries:</p>
+
+        <div class="code-block">
+<span class="cm">-- Analytical Query using CTE and Window Functions</span>
+WITH RegionalSales AS (
+    SELECT 
+        c.country,
+        p.product_name,
+        SUM(o.total_amount) AS total_sales,
+        ROW_NUMBER() OVER (PARTITION BY c.country ORDER BY SUM(o.total_amount) DESC) as sales_rank
+    FROM customers c
+    JOIN orders o ON c.customer_id = o.customer_id
+    JOIN order_items oi ON o.order_id = oi.order_id
+    JOIN products p ON oi.product_id = p.product_id
+    GROUP BY c.country, p.product_name
+)
+SELECT country, product_name, total_sales
+FROM RegionalSales
+WHERE sales_rank <= 3; <span class="cm">-- Top 3 highest grossing products per country</span></div>
+      </div>
+
+      <div class="topic-block">
+        <h2>8. Transactions &amp; ACID Properties</h2>
+        <p>In mission-critical enterprise systems (such as banking ledgers and healthcare records), operations frequently comprise multiple interdependent SQL statements. An order placement requires deducting account balance, creating an order record, decrementing inventory stock, and recording an audit trail. If the server loses power midway, the database must not be left in a corrupted state. This durability is guaranteed by <strong>ACID Properties</strong>:</p>
+        <ul>
+          <li><strong>Atomicity:</strong> "All or nothing." Either every statement within the transaction executes successfully, or the entire transaction is rolled back as if nothing ever occurred.</li>
+          <li><strong>Consistency:</strong> The database must transition strictly from one valid state to another valid state, never violating defined constraints (primary keys, foreign keys, check constraints).</li>
+          <li><strong>Isolation:</strong> Concurrent transactions executing simultaneously must not interfere with each other. The database enforces isolation levels (Read Uncommitted, Read Committed, Repeatable Read, Serializable).</li>
+          <li><strong>Durability:</strong> Once a transaction has been successfully committed (<code>COMMIT</code>), its changes are recorded in non-volatile Write-Ahead Logs (WAL) and will survive subsequent system crashes or hardware failures.</li>
+        </ul>
+
+        <div class="code-block">
+<span class="cm">-- Bank Funds Transfer Transaction</span>
+BEGIN TRANSACTION;
+
+<span class="cm">-- Step 1: Deduct $500 from Account 101</span>
+UPDATE accounts 
+SET balance = balance - 500.00 
+WHERE account_id = 101 AND balance >= 500.00;
+
+<span class="cm">-- Step 2: Credit $500 to Account 202</span>
+UPDATE accounts 
+SET balance = balance + 500.00 
+WHERE account_id = 202;
+
+<span class="cm">-- Step 3: Verify and permanently commit changes</span>
+COMMIT;</div>
+      </div>
+
+      <div class="topic-block">
+        <h2>9. Common Beginner Pitfalls &amp; Traps</h2>
+        <div class="mistake-list">
+          <ul>
+            <li><strong>The NULL Comparison Trap:</strong> In SQL, <code>NULL</code> signifies "unknown value," not zero or an empty string. Therefore, testing <code>WHERE status = NULL</code> will ALWAYS evaluate to Unknown/False! You must explicitly write <code>WHERE status IS NULL</code> or <code>WHERE status IS NOT NULL</code>.</li>
+            <li><strong>Accidental Cartesian Explosion:</strong> Executing a join between two tables without specifying the matching key constraint (e.g., omitting the <code>ON</code> clause in <code>SELECT * FROM tableA JOIN tableB;</code>) multiplies all rows together (1,000 rows × 1,000 rows = 1,000,000 rows), crushing server memory.</li>
+            <li><strong>Confusing WHERE and HAVING:</strong> The <code>WHERE</code> clause filters individual raw rows BEFORE aggregation occurs; the <code>HAVING</code> clause filters aggregated groups AFTER the <code>GROUP BY</code> stage has materialized.</li>
+            <li><strong>SQL Injection Vulnerabilities:</strong> Concatenating untrusted user input directly into SQL strings (e.g., <code>"SELECT * FROM users WHERE email = '" + userInput + "'"</code>). Always use parameterized prepared statements in your application backend!</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>10. Hands-On Practice Exercises</h2>
+        <div class="exercise-list">
+          <ol>
+            <li><strong>Calculate Customer Lifetime Value (CLV):</strong> Write a query calculating the total spend, average order value (AOV), and total order count for all customers registered in the last 12 months. Include customers who have spent $0 using an outer join.</li>
+            <li><strong>Detect Duplicate Records:</strong> Write a query targeting an un-normalized <code>leads</code> table to locate all email addresses that appear more than once, displaying each duplicate email alongside its frequency count.</li>
+            <li><strong>Second Highest Salary:</strong> Given an <code>employees</code> table with columns <code>id</code>, <code>name</code>, and <code>salary</code>, write an ANSI SQL query to determine the second highest unique salary without using hardcoded limits.</li>
+          </ol>
+        </div>
+      </div>
+
+      <div class="topic-block">
+        <h2>11. Frequently Asked Technical Interview Questions</h2>
+        <div class="hard-q-list">
+          <ol>
+            <li>
+              <strong>What is the difference between DELETE, TRUNCATE, and DROP?</strong><br>
+              1) <code>DELETE</code> is a DML command that removes rows one by one based on a WHERE clause. It logs every deleted row in transaction logs, activates database triggers, and can be rolled back inside a transaction.
+              <br>2) <code>TRUNCATE</code> is a DDL command that deallocates entire data pages containing table rows. It operates orders of magnitude faster than DELETE, cannot filter with a WHERE clause, and does not fire row-level delete triggers.
+              <br>3) <code>DROP</code> is a DDL command that completely deletes the entire table structure, indexes, permissions, and data from the database catalog permanently.
+            </li>
+            <li>
+              <strong>How do B-Tree Indexes work, and what are their trade-offs?</strong><br>
+              A B-Tree (Balanced Tree) index is an on-disk self-balancing multi-way search tree data structure. It organizes indexed column values in sorted order alongside row pointers (Tuple IDs), reducing table lookup operations from an O(N) sequential full-table scan to O(log N) tree traversals.
+              <em>Trade-offs:</em> While indexes accelerate <code>SELECT</code> queries with equality and range filters, they introduce write overhead on <code>INSERT</code>, <code>UPDATE</code>, and <code>DELETE</code> operations because the B-Tree must be rebalanced upon modifications. Indexes also consume additional disk storage.
+            </li>
+            <li>
+              <strong>Explain Database Normalization: 1NF, 2NF, and 3NF.</strong><br>
+              Normalization is the systematic process of designing relational schemas to eliminate redundant duplicate data and prevent insert, update, and deletion anomalies:
+              <br>• <strong>1NF (First Normal Form):</strong> Each table column must contain atomic (indivisible) values, and each record must be unique.
+              <br>• <strong>2NF (Second Normal Form):</strong> Must be in 1NF, and all non-key attributes must be fully functionally dependent on the entire primary key (no partial dependencies on composite keys).
+              <br>• <strong>3NF (Third Normal Form):</strong> Must be in 2NF, and no non-key attribute can depend transitively on another non-key attribute (no transitive dependencies).
+            </li>
+          </ol>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Lesson Navigation -->
+    <div class="lesson-nav">
+      <a href="html-css-basics.html">← Previous: HTML5 &amp; CSS3 Fundamentals</a>
+      <a href="programming-videos.html">Back to All Curriculum Tracks →</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer>
+  <div class="footer-inner">
+    <ul class="footer-links">
+      <li><a href="/">Home</a></li>
+      <li><a href="programming-videos.html">Programming Video's</a></li>
+      <li><a href="test.html">Take a Test</a></li>
+      <li><a href="about.html">About Us</a></li>
+      <li><a href="contact.html">Contact Us</a></li>
+      <li><a href="disclaimer.html">Disclaimer</a></li>
+      <li><a href="privacy-policy.html">Privacy Policy</a></li>
+      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+    </ul>
+    <div class="footer-bottom">@ short study copyright all rights reserved</div>
+  </div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>

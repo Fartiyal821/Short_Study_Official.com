@@ -20,7 +20,7 @@ export const PRE_EXISTING_COURSES = [
     slug: "c-basics",
     description: "How memory, pointers, and compilation logic operate under the hood in systems programming.",
     icon: "⚡",
-    status: "published",
+    status: "in_development",
     order: 2
   },
   {
@@ -29,13 +29,13 @@ export const PRE_EXISTING_COURSES = [
     slug: "data-structures-arrays",
     description: "The core foundation of technical coding interviews — contiguous memory & indexing from first principles.",
     icon: "📊",
-    status: "published",
+    status: "in_development",
     order: 3
   },
   {
     id: "java-oop-concepts",
     title: "Java & OOP Concepts",
-    slug: "java-oop-concepts",
+    slug: "java-oop-basics",
     description: "Classes, objects, inheritance, polymorphism, and abstraction for interview prep.",
     icon: "☕",
     status: "in_development",
@@ -60,6 +60,8 @@ export const PRE_EXISTING_COURSES = [
     order: 6
   }
 ];
+
+export const PRE_EXISTING_PAID_COURSES = [];
 
 export const PRE_EXISTING_LESSONS = [
   {
@@ -242,5 +244,164 @@ int main() {
     </tbody>
   </table>
 </div>`
+  },
+  {
+    id: "lesson-java-1",
+    courseId: "java-oop-concepts",
+    courseTitle: "Java & OOP Concepts",
+    title: "Java & Object-Oriented Programming Fundamentals",
+    slug: "java-oop-basics",
+    excerpt: "Classes, objects, encapsulation, inheritance, runtime polymorphism, abstract classes, interfaces, and JVM memory internals.",
+    readingTime: "18 min read",
+    status: "published",
+    order: 1,
+    youtubeEmbed: "",
+    content: `<h2>1. The Four Pillars of Object-Oriented Programming</h2>
+<p>Java is an object-oriented programming language executed on the Java Virtual Machine (JVM). Software systems built on OOP model real-world concepts as interacting objects with states (attributes) and behaviors (methods).</p>
+
+<h3>The Four Core Principles</h3>
+<ol>
+  <li><strong>Encapsulation</strong>: Bundling data (fields) and methods that operate on that data inside a class, while restricting direct external access using access modifiers (<code>private</code>, <code>protected</code>, <code>public</code>).</li>
+  <li><strong>Inheritance</strong>: Mechanism where a child subclass derives fields and methods from a parent superclass (<code>extends</code>), promoting code reuse.</li>
+  <li><strong>Polymorphism</strong>: Ability of an object to take many forms. Includes compile-time method overloading and runtime method overriding (<code>@Override</code>).</li>
+  <li><strong>Abstraction</strong>: Hiding complex implementation mechanics and revealing only essential interfaces to callers using <code>abstract</code> classes and <code>interface</code> definitions.</li>
+</ol>
+
+<pre><code class="language-java">// Encapsulated Student Class in Java
+public class Student {
+    private String studentId;
+    private String name;
+    private double gpa;
+
+    public Student(String studentId, String name, double gpa) {
+        this.studentId = studentId;
+        this.name = name;
+        setGpa(gpa);
+    }
+
+    public double getGpa() { return gpa; }
+
+    public void setGpa(double gpa) {
+        if (gpa >= 0.0 &amp;&amp; gpa &lt;= 4.0) {
+            this.gpa = gpa;
+        }
+    }
+}</code></pre>
+
+<h2>2. Method Overriding &amp; Dynamic Method Dispatch</h2>
+<p>Runtime polymorphism allows a superclass reference to hold a subclass object and invoke the overridden method at runtime based on the actual object type in heap memory.</p>
+
+<pre><code class="language-java">class Animal {
+    void speak() { System.out.println("Generic animal sound"); }
+}
+
+class Dog extends Animal {
+    @Override
+    void speak() { System.out.println("Woof! Woof!"); }
+}
+
+public class Main {
+    public static void main(String[] args) {
+        Animal pet = new Dog(); // Upcasting
+        pet.speak(); // Prints "Woof! Woof!" via runtime dispatch
+    }
+}</code></pre>`
+  },
+  {
+    id: "lesson-web-1",
+    courseId: "html-css-basics",
+    courseTitle: "HTML & CSS Basics",
+    title: "HTML5 & CSS3 Web Architecture: Semantic Layouts & Box Model",
+    slug: "html-css-basics",
+    excerpt: "The browser critical rendering path, semantic document structure, the CSS box model, Flexbox layout, and responsive mobile design.",
+    readingTime: "17 min read",
+    status: "published",
+    order: 1,
+    youtubeEmbed: "",
+    content: `<h2>1. Semantic HTML5 Document Structure</h2>
+<p>HyperText Markup Language (HTML) provides the semantic skeleton of web applications. Semantic tags communicate the role and meaning of content to search engine crawlers, accessibility screen readers, and web browsers.</p>
+
+<pre><code class="language-html">&lt;!DOCTYPE html&gt;
+&lt;html lang="en"&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
+  &lt;title&gt;Semantic Architecture&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;header&gt;
+    &lt;nav&gt;&lt;a href="/"&gt;Home&lt;/a&gt;&lt;/nav&gt;
+  &lt;/header&gt;
+  &lt;main&gt;
+    &lt;article&gt;
+      &lt;h1&gt;Core Concepts&lt;/h1&gt;
+      &lt;p&gt;Modern web design prioritizes responsiveness and semantic clarity.&lt;/p&gt;
+    &lt;/article&gt;
+  &lt;/main&gt;
+  &lt;footer&gt;&copy; 2026 ShortStudy&lt;/footer&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+
+<h2>2. The CSS Box Model &amp; Modern Flexbox Layout</h2>
+<p>Every rendered HTML element is treated by the browser layout engine as a rectangular box composed of content, padding, border, and margin.</p>
+
+<pre><code class="language-css">/* Standard Box-Sizing Reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Flexbox Centering Layout */
+.card-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}</code></pre>`
+  },
+  {
+    id: "lesson-sql-1",
+    courseId: "sql-basics",
+    courseTitle: "SQL Basics",
+    title: "SQL & Relational Database Design: Joins, Aggregations & Schema",
+    slug: "sql-basics",
+    excerpt: "Relational database theory, primary & foreign keys, SQL joins (INNER, LEFT, RIGHT, FULL), GROUP BY aggregations, and subqueries.",
+    readingTime: "18 min read",
+    status: "published",
+    order: 1,
+    youtubeEmbed: "",
+    content: `<h2>1. Introduction to Relational Databases &amp; SQL</h2>
+<p>Structured Query Language (SQL) is the international standard domain-specific language used to query, manage, and manipulate structured data stored in Relational Database Management Systems (RDBMS) like PostgreSQL, MySQL, SQLite, and Oracle.</p>
+
+<h3>Core Data Definition Language (DDL)</h3>
+<pre><code class="language-sql">CREATE TABLE students (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) UNIQUE NOT NULL,
+    enrollment_date DATE DEFAULT CURRENT_DATE
+);
+
+CREATE TABLE course_enrollments (
+    enrollment_id SERIAL PRIMARY KEY,
+    student_id INT REFERENCES students(id) ON DELETE CASCADE,
+    course_code VARCHAR(20) NOT NULL,
+    grade CHAR(2)
+);</code></pre>
+
+<h2>2. Multi-Table Relational Joins</h2>
+<p>Relational joins combine rows from two or more tables based on a related column between them.</p>
+
+<pre><code class="language-sql">-- Retrieve students and their enrolled courses
+SELECT 
+    s.name, 
+    s.email, 
+    e.course_code, 
+    e.grade
+FROM students s
+INNER JOIN course_enrollments e ON s.id = e.student_id
+WHERE e.grade = 'A'
+ORDER BY s.name ASC;</code></pre>`
   }
 ];

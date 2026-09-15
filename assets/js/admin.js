@@ -29,27 +29,43 @@ import {
 } from "./content-format.js";
 import { 
   PRE_EXISTING_COURSES, 
-  PRE_EXISTING_LESSONS 
+  PRE_EXISTING_LESSONS,
+  PRE_EXISTING_PAID_COURSES
 } from "./catalog-data.js";
 
 // State Management
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 
+const deletedCourseIds = new Set(JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"));
+const deletedPostIds = new Set(JSON.parse(localStorage.getItem("deletedPostIds") || "[]"));
+const deletedPaidCourseIds = new Set(JSON.parse(localStorage.getItem("deletedPaidCourseIds") || "[]"));
+
 let currentUser = null;
 let currentAdminProfile = null;
 let activeTab = "courses"; // 'overview', 'courses', 'posts', 'preview', 'config'
-let coursesData = [...PRE_EXISTING_COURSES];
-let postsData = [...PRE_EXISTING_LESSONS];
+let coursesData = [...PRE_EXISTING_COURSES].filter(c => !deletedCourseIds.has(c.id));
+let postsData = [...PRE_EXISTING_LESSONS].filter(p => !deletedPostIds.has(p.id));
+let paidCoursesData = [...(PRE_EXISTING_PAID_COURSES || [])].filter(c => !deletedPaidCourseIds.has(c.id));
+let ordersData = [];
+
+let currentPostVideos = [];
+
 let unsubscribeCourses = null;
 let unsubscribePosts = null;
 let unsubscribeLessons = null;
+let unsubscribePaidCourses = null;
+let unsubscribeOrders = null;
 
 const firestoreCoursesMap = new Map();
 const firestorePostsMap = new Map();
 const firestoreLessonsMap = new Map();
+const firestorePaidCoursesMap = new Map();
+const firestoreOrdersMap = new Map();
 
 let editingCourseId = null;
 let editingPostId = null;
+let editingPaidCourseId = null;
+let currentOrderFilter = "all";
 
 // DOM Elements
 const loginSection = document.getElementById('login-section') || document.getElementById('auth-guard-screen');
@@ -176,7 +192,34 @@ const el = {
 
   // Post Modal in-dev course elements
   postCourseInDevAlert: document.getElementById("post-course-in-dev-alert"),
-  postPublishContentBtn: document.getElementById("post-publish-content-btn")
+  postPublishContentBtn: document.getElementById("post-publish-content-btn"),
+
+  // Paid Course Management Elements
+  paidCourseCountBadge: document.getElementById("paid-course-count-badge"),
+  pendingOrdersBadge: document.getElementById("pending-orders-badge"),
+  metricTotalPaidCourses: document.getElementById("metric-total-paid-courses"),
+  metricPendingOrders: document.getElementById("metric-pending-orders"),
+  paidCoursesTableBody: document.getElementById("paid-courses-table-body"),
+  btnNewPaidCourse: document.getElementById("btn-new-paid-course"),
+  paidCourseSearch: document.getElementById("paid-course-search"),
+  paidCourseModal: document.getElementById("paid-course-modal"),
+  paidCourseModalHeading: document.getElementById("paid-course-modal-heading"),
+  paidCourseForm: document.getElementById("paid-course-form"),
+  paidModalTitle: document.getElementById("paid-modal-title"),
+  paidModalPrice: document.getElementById("paid-modal-price"),
+  paidModalOrigPrice: document.getElementById("paid-modal-orig-price"),
+  paidModalDuration: document.getElementById("paid-modal-duration"),
+  paidModalBadge: document.getElementById("paid-modal-badge"),
+  paidModalStatus: document.getElementById("paid-modal-status"),
+  paidModalImage: document.getElementById("paid-modal-image"),
+  paidModalVideo: document.getElementById("paid-modal-video"),
+  paidModalDesc: document.getElementById("paid-modal-desc"),
+  paidCourseModalClose: document.getElementById("paid-course-modal-close"),
+  paidCourseModalCancel: document.getElementById("paid-course-modal-cancel"),
+
+  // Orders / Fail-Safe Elements
+  ordersTableBody: document.getElementById("orders-table-body"),
+  orderFilterBtns: document.querySelectorAll(".order-filter-btn")
 };
 
 // UI Notification Toast Helper
@@ -201,26 +244,26 @@ let authMode = "login"; // 'login' or 'register'
 
 function setAuthMode(mode) {
   authMode = mode;
-  el.authErrorMessage.textContent = "";
+  if (el.authErrorMessage) el.authErrorMessage.textContent = "";
   if (mode === "login") {
-    el.tabLogin.classList.add("active");
-    el.tabRegister.classList.remove("active");
-    el.authTitle.textContent = "Admin Login";
-    el.authSubtitle.textContent = "Enter your verified administrator credentials";
-    el.authNameGroup.style.display = "none";
-    el.authSubmitBtn.textContent = "Login to Dashboard";
+    if (el.tabLogin) el.tabLogin.classList.add("active");
+    if (el.tabRegister) el.tabRegister.classList.remove("active");
+    if (el.authTitle) el.authTitle.textContent = "Admin Login";
+    if (el.authSubtitle) el.authSubtitle.textContent = "Enter your verified administrator credentials";
+    if (el.authNameGroup) el.authNameGroup.style.display = "none";
+    if (el.authSubmitBtn) el.authSubmitBtn.textContent = "Login to Dashboard";
   } else {
-    el.tabRegister.classList.add("active");
-    el.tabLogin.classList.remove("active");
-    el.authTitle.textContent = "Register Admin Account";
-    el.authSubtitle.textContent = "Create an account for administrator verification";
-    el.authNameGroup.style.display = "flex";
-    el.authSubmitBtn.textContent = "Register Account";
+    if (el.tabRegister) el.tabRegister.classList.add("active");
+    if (el.tabLogin) el.tabLogin.classList.remove("active");
+    if (el.authTitle) el.authTitle.textContent = "Register Admin Account";
+    if (el.authSubtitle) el.authSubtitle.textContent = "Create an account for administrator verification";
+    if (el.authNameGroup) el.authNameGroup.style.display = "flex";
+    if (el.authSubmitBtn) el.authSubmitBtn.textContent = "Register Account";
   }
 }
 
-el.tabLogin.addEventListener("click", () => setAuthMode("login"));
-el.tabRegister.addEventListener("click", () => setAuthMode("register"));
+if (el.tabLogin) el.tabLogin.addEventListener("click", () => setAuthMode("login"));
+if (el.tabRegister) el.tabRegister.addEventListener("click", () => setAuthMode("register"));
 
 function showAuthError(message, isHtml = false) {
   if (authError) {
@@ -416,10 +459,12 @@ function loadDashboardData() {
 function rebuildAndRenderContent() {
   // 1. Synthesize Courses: start with PRE_EXISTING_COURSES as base
   const courseMap = new Map();
-  PRE_EXISTING_COURSES.forEach(c => courseMap.set(c.id, { ...c }));
+  PRE_EXISTING_COURSES.forEach(c => {
+    if (!deletedCourseIds.has(c.id)) courseMap.set(c.id, { ...c });
+  });
 
   firestoreCoursesMap.forEach((cData, docId) => {
-    // Match by ID or slug so documents from either naming convention sync properly
+    if (deletedCourseIds.has(docId) || cData.isDeleted) return;
     const existing = courseMap.get(docId) || Array.from(courseMap.values()).find(item => item.slug === cData.slug);
     if (existing) {
       courseMap.set(existing.id, { ...existing, ...cData, id: existing.id });
@@ -428,14 +473,17 @@ function rebuildAndRenderContent() {
     }
   });
 
-  coursesData = Array.from(courseMap.values());
+  coursesData = Array.from(courseMap.values()).filter(c => !deletedCourseIds.has(c.id));
   coursesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
   // 2. Synthesize Posts & Lessons: start with PRE_EXISTING_LESSONS as base
   const postMap = new Map();
-  PRE_EXISTING_LESSONS.forEach(l => postMap.set(l.id, { ...l }));
+  PRE_EXISTING_LESSONS.forEach(l => {
+    if (!deletedPostIds.has(l.id)) postMap.set(l.id, { ...l });
+  });
 
   const normalizeAndMerge = (docId, data) => {
+    if (deletedPostIds.has(docId) || data.isDeleted) return;
     const rawContent = data.content || data.body || data.text || "";
     const titleVal = data.title || data.name || data.topic || "Untitled Lesson";
     const courseIdVal = data.courseId || data.parentCourse || data.course || "";
@@ -453,6 +501,7 @@ function rebuildAndRenderContent() {
       readingTime: data.readingTime || calculateReadingTime(rawContent),
       excerpt: data.excerpt || generateExcerpt(rawContent),
       youtubeEmbed: data.youtubeEmbed || data.youtube || data.video || "",
+      videos: Array.isArray(data.videos) ? data.videos : [],
       author: data.author || "ShortStudy Editorial",
       updatedAt: data.updatedAt || null
     };
@@ -475,13 +524,15 @@ function rebuildAndRenderContent() {
   firestorePostsMap.forEach((val, key) => normalizeAndMerge(key, val));
   firestoreLessonsMap.forEach((val, key) => normalizeAndMerge(key, val));
 
-  postsData = Array.from(postMap.values());
+  postsData = Array.from(postMap.values()).filter(p => !deletedPostIds.has(p.id));
   postsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
   // Render UI
   renderCoursesTable();
   populateCourseSelects();
   renderPostsTable();
+  rebuildAndRenderPaidCourses();
+  rebuildAndRenderOrders();
   updateMetrics();
 
   // Background sync: write missing catalog items to Firestore
@@ -505,6 +556,11 @@ async function syncCatalogToFirestore() {
       }
       if (!firestoreLessonsMap.has(l.id)) {
         await setDoc(doc(db, "lessons", l.id), l, { merge: true }).catch(() => {});
+      }
+    }
+    for (const p of PRE_EXISTING_PAID_COURSES) {
+      if (!firestorePaidCoursesMap.has(p.id)) {
+        await setDoc(doc(db, "paid_courses", p.id), p, { merge: true }).catch(() => {});
       }
     }
   } catch (e) {
@@ -570,6 +626,38 @@ function startRealtimeListeners() {
   } catch (err) {
     console.error("Failed to start lessons snapshot listener:", err);
   }
+
+  // 4. Paid Courses Listener (Live on Programming Video's)
+  try {
+    const paidQuery = collection(db, "paid_courses");
+    unsubscribePaidCourses = onSnapshot(paidQuery, (snapshot) => {
+      firestorePaidCoursesMap.clear();
+      snapshot.forEach((docSnap) => {
+        firestorePaidCoursesMap.set(docSnap.id, docSnap.data());
+      });
+      rebuildAndRenderPaidCourses();
+    }, (error) => {
+      console.warn("Firestore paid_courses listener note:", error);
+    });
+  } catch (err) {
+    console.error("Failed to start paid courses listener:", err);
+  }
+
+  // 5. Course Orders & Fail-Safe Ledger Listener
+  try {
+    const ordersQuery = collection(db, "course_orders");
+    unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
+      firestoreOrdersMap.clear();
+      snapshot.forEach((docSnap) => {
+        firestoreOrdersMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
+      });
+      rebuildAndRenderOrders();
+    }, (error) => {
+      console.warn("Firestore course_orders listener note:", error);
+    });
+  } catch (err) {
+    console.error("Failed to start orders listener:", err);
+  }
 }
 
 function stopRealtimeListeners() {
@@ -585,21 +673,45 @@ function stopRealtimeListeners() {
     unsubscribeLessons();
     unsubscribeLessons = null;
   }
+  if (unsubscribePaidCourses) {
+    unsubscribePaidCourses();
+    unsubscribePaidCourses = null;
+  }
+  if (unsubscribeOrders) {
+    unsubscribeOrders();
+    unsubscribeOrders = null;
+  }
 }
 
 // Update Overview Metrics
 function updateMetrics() {
-  el.metricTotalCourses.textContent = coursesData.length;
-  el.metricTotalPosts.textContent = postsData.length;
+  if (el.metricTotalCourses) el.metricTotalCourses.textContent = coursesData.length;
+  if (el.metricTotalPosts) el.metricTotalPosts.textContent = postsData.length;
   
   const publishedCount = postsData.filter(p => p.status === "published").length;
-  el.metricPublishedPosts.textContent = publishedCount;
+  if (el.metricPublishedPosts) el.metricPublishedPosts.textContent = publishedCount;
 
   const videoCount = postsData.filter(p => p.youtubeEmbed && p.youtubeEmbed.trim() !== "").length;
-  el.metricVideosCount.textContent = videoCount;
+  if (el.metricVideosCount) el.metricVideosCount.textContent = videoCount;
 
-  el.courseCountBadge.textContent = coursesData.length;
-  el.postCountBadge.textContent = postsData.length;
+  if (el.courseCountBadge) el.courseCountBadge.textContent = coursesData.length;
+  if (el.postCountBadge) el.postCountBadge.textContent = postsData.length;
+
+  if (el.paidCourseCountBadge) el.paidCourseCountBadge.textContent = paidCoursesData.length;
+  if (el.metricTotalPaidCourses) el.metricTotalPaidCourses.textContent = paidCoursesData.length;
+
+  // Calculate Pending Access Orders (Fail-Safe)
+  const pendingOrdersCount = ordersData.filter(o => 
+    !o.accessGranted || o.paymentStatus === "pending_manual_access" || o.failSafeReason
+  ).length;
+
+  if (el.pendingOrdersBadge) {
+    el.pendingOrdersBadge.textContent = pendingOrdersCount;
+    el.pendingOrdersBadge.style.display = pendingOrdersCount > 0 ? "inline-block" : "none";
+  }
+  if (el.metricPendingOrders) {
+    el.metricPendingOrders.textContent = pendingOrdersCount;
+  }
 }
 
 // -------------------------------------------------------------
@@ -706,11 +818,11 @@ function openPublishModal(courseId) {
   el.publishLessonOrder.value = nextOrder;
   el.publishLessonReadingTime.value = "5 min read";
   
-  el.publishModal.classList.add("open");
+  if (el.publishModal) el.publishModal.classList.add("open");
 }
 
 function closePublishModal() {
-  el.publishModal.classList.remove("open");
+  if (el.publishModal) el.publishModal.classList.remove("open");
   if (el.publishContentForm) el.publishContentForm.reset();
 }
 
@@ -890,26 +1002,29 @@ function openCourseModal(courseId = null) {
     el.courseStatus.value = "published";
     el.courseOrder.value = coursesData.length + 1;
   }
-  el.courseModal.classList.add("open");
+  if (el.courseModal) el.courseModal.classList.add("open");
 }
 
 function closeCourseModal() {
-  el.courseModal.classList.remove("open");
+  if (el.courseModal) el.courseModal.classList.remove("open");
   editingCourseId = null;
 }
 
-el.btnNewCourse.addEventListener("click", () => openCourseModal());
-el.courseModalClose.addEventListener("click", closeCourseModal);
-el.courseCancelBtn.addEventListener("click", closeCourseModal);
+if (el.btnNewCourse) el.btnNewCourse.addEventListener("click", () => openCourseModal());
+if (el.courseModalClose) el.courseModalClose.addEventListener("click", closeCourseModal);
+if (el.courseCancelBtn) el.courseCancelBtn.addEventListener("click", closeCourseModal);
 
 // Auto-generate slug from title
-el.courseTitle.addEventListener("input", () => {
-  if (!editingCourseId) {
-    el.courseSlug.value = slugify(el.courseTitle.value);
-  }
-});
+if (el.courseTitle) {
+  el.courseTitle.addEventListener("input", () => {
+    if (!editingCourseId && el.courseSlug) {
+      el.courseSlug.value = slugify(el.courseTitle.value);
+    }
+  });
+}
 
-el.courseForm.addEventListener("submit", async (e) => {
+if (el.courseForm) {
+  el.courseForm.addEventListener("submit", async (e) => {
   e.preventDefault();
   const coursePayload = {
     title: el.courseTitle.value.trim(),
@@ -948,26 +1063,31 @@ el.courseForm.addEventListener("submit", async (e) => {
     showToast("Course saved locally (sync updated)", "info");
   }
 });
+}
 
 function confirmDeleteCourse(courseId) {
   const course = coursesData.find(c => c.id === courseId);
   const title = course ? course.title : "this course";
-  el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
-  el.deleteModal.classList.add("open");
+  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
+  if (el.deleteModal) el.deleteModal.classList.add("open");
 
   el.deleteConfirmBtn.onclick = async () => {
+    deletedCourseIds.add(courseId);
+    localStorage.setItem("deletedCourseIds", JSON.stringify(Array.from(deletedCourseIds)));
+    firestoreCoursesMap.delete(courseId);
+
     try {
       await deleteDoc(doc(db, "courses", courseId));
-      showToast("Course deleted", "success");
     } catch (err) {
-      console.error("Delete course error:", err);
-      coursesData = coursesData.filter(c => c.id !== courseId);
-      renderCoursesTable();
-      populateCourseSelects();
-      updateMetrics();
-      showToast("Course deleted locally", "info");
+      console.warn("Firestore delete course notice:", err);
     }
-    el.deleteModal.classList.remove("open");
+
+    coursesData = coursesData.filter(c => c.id !== courseId);
+    renderCoursesTable();
+    populateCourseSelects();
+    updateMetrics();
+    showToast(`Course "${title}" deleted successfully.`, "success");
+    if (el.deleteModal) el.deleteModal.classList.remove("open");
   };
 }
 
@@ -1109,43 +1229,55 @@ async function publishSinglePost(postId) {
 }
 
 // Dedicated YouTube Live Preview Handler
-el.postYoutubeInput.addEventListener("input", () => {
-  const val = el.postYoutubeInput.value.trim();
-  if (!val) {
-    el.postYoutubePreview.innerHTML = "";
-    el.postYoutubePreview.classList.remove("has-video");
-    return;
-  }
+if (el.postYoutubeInput) {
+  el.postYoutubeInput.addEventListener("input", () => {
+    const val = el.postYoutubeInput.value.trim();
+    if (!val) {
+      if (el.postYoutubePreview) {
+        el.postYoutubePreview.innerHTML = "";
+        el.postYoutubePreview.classList.remove("has-video");
+      }
+      return;
+    }
 
-  const processed = processYouTubeEmbed(val);
-  if (processed.isValid) {
-    el.postYoutubePreview.innerHTML = `<div class="video-aspect">${processed.iframeHtml}</div>`;
-    el.postYoutubePreview.classList.add("has-video");
-  } else {
-    el.postYoutubePreview.innerHTML = `<div style="padding:10px; font-size:12px; color:#f87171;">Invalid YouTube URL or embed code</div>`;
-    el.postYoutubePreview.classList.add("has-video");
-  }
-});
+    const processed = processYouTubeEmbed(val);
+    if (el.postYoutubePreview) {
+      if (processed.isValid) {
+        el.postYoutubePreview.innerHTML = `<div class="video-aspect">${processed.iframeHtml}</div>`;
+        el.postYoutubePreview.classList.add("has-video");
+      } else {
+        el.postYoutubePreview.innerHTML = `<div style="padding:10px; font-size:12px; color:#f87171;">Invalid YouTube URL or embed code</div>`;
+        el.postYoutubePreview.classList.add("has-video");
+      }
+    }
+  });
+}
 
 // HTML Content Editor Tabs (Edit vs Preview)
-el.tabContentEditor.addEventListener("click", () => {
-  el.tabContentEditor.classList.add("active");
-  el.tabContentPreview.classList.remove("active");
-  el.editorPane.style.display = "block";
-  el.previewPane.style.display = "none";
-});
+if (el.tabContentEditor) {
+  el.tabContentEditor.addEventListener("click", () => {
+    el.tabContentEditor.classList.add("active");
+    if (el.tabContentPreview) el.tabContentPreview.classList.remove("active");
+    if (el.editorPane) el.editorPane.style.display = "block";
+    if (el.previewPane) el.previewPane.style.display = "none";
+  });
+}
 
-el.tabContentPreview.addEventListener("click", () => {
-  el.tabContentPreview.classList.add("active");
-  el.tabContentEditor.classList.remove("active");
-  el.editorPane.style.display = "none";
-  el.previewPane.style.display = "block";
+if (el.tabContentPreview) {
+  el.tabContentPreview.addEventListener("click", () => {
+    el.tabContentPreview.classList.add("active");
+    if (el.tabContentEditor) el.tabContentEditor.classList.remove("active");
+    if (el.editorPane) el.editorPane.style.display = "none";
+    if (el.previewPane) el.previewPane.style.display = "block";
 
-  // Parse and format with semantic formatting engine and DOMPurify
-  const rawHtml = el.postContent.value;
-  const formattedHtml = parseAndFormatLessonContent(rawHtml);
-  el.previewPane.innerHTML = formattedHtml || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
-});
+    // Parse and format with semantic formatting engine and DOMPurify
+    const rawHtml = el.postContent ? el.postContent.value : "";
+    const formattedHtml = parseAndFormatLessonContent(rawHtml);
+    if (el.previewPane) {
+      el.previewPane.innerHTML = formattedHtml || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
+    }
+  });
+}
 
 // Helper to toggle in-development alert & explicit publish button inside Post Modal
 function updatePostModalInDevNotice() {
@@ -1166,7 +1298,65 @@ function updatePostModalInDevNotice() {
   }
 }
 
-el.postCourseSelect.addEventListener("change", updatePostModalInDevNotice);
+if (el.postCourseSelect) el.postCourseSelect.addEventListener("change", updatePostModalInDevNotice);
+
+function renderPostVideoRows() {
+  const container = document.getElementById("post-videos-container");
+  if (!container) return;
+
+  container.innerHTML = "";
+  if (!currentPostVideos || currentPostVideos.length === 0) {
+    container.innerHTML = `<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:6px 0;">No videos added yet. Click "+ Add Video" to embed videos.</div>`;
+    return;
+  }
+
+  currentPostVideos.forEach((v, index) => {
+    const row = document.createElement("div");
+    row.className = "post-video-row";
+    row.style.cssText = "background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;";
+    
+    row.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span style="font-size: 11.5px; font-weight: 700; color: #f87171;">▶ Video ${index + 1}</span>
+        ${currentPostVideos.length > 1 ? `<button type="button" class="btn btn-danger btn-sm remove-post-v-btn" data-index="${index}" style="font-size:10px; padding:2px 6px;">Remove</button>` : ''}
+      </div>
+
+      <div class="form-row" style="gap: 8px;">
+        <input type="text" class="form-input p-v-title" placeholder="Video Title (e.g. Lesson Video 1)" value="${escapeHtml(v.title || '')}" style="font-size:12.5px; flex:1;">
+        <input type="text" class="form-input font-mono p-v-url" placeholder="YouTube URL or Embed code" value="${escapeHtml(v.videoUrl || '')}" style="font-size:12.5px; flex:1.5;">
+      </div>
+
+      <div>
+        <textarea class="form-textarea p-v-desc" placeholder="Plain-text video description (No HTML required. Layout will format paragraphs automatically)" style="min-height: 50px; font-size:12px; line-height:1.5;">${escapeHtml(v.description || '')}</textarea>
+      </div>
+    `;
+
+    container.appendChild(row);
+  });
+
+  container.querySelectorAll(".remove-post-v-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const idx = parseInt(btn.dataset.index, 10);
+      currentPostVideos.splice(idx, 1);
+      renderPostVideoRows();
+    });
+  });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btnAdd = document.getElementById("btn-add-post-video-row");
+  if (btnAdd) {
+    btnAdd.addEventListener("click", () => {
+      currentPostVideos.push({
+        id: "v-" + Date.now(),
+        title: `Video ${currentPostVideos.length + 1}`,
+        videoUrl: "",
+        description: ""
+      });
+      renderPostVideoRows();
+    });
+  }
+});
 
 function openPostModal(postId = null) {
   editingPostId = postId;
@@ -1192,6 +1382,14 @@ function openPostModal(postId = null) {
       el.postYoutubeInput.value = post.youtubeEmbed || "";
       el.postContent.value = post.content || "";
 
+      if (post.videos && Array.isArray(post.videos) && post.videos.length > 0) {
+        currentPostVideos = JSON.parse(JSON.stringify(post.videos));
+      } else if (post.youtubeEmbed && post.youtubeEmbed.trim() !== "") {
+        currentPostVideos = [{ id: "v-1", title: post.title || "Lesson Video 1", videoUrl: post.youtubeEmbed, description: "" }];
+      } else {
+        currentPostVideos = [{ id: "v-1", title: "Video 1: Lesson Overview", videoUrl: "", description: "" }];
+      }
+
       // Trigger YouTube preview if video exists
       if (post.youtubeEmbed) {
         el.postYoutubeInput.dispatchEvent(new Event("input"));
@@ -1202,28 +1400,51 @@ function openPostModal(postId = null) {
     el.postStatus.value = "published";
     el.postReadingTime.value = "6 min read";
     el.postOrder.value = postsData.length + 1;
+    currentPostVideos = [{ id: "v-1", title: "Video 1: Lesson Overview", videoUrl: "", description: "" }];
   }
 
+  renderPostVideoRows();
   updatePostModalInDevNotice();
-  el.postModal.classList.add("open");
+  if (el.postModal) el.postModal.classList.add("open");
 }
 
 function closePostModal() {
-  el.postModal.classList.remove("open");
+  if (el.postModal) el.postModal.classList.remove("open");
   editingPostId = null;
   if (el.postCourseInDevAlert) el.postCourseInDevAlert.classList.add("hidden");
   if (el.postPublishContentBtn) el.postPublishContentBtn.style.display = "none";
 }
 
-el.btnNewPost.addEventListener("click", () => openPostModal());
-el.postModalClose.addEventListener("click", closePostModal);
-el.postCancelBtn.addEventListener("click", closePostModal);
+if (el.btnNewPost) el.btnNewPost.addEventListener("click", () => openPostModal());
+if (el.postModalClose) el.postModalClose.addEventListener("click", closePostModal);
+if (el.postCancelBtn) el.postCancelBtn.addEventListener("click", closePostModal);
 
-el.postTitle.addEventListener("input", () => {
-  if (!editingPostId) {
-    el.postSlug.value = slugify(el.postTitle.value);
-  }
-});
+if (el.postTitle) {
+  el.postTitle.addEventListener("input", () => {
+    if (!editingPostId && el.postSlug) {
+      el.postSlug.value = slugify(el.postTitle.value);
+    }
+  });
+}
+
+function getPostVideosListFromDOM() {
+  const videoRows = document.querySelectorAll("#post-videos-container .post-video-row");
+  const finalVideosList = [];
+  videoRows.forEach((row, i) => {
+    const titleVal = row.querySelector(".p-v-title")?.value.trim() || `Video ${i + 1}`;
+    const urlVal = row.querySelector(".p-v-url")?.value.trim() || "";
+    const descVal = row.querySelector(".p-v-desc")?.value || "";
+    if (urlVal || titleVal) {
+      let cleanUrl = urlVal;
+      if (urlVal) {
+        const processed = processYouTubeEmbed(urlVal);
+        cleanUrl = processed.isValid ? processed.iframeHtml : urlVal;
+      }
+      finalVideosList.push({ id: `v-${i + 1}`, title: titleVal, videoUrl: cleanUrl, description: descVal });
+    }
+  });
+  return finalVideosList;
+}
 
 // Explicit "Publish Content & Course" button inside Post Modal
 if (el.postPublishContentBtn) {
@@ -1257,6 +1478,8 @@ if (el.postPublishContentBtn) {
       cleanYoutubeEmbed = processed.isValid ? processed.iframeHtml : rawYoutube;
     }
 
+    const videosList = getPostVideosListFromDOM();
+
     const postPayload = {
       courseId: selectedCourseId,
       courseTitle: selectedCourse ? selectedCourse.title : "General",
@@ -1266,7 +1489,8 @@ if (el.postPublishContentBtn) {
       readingTime: readingTime,
       status: "published", // Force published
       order: parseInt(el.postOrder.value, 10) || 1,
-      youtubeEmbed: cleanYoutubeEmbed,
+      youtubeEmbed: videosList[0]?.videoUrl || cleanYoutubeEmbed,
+      videos: videosList,
       content: rawContent,
       formattedHtml: formattedHtml,
       author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
@@ -1359,7 +1583,8 @@ if (el.postPublishContentBtn) {
 }
 
 // Post Submit Handler with Semantic Formatting
-el.postForm.addEventListener("submit", async (e) => {
+if (el.postForm) {
+  el.postForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const selectedCourseId = el.postCourseSelect.value;
@@ -1389,6 +1614,7 @@ el.postForm.addEventListener("submit", async (e) => {
     ? el.postExcerpt.value.trim()
     : generateExcerpt(rawContent);
   const titleVal = el.postTitle.value.trim();
+  const videosList = getPostVideosListFromDOM();
 
   const postPayload = {
     courseId: selectedCourseId,
@@ -1399,7 +1625,8 @@ el.postForm.addEventListener("submit", async (e) => {
     readingTime: readingTime,
     status: el.postStatus.value,
     order: parseInt(el.postOrder.value, 10) || 1,
-    youtubeEmbed: cleanYoutubeEmbed,
+    youtubeEmbed: videosList[0]?.videoUrl || cleanYoutubeEmbed,
+    videos: videosList,
     content: rawContent,
     formattedHtml: formattedHtml,
     author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
@@ -1463,35 +1690,740 @@ el.postForm.addEventListener("submit", async (e) => {
     showToast("Post saved locally (sync updated)", "info");
   }
 });
+}
 
 function confirmDeletePost(postId) {
   const post = postsData.find(p => p.id === postId);
   const title = post ? post.title : "this post";
-  el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
-  el.deleteModal.classList.add("open");
+  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
+  if (el.deleteModal) el.deleteModal.classList.add("open");
 
   el.deleteConfirmBtn.onclick = async () => {
+    deletedPostIds.add(postId);
+    localStorage.setItem("deletedPostIds", JSON.stringify(Array.from(deletedPostIds)));
+    firestorePostsMap.delete(postId);
+    firestoreLessonsMap.delete(postId);
+
     try {
       await deleteDoc(doc(db, "posts", postId));
-      showToast("Post deleted", "success");
+      await deleteDoc(doc(db, "lessons", postId));
     } catch (err) {
-      console.error("Delete post error:", err);
-      postsData = postsData.filter(p => p.id !== postId);
-      renderPostsTable();
-      updateMetrics();
-      showToast("Post deleted locally", "info");
+      console.warn("Firestore delete post notice:", err);
     }
-    el.deleteModal.classList.remove("open");
+
+    postsData = postsData.filter(p => p.id !== postId);
+    renderPostsTable();
+    updateMetrics();
+    showToast(`Lesson "${title}" deleted successfully.`, "success");
+    if (el.deleteModal) el.deleteModal.classList.remove("open");
   };
 }
 
-el.deleteCancelBtn.addEventListener("click", () => {
-  el.deleteModal.classList.remove("open");
-});
+if (el.deleteCancelBtn) {
+  el.deleteCancelBtn.addEventListener("click", () => {
+    if (el.deleteModal) el.deleteModal.classList.remove("open");
+  });
+}
 
 // Search Filters
-el.courseSearch.addEventListener("input", (e) => renderCoursesTable(e.target.value));
-el.postSearch.addEventListener("input", (e) => renderPostsTable(e.target.value));
+if (el.courseSearch) el.courseSearch.addEventListener("input", (e) => renderCoursesTable(e.target.value));
+if (el.postSearch) el.postSearch.addEventListener("input", (e) => renderPostsTable(e.target.value));
+
+// -------------------------------------------------------------
+// 5. PAID COURSES CRUD OPERATIONS (Programming Video's Store)
+// -------------------------------------------------------------
+function rebuildAndRenderPaidCourses() {
+  const map = new Map();
+  (PRE_EXISTING_PAID_COURSES || []).forEach(c => {
+    if (!deletedPaidCourseIds.has(c.id)) map.set(c.id, { ...c });
+  });
+
+  firestorePaidCoursesMap.forEach((val, key) => {
+    if (deletedPaidCourseIds.has(key) || val.isDeleted) return;
+    const existing = map.get(key) || Array.from(map.values()).find(c => c.title === val.title);
+    if (existing) {
+      map.set(existing.id, { ...existing, ...val, id: existing.id });
+    } else {
+      map.set(key, { id: key, ...val });
+    }
+  });
+
+  paidCoursesData = Array.from(map.values()).filter(c => !deletedPaidCourseIds.has(c.id));
+  renderPaidCoursesTable(el.paidCourseSearch ? el.paidCourseSearch.value : "");
+  updateMetrics();
+}
+
+function renderPaidCoursesTable(filterQuery = "") {
+  if (!el.paidCoursesTableBody) return;
+  el.paidCoursesTableBody.innerHTML = "";
+  const queryLower = (filterQuery || "").toLowerCase();
+  const filtered = paidCoursesData.filter(c =>
+    (c.title || "").toLowerCase().includes(queryLower) ||
+    (c.badge || "").toLowerCase().includes(queryLower) ||
+    (c.price || "").toLowerCase().includes(queryLower)
+  );
+
+  if (filtered.length === 0) {
+    el.paidCoursesTableBody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">
+          No paid courses found. Click "+ New Paid Course" to add one.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach((course) => {
+    const tr = document.createElement("tr");
+    const isPublished = course.status === "published";
+    const imgUrl = course.image || "https://images.unsplash.com/photo-1516116211227-bbc141e6c38a?auto=format&fit=crop&w=400&q=80";
+    const hasVideo = course.videoEmbed && course.videoEmbed.trim() !== "";
+
+    tr.innerHTML = `
+      <td>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <img src="${escapeHtml(imgUrl)}" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); background:var(--bg-slate-800); flex-shrink:0;">
+          <div>
+            <strong style="color:var(--text-white); font-size:14px; display:block;">${escapeHtml(course.title)}</strong>
+            <span style="font-size:12px; color:var(--text-muted); line-height:1.4; display:block; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+              ${escapeHtml(course.description || "")}
+            </span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <span class="badge badge-published" style="background:rgba(242,201,76,0.15); color:#F2C94C; border-color:rgba(242,201,76,0.3); font-size:10.5px;">
+          ${escapeHtml(course.badge || "Masterclass")}
+        </span>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${escapeHtml(course.duration || "")}</div>
+      </td>
+      <td>
+        <strong style="color:#F2C94C; font-size:14px;">${escapeHtml(course.price || "₹499")}</strong>
+        ${course.origPrice ? `<div style="font-size:11px; color:var(--text-muted); text-decoration:line-through;">${escapeHtml(course.origPrice)}</div>` : ''}
+      </td>
+      <td>
+        <span class="badge ${isPublished ? 'badge-published' : 'badge-draft'}">
+          ${isPublished ? 'Published' : 'Draft'}
+        </span>
+      </td>
+      <td>
+        ${hasVideo ? '<span class="badge badge-video">▶ Configured</span>' : '<span style="color:var(--text-dim);">Missing</span>'}
+      </td>
+      <td>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <a href="programming-videos.html#paid-courses" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;" title="View on public site">View</a>
+          <button class="btn btn-secondary btn-sm edit-paid-btn" data-id="${course.id}">Edit</button>
+          <button class="btn btn-danger btn-sm delete-paid-btn" data-id="${course.id}">Delete</button>
+        </div>
+      </td>
+    `;
+    el.paidCoursesTableBody.appendChild(tr);
+  });
+
+  // Attach button events
+  el.paidCoursesTableBody.querySelectorAll(".edit-paid-btn").forEach(btn => {
+    btn.addEventListener("click", () => openPaidCourseModal(btn.dataset.id));
+  });
+
+  el.paidCoursesTableBody.querySelectorAll(".delete-paid-btn").forEach(btn => {
+    btn.addEventListener("click", () => confirmDeletePaidCourse(btn.dataset.id));
+  });
+}
+
+let currentCourseVideos = [];
+
+function updateAdminDiscountCalc() {
+  const origEl = document.getElementById("paid-modal-orig-price");
+  const priceEl = document.getElementById("paid-modal-price");
+  const calcBox = document.getElementById("paid-modal-discount-calc");
+  const textEl = document.getElementById("paid-modal-discount-text");
+  const savingsEl = document.getElementById("paid-modal-discount-savings");
+
+  if (!origEl || !priceEl || !calcBox) return;
+
+  const origNum = parseFloat((origEl.value || "").replace(/[^0-9.]/g, "")) || 0;
+  const priceNum = parseFloat((priceEl.value || "").replace(/[^0-9.]/g, "")) || 0;
+
+  if (origNum > priceNum && origNum > 0) {
+    const percent = Math.round(((origNum - priceNum) / origNum) * 100);
+    const savings = origNum - priceNum;
+    calcBox.style.display = "flex";
+    if (textEl) textEl.textContent = `🔥 ${percent}% OFF (Calculated Automatically)`;
+    if (savingsEl) savingsEl.textContent = `Student Saves ₹${savings.toLocaleString("en-IN")}`;
+  } else {
+    calcBox.style.display = "none";
+  }
+}
+
+function renderPaidModalVideoRows() {
+  const container = document.getElementById("paid-modal-videos-list");
+  if (!container) return;
+  container.innerHTML = "";
+
+  if (currentCourseVideos.length === 0) {
+    currentCourseVideos.push({
+      id: "v-" + Date.now(),
+      title: "Lesson 1: Complete Video Masterclass",
+      videoUrl: "",
+      description: ""
+    });
+  }
+
+  currentCourseVideos.forEach((v, idx) => {
+    const row = document.createElement("div");
+    row.className = "paid-video-row";
+    row.style.cssText = "background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-light); border-radius: 6px; padding: 12px;";
+    row.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span style="font-size: 12px; font-weight: 700; color: var(--text-white);">Video #${idx + 1}</span>
+        ${currentCourseVideos.length > 1 ? `<button type="button" class="btn btn-sm btn-danger remove-video-btn" style="padding: 2px 8px; font-size: 11px;">Remove Video</button>` : ''}
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <input type="text" class="form-input video-title-input" placeholder="Video Title (e.g. Lesson 1: Introduction & Concepts)" value="${escapeHtml(v.title || '')}">
+        <input type="text" class="form-input font-mono video-url-input" placeholder="YouTube Video Link or Embed URL (e.g. https://www.youtube.com/watch?v=...)" value="${escapeHtml(v.videoUrl || '')}">
+        <div>
+          <label class="form-label" style="font-size: 11px; margin-bottom: 3px; color: var(--text-muted);">Video Description (Written normally in plain text - no HTML tags needed)</label>
+          <textarea class="form-textarea video-desc-input" style="min-height: 60px; font-size: 12.5px; font-family: inherit;" placeholder="Write video description normally in plain text...">${escapeHtml(v.description || '')}</textarea>
+        </div>
+      </div>
+    `;
+
+    const removeBtn = row.querySelector(".remove-video-btn");
+    if (removeBtn) {
+      removeBtn.addEventListener("click", () => {
+        currentCourseVideos.splice(idx, 1);
+        renderPaidModalVideoRows();
+      });
+    }
+
+    container.appendChild(row);
+  });
+}
+
+function initPaidCourseModalEventsOnce() {
+  const fileInput = document.getElementById("paid-modal-image-file");
+  const urlInput = document.getElementById("paid-modal-image");
+  const preview = document.getElementById("paid-modal-image-preview");
+  const previewContainer = document.getElementById("paid-modal-image-preview-container");
+  const addVideoBtn = document.getElementById("btn-add-paid-video");
+  const origEl = document.getElementById("paid-modal-orig-price");
+  const priceEl = document.getElementById("paid-modal-price");
+
+  if (fileInput && !fileInput.dataset.bound) {
+    fileInput.dataset.bound = "true";
+    fileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+          const dataUrl = evt.target.result;
+          if (urlInput) urlInput.value = dataUrl;
+          if (preview) preview.src = dataUrl;
+          if (previewContainer) previewContainer.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+  }
+
+  if (urlInput && !urlInput.dataset.bound) {
+    urlInput.dataset.bound = "true";
+    urlInput.addEventListener("input", (e) => {
+      const val = e.target.value.trim();
+      if (val && preview) {
+        preview.src = val;
+        if (previewContainer) previewContainer.style.display = "block";
+      } else if (previewContainer) {
+        previewContainer.style.display = "none";
+      }
+    });
+  }
+
+  if (origEl && !origEl.dataset.bound) {
+    origEl.dataset.bound = "true";
+    origEl.addEventListener("input", updateAdminDiscountCalc);
+  }
+
+  if (priceEl && !priceEl.dataset.bound) {
+    priceEl.dataset.bound = "true";
+    priceEl.addEventListener("input", updateAdminDiscountCalc);
+  }
+
+  if (addVideoBtn && !addVideoBtn.dataset.bound) {
+    addVideoBtn.dataset.bound = "true";
+    addVideoBtn.addEventListener("click", () => {
+      const rows = document.querySelectorAll("#paid-modal-videos-list .paid-video-row");
+      const updatedList = [];
+      rows.forEach((row, idx) => {
+        const t = row.querySelector(".video-title-input")?.value.trim() || "";
+        const u = row.querySelector(".video-url-input")?.value.trim() || "";
+        const d = row.querySelector(".video-desc-input")?.value.trim() || "";
+        updatedList.push({ id: "v-" + (idx + 1), title: t, videoUrl: u, description: d });
+      });
+      updatedList.push({
+        id: "v-" + Date.now(),
+        title: `Lesson ${updatedList.length + 1}: Video Topic`,
+        videoUrl: "",
+        description: ""
+      });
+      currentCourseVideos = updatedList;
+      renderPaidModalVideoRows();
+    });
+  }
+}
+
+function openPaidCourseModal(courseId = null) {
+  editingPaidCourseId = courseId;
+  if (!el.paidCourseModal) return;
+
+  initPaidCourseModalEventsOnce();
+
+  const preview = document.getElementById("paid-modal-image-preview");
+  const previewContainer = document.getElementById("paid-modal-image-preview-container");
+
+  if (courseId) {
+    const course = paidCoursesData.find(c => c.id === courseId);
+    if (!course) return;
+    if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Edit Paid Video Course";
+    if (el.paidModalTitle) el.paidModalTitle.value = course.title || "";
+    if (el.paidModalPrice) el.paidModalPrice.value = course.price || "₹1,499";
+    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = course.originalPrice || course.origPrice || "₹2,999";
+    if (el.paidModalDuration) el.paidModalDuration.value = course.duration || "20 Hours HD Video";
+    if (el.paidModalBadge) el.paidModalBadge.value = course.badge || "Comprehensive Masterclass";
+    if (el.paidModalStatus) el.paidModalStatus.value = course.status || "published";
+    if (el.paidModalImage) el.paidModalImage.value = course.image || "";
+    if (el.paidModalDesc) el.paidModalDesc.value = course.description || "";
+
+    if (course.image && preview && previewContainer) {
+      preview.src = course.image;
+      previewContainer.style.display = "block";
+    } else if (previewContainer) {
+      previewContainer.style.display = "none";
+    }
+
+    if (Array.isArray(course.videos) && course.videos.length > 0) {
+      currentCourseVideos = course.videos.map((v, i) => ({
+        id: v.id || `v-${i + 1}`,
+        title: v.title || `Video ${i + 1}`,
+        videoUrl: v.videoUrl || v.url || course.videoEmbed || "",
+        description: v.description || ""
+      }));
+    } else if (course.videoEmbed || course.videoUrl) {
+      currentCourseVideos = [{
+        id: "v-1",
+        title: course.title ? `${course.title} - Main Video` : "Main Masterclass Video",
+        videoUrl: course.videoEmbed || course.videoUrl || "",
+        description: course.description || ""
+      }];
+    } else {
+      currentCourseVideos = [];
+    }
+
+  } else {
+    if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Add Paid Video Course";
+    if (el.paidCourseForm) el.paidCourseForm.reset();
+    if (el.paidModalPrice) el.paidModalPrice.value = "₹1,499";
+    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = "₹2,999";
+    if (el.paidModalDuration) el.paidModalDuration.value = "20 Hours HD Video";
+    if (el.paidModalBadge) el.paidModalBadge.value = "Comprehensive Masterclass";
+    if (el.paidModalStatus) el.paidModalStatus.value = "published";
+
+    if (previewContainer) previewContainer.style.display = "none";
+    currentCourseVideos = [{
+      id: "v-1",
+      title: "Lesson 1: Introduction & Overview",
+      videoUrl: "",
+      description: ""
+    }];
+  }
+
+  renderPaidModalVideoRows();
+  updateAdminDiscountCalc();
+  el.paidCourseModal.classList.add("open");
+}
+
+function closePaidCourseModal() {
+  if (el.paidCourseModal) el.paidCourseModal.classList.remove("open");
+  editingPaidCourseId = null;
+}
+
+if (el.btnNewPaidCourse) {
+  el.btnNewPaidCourse.addEventListener("click", () => openPaidCourseModal(null));
+}
+
+if (el.paidCourseModalClose) {
+  el.paidCourseModalClose.addEventListener("click", closePaidCourseModal);
+}
+
+if (el.paidCourseModalCancel) {
+  el.paidCourseModalCancel.addEventListener("click", closePaidCourseModal);
+}
+
+if (el.paidCourseSearch) {
+  el.paidCourseSearch.addEventListener("input", (e) => renderPaidCoursesTable(e.target.value));
+}
+
+if (el.paidCourseForm) {
+  el.paidCourseForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const title = el.paidModalTitle ? el.paidModalTitle.value.trim() : "";
+    const price = el.paidModalPrice ? el.paidModalPrice.value.trim() : "";
+    const origPrice = el.paidModalOrigPrice ? el.paidModalOrigPrice.value.trim() : "";
+    const duration = el.paidModalDuration ? el.paidModalDuration.value.trim() : "";
+    const badge = el.paidModalBadge ? el.paidModalBadge.value.trim() : "";
+    const status = el.paidModalStatus ? el.paidModalStatus.value : "published";
+    const image = el.paidModalImage ? el.paidModalImage.value.trim() : "";
+    const description = el.paidModalDesc ? el.paidModalDesc.value.trim() : "";
+
+    // Gather videos array from DOM rows
+    const videoRows = document.querySelectorAll("#paid-modal-videos-list .paid-video-row");
+    const videosList = [];
+    videoRows.forEach((row, idx) => {
+      const vTitle = (row.querySelector(".video-title-input") || {}).value?.trim() || `Lesson ${idx + 1}`;
+      const vUrl = (row.querySelector(".video-url-input") || {}).value?.trim() || "";
+      const vDesc = (row.querySelector(".video-desc-input") || {}).value?.trim() || "";
+
+      let cleanUrl = vUrl;
+      const proc = processYouTubeEmbed(vUrl);
+      if (proc && proc.isValid) {
+        cleanUrl = proc.iframeHtml;
+      }
+
+      if (vUrl || vTitle) {
+        videosList.push({
+          id: "v-" + (idx + 1),
+          title: vTitle,
+          videoUrl: cleanUrl,
+          description: vDesc // Plain text description without HTML tags
+        });
+      }
+    });
+
+    if (!title || !price || !description) {
+      showToast("Please fill in course title, price, and overall description.", "error");
+      return;
+    }
+
+    if (videosList.length === 0) {
+      showToast("Please add at least one video to the course.", "error");
+      return;
+    }
+
+    // Backend JS Discount Percentage Calculation
+    const origNum = parseFloat((origPrice || "").replace(/[^0-9.]/g, "")) || 0;
+    const priceNum = parseFloat((price || "").replace(/[^0-9.]/g, "")) || 0;
+    let discountPercent = 0;
+    if (origNum > priceNum && origNum > 0) {
+      discountPercent = Math.round(((origNum - priceNum) / origNum) * 100);
+    }
+
+    const firstVideoEmbed = videosList[0]?.videoUrl || "";
+
+    const payload = {
+      title,
+      price,
+      originalPrice: origPrice,
+      origPrice,
+      discountPercent,
+      duration,
+      badge,
+      status,
+      image: image || "https://images.unsplash.com/photo-1516116211227-bbc00e57e849?w=700&auto=format&fit=crop&q=80",
+      videoEmbed: firstVideoEmbed,
+      videoUrl: firstVideoEmbed,
+      videos: videosList,
+      description,
+      updatedAt: serverTimestamp()
+    };
+
+    const targetId = editingPaidCourseId || ("paid-" + Date.now());
+    payload.id = targetId;
+
+    try {
+      await setDoc(doc(db, "paid_courses", targetId), payload, { merge: true });
+      firestorePaidCoursesMap.set(targetId, payload);
+      rebuildAndRenderPaidCourses();
+      showToast(`Paid course "${title}" saved with ${videosList.length} video(s)!`, "success");
+      closePaidCourseModal();
+    } catch (err) {
+      console.warn("Firestore write fallback for paid course:", err);
+      if (editingPaidCourseId) {
+        const idx = paidCoursesData.findIndex(c => c.id === editingPaidCourseId);
+        if (idx !== -1) paidCoursesData[idx] = { ...paidCoursesData[idx], ...payload };
+      } else {
+        paidCoursesData.push(payload);
+      }
+      renderPaidCoursesTable();
+      updateMetrics();
+      showToast(`Paid course saved locally.`, "info");
+      closePaidCourseModal();
+    }
+  });
+}
+
+function confirmDeletePaidCourse(courseId) {
+  const course = paidCoursesData.find(c => c.id === courseId);
+  const title = course ? course.title : "this paid course";
+  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? Students will no longer see it on the website.`;
+  if (el.deleteModal) el.deleteModal.classList.add("open");
+
+  el.deleteConfirmBtn.onclick = async () => {
+    deletedPaidCourseIds.add(courseId);
+    localStorage.setItem("deletedPaidCourseIds", JSON.stringify(Array.from(deletedPaidCourseIds)));
+    firestorePaidCoursesMap.delete(courseId);
+
+    try {
+      await deleteDoc(doc(db, "paid_courses", courseId));
+    } catch (err) {
+      console.warn("Firestore delete paid course notice:", err);
+    }
+
+    paidCoursesData = paidCoursesData.filter(c => c.id !== courseId);
+    rebuildAndRenderPaidCourses();
+    updateMetrics();
+    showToast(`Paid course "${title}" deleted successfully.`, "success");
+    if (el.deleteModal) el.deleteModal.classList.remove("open");
+  };
+}
+
+// -------------------------------------------------------------
+// 6. ORDERS & FAIL-SAFE DATABASE SYSTEM (Real-Time Student Ledger)
+// -------------------------------------------------------------
+function rebuildAndRenderOrders() {
+  const ordersMap = new Map();
+
+  // Read local fail-safe logs if any
+  try {
+    const localPending = JSON.parse(localStorage.getItem("shortstudy_pending_orders") || "[]");
+    localPending.forEach(o => { if (o && o.id) ordersMap.set(o.id, o); });
+  } catch (e) {}
+
+  try {
+    const localUserOrders = JSON.parse(localStorage.getItem("shortstudy_user_orders") || "[]");
+    localUserOrders.forEach(o => { if (o && o.id) ordersMap.set(o.id, o); });
+  } catch (e) {}
+
+  // Sync with Firestore orders
+  firestoreOrdersMap.forEach((val, key) => {
+    ordersMap.set(key, { ...val, id: key });
+  });
+
+  ordersData = Array.from(ordersMap.values());
+  // Sort descending by creation date
+  ordersData.sort((a, b) => {
+    const timeA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0)).getTime();
+    const timeB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0)).getTime();
+    return timeB - timeA;
+  });
+
+  renderOrdersTable(currentOrderFilter);
+  updateMetrics();
+}
+
+function renderOrdersTable(filter = "all") {
+  if (!el.ordersTableBody) return;
+  el.ordersTableBody.innerHTML = "";
+
+  let filtered = [...ordersData];
+  if (filter === "pending") {
+    filtered = filtered.filter(o => !o.accessGranted || o.paymentStatus === "pending_manual_access" || o.failSafeReason);
+  } else if (filter === "granted") {
+    filtered = filtered.filter(o => o.accessGranted === true);
+  }
+
+  if (filtered.length === 0) {
+    const filterMsg = filter === "pending"
+      ? "Great news! There are no pending or unresolved student orders."
+      : "No student course orders logged yet.";
+    el.ordersTableBody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">
+          ${filterMsg}
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  filtered.forEach((order) => {
+    const tr = document.createElement("tr");
+    const isGranted = order.accessGranted === true;
+    const isPendingManual = !isGranted || order.paymentStatus === "pending_manual_access" || !!order.failSafeReason;
+
+    // Date formatting
+    let dateStr = "Recent";
+    if (order.createdAt) {
+      const d = order.createdAt.seconds ? new Date(order.createdAt.seconds * 1000) : new Date(order.createdAt);
+      dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    }
+
+    tr.innerHTML = `
+      <td>
+        <span class="font-mono" style="font-size:11px; color:var(--indigo-light);">${escapeHtml(order.id)}</span>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${dateStr}</div>
+      </td>
+      <td>
+        <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(order.fullName || "Student")}</strong>
+        <div style="font-size:11.5px; color:var(--indigo-light);">${escapeHtml(order.email || "")}</div>
+        <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(order.phone || "")}</div>
+      </td>
+      <td>
+        <span class="font-mono" style="font-size:11px; color:#6ee7b7; background:rgba(110,231,183,0.1); padding:2px 6px; border-radius:4px;">
+          ${escapeHtml(order.accountId || "ID-" + (order.id || "").slice(-6))}
+        </span>
+      </td>
+      <td>
+        <div style="font-weight:600; color:var(--text-white); font-size:13px;">${escapeHtml(order.courseTitle || "Premium Course")}</div>
+        <span style="color:#F2C94C; font-weight:700; font-size:12px;">${escapeHtml(order.coursePrice || "")}</span>
+      </td>
+      <td>
+        ${isPendingManual
+          ? `<span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); font-size:10px;">
+              ⚠️ Fail-Safe: Pending Manual Access
+            </span>`
+          : `<span class="badge badge-published" style="font-size:10.5px;">Completed</span>`
+        }
+        ${order.failSafeReason ? `<div style="font-size:10.5px; color:#f87171; margin-top:3px; max-width:200px;">Reason: ${escapeHtml(order.failSafeReason)}</div>` : ''}
+      </td>
+      <td>
+        ${isGranted
+          ? `<span class="badge badge-published" style="font-size:11px;">✓ Access Granted</span>`
+          : `<span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:11px;">✕ Access Locked</span>`
+        }
+      </td>
+      <td>
+        <div style="display:flex; gap:6px; align-items:center;">
+          ${!isGranted
+            ? `<button class="btn btn-success btn-sm btn-grant-order" data-id="${order.id}" style="font-size:11.5px; padding:6px 12px; font-weight:600;">
+                ✓ Grant Access
+              </button>`
+            : `<button class="btn btn-secondary btn-sm btn-revoke-order" data-id="${order.id}" style="font-size:11px;">
+                Revoke
+              </button>`
+          }
+        </div>
+      </td>
+    `;
+
+    el.ordersTableBody.appendChild(tr);
+  });
+
+  // Attach Grant / Revoke Access event handlers
+  el.ordersTableBody.querySelectorAll(".btn-grant-order").forEach(btn => {
+    btn.addEventListener("click", () => handleGrantOrderAccess(btn.dataset.id));
+  });
+
+  el.ordersTableBody.querySelectorAll(".btn-revoke-order").forEach(btn => {
+    btn.addEventListener("click", () => handleRevokeOrderAccess(btn.dataset.id));
+  });
+}
+
+async function handleGrantOrderAccess(orderId) {
+  const order = ordersData.find(o => o.id === orderId);
+  if (!order) return;
+
+  const updateData = {
+    accessGranted: true,
+    paymentStatus: "completed",
+    manualGrantBy: currentUser ? currentUser.email : "admin@shortstudy.com",
+    grantedAt: serverTimestamp()
+  };
+
+  try {
+    await updateDoc(doc(db, "course_orders", orderId), updateData);
+    // Also record under course_access collection
+    const accessKey = `${order.email || "user"}_${order.courseId || "course"}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    await setDoc(doc(db, "course_access", accessKey), {
+      email: order.email,
+      accountId: order.accountId,
+      courseId: order.courseId,
+      courseTitle: order.courseTitle,
+      accessGranted: true,
+      grantedBy: currentUser ? currentUser.email : "admin",
+      updatedAt: serverTimestamp()
+    }, { merge: true }).catch(() => {});
+
+    // Update in-memory and local state
+    if (firestoreOrdersMap.has(orderId)) {
+      firestoreOrdersMap.set(orderId, { ...firestoreOrdersMap.get(orderId), ...updateData });
+    }
+    const idx = ordersData.findIndex(o => o.id === orderId);
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], ...updateData };
+
+    // Update localStorage for immediate local preview
+    if (order.courseId) {
+      localStorage.setItem(`shortstudy_enrolled_${order.courseId}`, "true");
+    }
+
+    renderOrdersTable(currentOrderFilter);
+    updateMetrics();
+    showToast(`Access manually granted to ${order.fullName || order.email}!`, "success");
+  } catch (err) {
+    console.warn("Firestore order update fallback:", err);
+    const idx = ordersData.findIndex(o => o.id === orderId);
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], accessGranted: true, paymentStatus: "completed" };
+    if (order.courseId) {
+      localStorage.setItem(`shortstudy_enrolled_${order.courseId}`, "true");
+    }
+    renderOrdersTable(currentOrderFilter);
+    updateMetrics();
+    showToast(`Access granted locally for ${order.fullName || order.email}!`, "info");
+  }
+}
+
+async function handleRevokeOrderAccess(orderId) {
+  const order = ordersData.find(o => o.id === orderId);
+  if (!order) return;
+
+  const updateData = {
+    accessGranted: false,
+    paymentStatus: "revoked",
+    updatedAt: serverTimestamp()
+  };
+
+  try {
+    await updateDoc(doc(db, "course_orders", orderId), updateData);
+    const accessKey = `${order.email || "user"}_${order.courseId || "course"}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    await setDoc(doc(db, "course_access", accessKey), { accessGranted: false }, { merge: true }).catch(() => {});
+
+    if (order.courseId) {
+      localStorage.removeItem(`shortstudy_enrolled_${order.courseId}`);
+    }
+
+    if (firestoreOrdersMap.has(orderId)) {
+      firestoreOrdersMap.set(orderId, { ...firestoreOrdersMap.get(orderId), ...updateData });
+    }
+    const idx = ordersData.findIndex(o => o.id === orderId);
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], ...updateData };
+
+    renderOrdersTable(currentOrderFilter);
+    updateMetrics();
+    showToast(`Access revoked for ${order.fullName || order.email}.`, "info");
+  } catch (err) {
+    console.warn("Firestore revoke fallback:", err);
+    const idx = ordersData.findIndex(o => o.id === orderId);
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], accessGranted: false, paymentStatus: "revoked" };
+    if (order.courseId) {
+      localStorage.removeItem(`shortstudy_enrolled_${order.courseId}`);
+    }
+    renderOrdersTable(currentOrderFilter);
+    updateMetrics();
+    showToast(`Access revoked locally.`, "info");
+  }
+}
+
+// Order Filter Buttons
+if (el.orderFilterBtns) {
+  el.orderFilterBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      el.orderFilterBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentOrderFilter = btn.dataset.filter || "all";
+      renderOrdersTable(currentOrderFilter);
+    });
+  });
+}
 
 // -------------------------------------------------------------
 // 5. NAVIGATION & VIEW SWITCHING
@@ -1514,13 +2446,15 @@ el.navLinks.forEach((link) => {
     });
 
     // Close mobile drawer if open
-    el.sidebar.classList.remove("open");
+    if (el.sidebar) el.sidebar.classList.remove("open");
   });
 });
 
-el.menuBurger.addEventListener("click", () => {
-  el.sidebar.classList.toggle("open");
-});
+if (el.menuBurger) {
+  el.menuBurger.addEventListener("click", () => {
+    if (el.sidebar) el.sidebar.classList.toggle("open");
+  });
+}
 
 // API Key Custom Configuration
 const quickApiKeyInput = document.getElementById("quick-api-key-input");

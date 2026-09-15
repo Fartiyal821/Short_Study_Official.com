@@ -4,258 +4,27 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lesson — ShortStudy Programming Curriculum</title>
+  <meta name="description" content="In-depth programming lessons, code walk-throughs, and interactive examples from ShortStudy.">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
-
-  <style>
-    /* Specific enhancements for dynamic lesson view */
-    .lesson-meta-bar {
-      background: #fff;
-      border-bottom: 1px solid var(--paper-line);
-      padding: 14px 24px;
-    }
-    .lesson-meta-inner {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      font-size: 13.5px;
-    }
-    .lesson-layout {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 48px 24px;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) 320px;
-      gap: 40px;
-      align-items: start;
-    }
-    .lesson-article {
-      background: #fff;
-      border: 1px solid var(--paper-line);
-      border-radius: var(--radius);
-      padding: 40px;
-      box-shadow: var(--shadow);
-    }
-    .lesson-header {
-      border-bottom: 2px solid var(--paper-line);
-      padding-bottom: 24px;
-      margin-bottom: 32px;
-    }
-    .lesson-header h1 {
-      font-size: clamp(28px, 4vw, 42px);
-      line-height: 1.2;
-      color: var(--ink);
-      margin-bottom: 14px;
-    }
-    .lesson-excerpt {
-      font-size: 17px;
-      color: var(--ink-soft);
-      line-height: 1.6;
-    }
-
-    /* Responsive YouTube 16:9 Video Container */
-    .video-section {
-      margin: 32px 0 40px;
-      background: #000;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
-    }
-    .video-wrapper {
-      position: relative;
-      padding-bottom: 56.25%; /* 16:9 ratio */
-      height: 0;
-      overflow: hidden;
-    }
-    .video-wrapper iframe {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      border: 0;
-    }
-    .video-caption {
-      padding: 10px 16px;
-      background: var(--board);
-      color: var(--chalk-dim);
-      font-size: 12px;
-      font-family: 'JetBrains Mono', monospace;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Rich Lesson Content Styling */
-    .lesson-content {
-      font-size: 16.5px;
-      line-height: 1.75;
-      color: var(--ink);
-    }
-    .lesson-content h2 {
-      font-size: 26px;
-      color: var(--ink);
-      margin: 36px 0 14px;
-      border-bottom: 1px solid var(--paper-line);
-      padding-bottom: 8px;
-    }
-    .lesson-content h3 {
-      font-size: 20px;
-      color: var(--ink);
-      margin: 26px 0 10px;
-    }
-    .lesson-content p {
-      margin-bottom: 20px;
-    }
-    .lesson-content ul, .lesson-content ol {
-      margin: 0 0 20px 24px;
-      color: var(--ink-soft);
-    }
-    .lesson-content li {
-      margin-bottom: 8px;
-    }
-    .lesson-content pre {
-      background: #1e293b;
-      color: #f8fafc;
-      padding: 20px;
-      border-radius: 10px;
-      overflow-x: auto;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 14px;
-      line-height: 1.6;
-      margin: 24px 0;
-      position: relative;
-      border: 1px solid #334155;
-    }
-    .lesson-content code {
-      font-family: 'JetBrains Mono', monospace;
-      background: #f1f5f9;
-      color: #0f172a;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 0.9em;
-    }
-    .lesson-content pre code {
-      background: transparent;
-      color: inherit;
-      padding: 0;
-    }
-    .code-copy-btn {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: #f8fafc;
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .code-copy-btn:hover {
-      background: var(--yellow);
-      color: var(--board-dark);
-      border-color: var(--yellow);
-    }
-    .code-copy-btn.copied {
-      background: #10b981;
-      color: #fff;
-      border-color: #10b981;
-    }
-
-    /* Lesson Navigation Buttons (Prev / Next) */
-    .lesson-nav-footer {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      margin-top: 48px;
-      padding-top: 28px;
-      border-top: 2px solid var(--paper-line);
-      flex-wrap: wrap;
-    }
-    .nav-btn {
-      display: flex;
-      flex-direction: column;
-      padding: 16px 20px;
-      background: var(--paper);
-      border: 1px solid var(--paper-line);
-      border-radius: 10px;
-      min-width: 220px;
-      transition: transform 0.15s, border-color 0.15s;
-    }
-    .nav-btn:hover {
-      border-color: var(--yellow-dark);
-      transform: translateY(-2px);
-    }
-    .nav-btn-label {
-      font-size: 11px;
-      text-transform: uppercase;
-      font-family: 'JetBrains Mono', monospace;
-      color: var(--ink-soft);
-      margin-bottom: 4px;
-    }
-    .nav-btn-title {
-      font-size: 14.5px;
-      font-weight: 600;
-      color: var(--ink);
-    }
-
-    /* Right Sidebar for Course Index */
-    .course-sidebar-card {
-      background: #fff;
-      border: 1px solid var(--paper-line);
-      border-radius: var(--radius);
-      padding: 24px;
-      box-shadow: var(--shadow);
-      position: sticky;
-      top: 90px;
-    }
-    .course-sidebar-title {
-      font-family: 'JetBrains Mono', monospace;
-      font-size: 11.5px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      color: var(--ink-soft);
-      margin-bottom: 14px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid var(--paper-line);
-    }
-
-    @media (max-width: 900px) {
-      .lesson-layout {
-        grid-template-columns: 1fr;
-        padding: 24px 16px;
-      }
-      .lesson-article {
-        padding: 24px;
-      }
-      .course-sidebar-card {
-        position: static;
-      }
-    }
-  </style>
 </head>
 <body>
 
   <!-- ==================== TOP NAVIGATION ==================== -->
   <header>
     <div class="nav">
-      <a href="index.html" class="brand">Short<span>Study</span></a>
-      <ul class="nav-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="programming.html">Curriculum</a></li>
+      <a href="/" class="brand">Short<span>Study</span></a>
+      <ul class="nav-links" id="navLinks">
+        <li><a href="/">Home</a></li>
+        <li><a href="programming-videos.html">Programming Video's</a></li>
+        <li><a href="test.html">Test</a></li>
         <li><a href="about.html">About</a></li>
         <li><a href="contact.html">Contact</a></li>
       </ul>
+      <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
     </div>
   </header>
 
@@ -263,9 +32,9 @@
   <div class="lesson-meta-bar">
     <div class="lesson-meta-inner">
       <nav aria-label="Breadcrumbs" style="display: flex; align-items: center; gap: 8px;">
-        <a href="index.html" style="color: var(--ink-soft);">Home</a>
+        <a href="/" style="color: var(--ink-soft);">Home</a>
         <span style="opacity: 0.5;">/</span>
-        <span id="breadcrumb-course" style="color: var(--ink-soft);">Programming Pathway</span>
+        <a href="programming-videos.html" id="breadcrumb-course" style="color: var(--ink-soft);">Programming Pathway</a>
         <span style="opacity: 0.5;">/</span>
         <span id="breadcrumb-lesson" style="color: var(--ink); font-weight: 600;">Current Lesson</span>
       </nav>
@@ -275,7 +44,7 @@
           5 min read
         </span>
         <span id="live-sync-indicator" style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #10b981;">
-          ● Firestore Live Sync
+          ● Cloud Sync
         </span>
       </div>
     </div>
@@ -305,7 +74,7 @@
             <span>Companion Video Lesson</span>
           </div>
           <div id="lesson-video-wrapper" class="video-wrapper">
-            <!-- Sanitized <iframe> injected here -->
+            <!-- Sanitized iframe injected here -->
           </div>
         </div>
 
@@ -317,13 +86,13 @@
         <!-- FOOTER NAVIGATION (PREV / NEXT LESSON) -->
         <div class="lesson-nav-footer">
           <a href="#" id="prev-lesson-btn" class="nav-btn" style="visibility: hidden;">
-            <span class="nav-btn-label">← Previous Lesson</span>
+            <span class="nav-btn-label">&larr; Previous Lesson</span>
             <span class="nav-btn-title">Overview</span>
           </a>
 
           <a href="#" id="next-lesson-btn" class="nav-btn" style="text-align: right; margin-left: auto; visibility: hidden;">
-            <span class="nav-btn-label">Next Lesson →</span>
-            <span class="nav-btn-title">Control Flow</span>
+            <span class="nav-btn-label">Next Lesson &rarr;</span>
+            <span class="nav-btn-title">Next Topic</span>
           </a>
         </div>
       </article>
@@ -334,7 +103,7 @@
       <div class="course-sidebar-card">
         <div class="course-sidebar-title" id="course-outline-title">Course Outline</div>
         <ul id="course-outline-list" style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-          <!-- Populated live via Firestore onSnapshot -->
+          <!-- Populated live via catalog -->
         </ul>
       </div>
     </aside>
@@ -345,9 +114,12 @@
   <footer>
     <div class="footer-inner">
       <ul class="footer-links">
-        <li><a href="index.html">Home</a></li>
-        <li><a href="programming.html">Curriculum</a></li>
-        <li><a href="about.html">About</a></li>
+        <li><a href="/">Home</a></li>
+        <li><a href="programming-videos.html">Programming Video's</a></li>
+        <li><a href="test.html">Take a Test</a></li>
+        <li><a href="about.html">About Us</a></li>
+        <li><a href="contact.html">Contact Us</a></li>
+        <li><a href="disclaimer.html">Disclaimer</a></li>
         <li><a href="privacy-policy.html">Privacy Policy</a></li>
         <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
       </ul>
@@ -357,6 +129,7 @@
     </div>
   </footer>
 
+  <script src="script.js"></script>
   <script type="module" src="assets/js/lesson.js"></script>
 </body>
 </html>

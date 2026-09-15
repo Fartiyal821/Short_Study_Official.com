@@ -2,57 +2,111 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/index.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>1.00</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/programming.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/programming-videos.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.90</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/python-basics.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/python-basics.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.85</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/c-basics.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/python-operators-conditionals.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.85</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/data-structures-arrays.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/c-basics.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.85</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/about.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/data-structures-arrays.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/java-oop-basics.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/html-css-basics.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/sql-basics.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.85</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/test.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.80</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/about.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.70</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/contact.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/contact.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.70</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/privacy-policy.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/disclaimer.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.60</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/privacy-policy.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.50</priority>
   </url>
 
   <url>
-    <loc>https://short-study-official-com-qsk8.onrender.com/terms-conditions.html</loc>
-    <lastmod>2026-08-11</lastmod>
+    <loc>https://shortstudy.in/terms-conditions.html</loc>
+    <lastmod>2026-09-14</lastmod>
     <priority>0.50</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/class8.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.60</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/class9.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.60</priority>
+  </url>
+
+  <url>
+    <loc>https://shortstudy.in/class10.html</loc>
+    <lastmod>2026-09-14</lastmod>
+    <priority>0.60</priority>
   </url>
 
 </urlset>

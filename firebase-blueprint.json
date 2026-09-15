@@ -1,0 +1,68 @@
+{
+  "entities": {
+    "Course": {
+      "title": "Course",
+      "description": "Standard study course module",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "Post": {
+      "title": "Post",
+      "description": "Lesson post or article",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "courseId": { "type": "string" }
+      }
+    },
+    "PaidCourse": {
+      "title": "PaidCourse",
+      "description": "Paid premium course offering",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "price": { "type": "number" },
+        "videoEmbed": { "type": "string" },
+        "description": { "type": "string" }
+      }
+    },
+    "CourseOrder": {
+      "title": "CourseOrder",
+      "description": "Student enrollment or order record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courseId": { "type": "string" },
+        "studentEmail": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/courses/{courseId}": {
+      "schema": { "$ref": "#/entities/Course" },
+      "description": "Courses collection"
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Posts and lessons collection"
+    },
+    "/paid_courses/{courseId}": {
+      "schema": { "$ref": "#/entities/PaidCourse" },
+      "description": "Paid courses collection"
+    },
+    "/course_orders/{orderId}": {
+      "schema": { "$ref": "#/entities/CourseOrder" },
+      "description": "Course enrollment orders collection"
+    }
+  }
+}
