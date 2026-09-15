@@ -97,7 +97,7 @@ function renderDynamicPathway() {
         <p style="color: #64748b; font-size: 13.5px; max-width: 400px; margin: 0 auto 12px;">
           New courses published in the Admin Panel will be listed here automatically.
         </p>
-        <a href="admin.html" class="go" style="display: inline-block;">Open Admin Panel →</a>
+        
       </div>
     `;
     return;

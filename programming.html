@@ -110,10 +110,12 @@
 
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
+      <li><a href="courses.html">Courses</a></li>
       <li><a href="programming.html" class="active">Tutorials</a></li>
       <li><a href="test.html">MCQ Tests</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
+      <li><a href="courses.html" class="nav-cta-btn">Browse Courses →</a></li>
     </ul>
 
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
@@ -237,67 +239,37 @@
 
 </main>
 
-<!-- ============ 4-COLUMN FOOTER (CODEWITHHARRY STYLE) ============ -->
-<footer class="cwh-footer">
-  <div class="cwh-footer-container">
-    <div class="cwh-footer-grid">
 
-      <!-- Col 1: Brand & Mission -->
-      <div class="cwh-footer-col">
-        <a class="brand" href="index.html" style="font-size: 28px; margin-bottom: 12px; display: inline-block;">Short<span>Study</span></a>
-        <p style="color: var(--chalk-dim); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
-          Short Study is a free educational platform dedicated to teaching coding and computer science fundamentals through structured, textbook-quality written guides and interactive test quizzes.
-        </p>
+  <footer style="background:var(--board); color:var(--chalk); padding:56px 24px 24px;">
+    <div class="wrap">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:40px; margin-bottom:40px;">
+        <div>
+          <a class="brand" href="index.html" style="font-size:28px; color:var(--yellow); display:inline-block; margin-bottom:12px;">Short<span>Study</span></a>
+          <p style="color:var(--chalk-dim); font-size:14px;">A premium educational platform dedicated to teaching coding through structured masterclasses and written guides.</p>
+        </div>
+        <div>
+          <h4 style="font-family:'Kalam', cursive; font-size:20px; color:var(--chalk); margin-bottom:16px;">Tracks</h4>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--chalk-dim);">
+            <li><a href="python-basics.html">Python Basics</a></li>
+            <li><a href="c-basics.html">C Programming</a></li>
+            <li><a href="java-oop-basics.html">Java OOP</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 style="font-family:'Kalam', cursive; font-size:20px; color:var(--chalk); margin-bottom:16px;">Legal</h4>
+          <ul style="list-style:none; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--chalk-dim);">
+            <li><a href="privacy-policy.html">Privacy Policy</a></li>
+            <li><a href="terms-conditions.html">Terms & Conditions</a></li>
+            <li><a href="contact.html">Contact</a></li>
+          </ul>
+        </div>
       </div>
-
-      <!-- Col 2: Core Tutorials -->
-      <div class="cwh-footer-col">
-        <h4>Programming Tracks</h4>
-        <ul>
-          <li><a href="python-basics.html">Python Basics</a></li>
-          <li><a href="python-operators-conditionals.html">Python Operators</a></li>
-          <li><a href="c-basics.html">C Programming</a></li>
-          <li><a href="data-structures-arrays.html">Data Structures (Arrays)</a></li>
-          <li><a href="java-oop-basics.html">Java &amp; OOP Concepts</a></li>
-          <li><a href="html-css-basics.html">HTML5 &amp; CSS3</a></li>
-          <li><a href="sql-basics.html">SQL Relational DBs</a></li>
-        </ul>
+      <div style="border-top:1px solid rgba(245,243,234,0.1); padding-top:24px; text-align:center; font-size:13px; color:var(--chalk-dim);">
+        &copy; 2026 ShortStudy. All rights reserved.
       </div>
-
-      <!-- Col 3: Practice & Guides -->
-      <div class="cwh-footer-col">
-        <h4>Practice &amp; Resources</h4>
-        <ul>
-          <li><a href="programming.html">Full Curriculum Directory</a></li>
-          <li><a href="test.html">Practice MCQ Tests</a></li>
-          <li><a href="python-basics.html">Python Pathway</a></li>
-          <li><a href="c-basics.html">C Memory &amp; Pointers</a></li>
-          <li><a href="data-structures-arrays.html">DSA &amp; Algorithms</a></li>
-          <li><a href="sql-basics.html">Database Queries &amp; SQL</a></li>
-        </ul>
-      </div>
-
-      <!-- Col 4: Legal & Company -->
-      <div class="cwh-footer-col">
-        <h4>Company &amp; Legal</h4>
-        <ul>
-          <li><a href="about.html">About Us</a></li>
-          <li><a href="contact.html">Contact Us</a></li>
-          <li><a href="disclaimer.html">Disclaimer</a></li>
-          <li><a href="privacy-policy.html">Privacy Policy</a></li>
-          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
-          <li><a href="javascript:void(0);" onclick="showConsentPreferences();">Cookie Preferences</a></li>
-        </ul>
-      </div>
-
     </div>
+  </footer>
 
-    <div class="cwh-footer-bottom">
-      <div>© 2026 Short Study. All rights reserved.</div>
-      <div>Designed for developers, computer science students &amp; educators worldwide.</div>
-    </div>
-  </div>
-</footer>
 
 <script src="script.js"></script>
 <script type="module">
