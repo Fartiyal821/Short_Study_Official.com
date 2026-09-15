@@ -503,7 +503,18 @@
   import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
   import { PRE_EXISTING_PAID_COURSES } from "./assets/js/catalog-data.js";
 
-  let allCourses = [...PRE_EXISTING_PAID_COURSES];
+  let initialCourses = [...PRE_EXISTING_PAID_COURSES];
+  try {
+    const cached = JSON.parse(localStorage.getItem("shortstudy_cached_paid_courses") || "null");
+    if (Array.isArray(cached) && cached.length > 0) {
+      const map = new Map();
+      PRE_EXISTING_PAID_COURSES.forEach(c => map.set(c.id, { ...c }));
+      cached.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
+      initialCourses = Array.from(map.values());
+    }
+  } catch (e) {}
+
+  let allCourses = initialCourses;
   let activeCategory = "all";
   let searchQuery = "";
   let currentActiveCourse = null;
@@ -606,13 +617,23 @@
     if (!gridEl) return;
 
     let filtered = allCourses.filter(course => {
-      if (course.status && course.status !== "published") return false;
+      if (course.status && course.status !== "published" && course.status !== "active") return false;
       
-      const matchesCat = activeCategory === "all" || (course.category && course.category === activeCategory) || (course.badge && course.badge.toLowerCase().includes(activeCategory));
+      const cat = (course.category || "").toLowerCase();
+      const badge = (course.badge || "").toLowerCase();
+      const title = (course.title || "").toLowerCase();
+
+      let matchesCat = (activeCategory === "all");
+      if (!matchesCat) {
+        if (cat === activeCategory || cat.includes(activeCategory)) matchesCat = true;
+        else if (activeCategory === "datascience" && (cat.includes("data") || badge.includes("data") || title.includes("data") || title.includes("analytics") || title.includes("ai"))) matchesCat = true;
+        else if (activeCategory === "webdev" && (cat.includes("web") || badge.includes("web") || title.includes("web") || title.includes("full stack") || title.includes("frontend") || title.includes("backend") || title.includes("javascript") || title.includes("html") || title.includes("css") || title.includes("react"))) matchesCat = true;
+        else if (activeCategory === "programming" && (cat.includes("prog") || badge.includes("prog") || title.includes("python") || title.includes("java") || title.includes("c++") || title.includes("c ") || title.includes("dsa") || title.includes("code"))) matchesCat = true;
+      }
       
       let matchesSearch = true;
       if (searchQuery) {
-        const text = (course.title + " " + (course.description || "") + " " + (course.instructor || "")).toLowerCase();
+        const text = (course.title + " " + (course.description || "") + " " + (course.instructor || "") + " " + (course.badge || "")).toLowerCase();
         matchesSearch = text.includes(searchQuery);
       }
 
@@ -1122,10 +1143,24 @@
       onSnapshot(collection(db, "paid_courses"), (snapshot) => {
         const firestoreCourses = [];
         snapshot.forEach(docSnap => {
-          firestoreCourses.push({ id: docSnap.id, ...docSnap.data() });
+          const d = docSnap.data();
+          if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
+            firestoreCourses.push({ id: docSnap.id, ...d });
+          }
         });
 
-        allCourses = firestoreCourses;
+        // Merge with pre-existing catalog so built-in and admin-created courses are both live!
+        const map = new Map();
+        PRE_EXISTING_PAID_COURSES.forEach(c => map.set(c.id, { ...c }));
+        firestoreCourses.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
+
+        allCourses = Array.from(map.values());
+        allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+        try {
+          localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(allCourses));
+        } catch (e) {}
+
         renderCourses();
       }, (err) => {
         console.warn("Firestore paid_courses listener notice:", err);

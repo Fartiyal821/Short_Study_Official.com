@@ -949,9 +949,21 @@ print('Hello ShortStudy')
 
             <div class="form-row" style="margin-bottom: 10px;">
               <div class="form-group">
+                <label class="form-label" for="paid-modal-category">Website Track / Category</label>
+                <select id="paid-modal-category" class="form-select">
+                  <option value="all">All / General Masterclass</option>
+                  <option value="datascience">Data Science &amp; Analytics</option>
+                  <option value="webdev">Web Development</option>
+                  <option value="programming">Programming &amp; Systems</option>
+                </select>
+              </div>
+              <div class="form-group">
                 <label class="form-label" for="paid-modal-instructor">Instructor Name</label>
                 <input type="text" id="paid-modal-instructor" class="form-input" placeholder="e.g. CodeWithHarry or ShortStudy" value="ShortStudy">
               </div>
+            </div>
+
+            <div class="form-row" style="margin-bottom: 10px;">
               <div class="form-group">
                 <label class="form-label" for="paid-modal-level">Target Difficulty Level</label>
                 <select id="paid-modal-level" class="form-select">

@@ -76,7 +76,7 @@ export function initPaidCourses() {
         const firestoreCourses = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          if (data.status !== "inactive") {
+          if (data.status !== "inactive" && data.status !== "draft" && !data.isDeleted) {
             firestoreCourses.push({ id: docSnap.id, ...data });
           }
         });
