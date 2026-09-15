@@ -312,30 +312,7 @@
     const cfg = difficultyConfig[difficultyKey];
     if (!lang || !cfg) return;
 
-    generateBtn.disabled = true;
-    generateBtn.textContent = "✨ Generating AI Questions...";
-
-    fetch('/api/ai/generate-quiz', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ language: lang, count: cfg.count })
-    })
-    .then(res => res.ok ? res.json() : Promise.reject('AI Quiz Unavailable'))
-    .then(data => {
-      if (data && data.success && Array.isArray(data.questions) && data.questions.length > 0) {
-        startTestWithQuestions(lang, difficultyKey, data.questions);
-      } else {
-        startTestWithQuestions(lang, difficultyKey, getRandomQuestions(lang, cfg.count));
-      }
-    })
-    .catch(() => {
-      // Smooth local question bank fallback if AI endpoint unavailable
-      startTestWithQuestions(lang, difficultyKey, getRandomQuestions(lang, cfg.count));
-    })
-    .finally(() => {
-      generateBtn.disabled = false;
-      generateBtn.textContent = "Generate Questions";
-    });
+    startTestWithQuestions(lang, difficultyKey, getRandomQuestions(lang, cfg.count));
   });
 
   function shuffle(arr) {
