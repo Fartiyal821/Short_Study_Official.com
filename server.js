@@ -89,6 +89,99 @@ app.post('/api/save-firebase-key', (req, res) => {
   }
 });
 
+// Helper for persistent JSON data access
+const DATA_DIR = path.join(__dirname, 'data');
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+
+function readJsonFile(filename, defaultValue = []) {
+  const filePath = path.join(DATA_DIR, filename);
+  try {
+    if (!fs.existsSync(filePath)) return defaultValue;
+    const content = fs.readFileSync(filePath, 'utf8');
+    return JSON.parse(content || '[]');
+  } catch (e) {
+    console.error(`Error reading ${filename}:`, e);
+    return defaultValue;
+  }
+}
+
+function writeJsonFile(filename, data) {
+  const filePath = path.join(DATA_DIR, filename);
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    return true;
+  } catch (e) {
+    console.error(`Error writing ${filename}:`, e);
+    return false;
+  }
+}
+
+// REST endpoints for Paid Video Courses (Cross-Device & Multi-Tab Persistence)
+app.get('/api/paid-courses', (req, res) => {
+  const courses = readJsonFile('paid-courses.json', []);
+  res.json({ success: true, courses });
+});
+
+app.post('/api/paid-courses', (req, res) => {
+  const course = req.body;
+  if (!course || !course.title) {
+    return res.status(400).json({ success: false, error: 'Course title is required.' });
+  }
+  const id = course.id || ('paid-' + Date.now());
+  const courseWithId = { ...course, id, updatedAt: new Date().toISOString() };
+
+  const courses = readJsonFile('paid-courses.json', []);
+  const idx = courses.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    courses[idx] = { ...courses[idx], ...courseWithId };
+  } else {
+    courses.unshift(courseWithId);
+  }
+  writeJsonFile('paid-courses.json', courses);
+  res.json({ success: true, course: courseWithId, count: courses.length });
+});
+
+app.delete('/api/paid-courses/:id', (req, res) => {
+  const id = req.params.id;
+  let courses = readJsonFile('paid-courses.json', []);
+  courses = courses.filter(c => c.id !== id);
+  writeJsonFile('paid-courses.json', courses);
+  res.json({ success: true, message: 'Deleted successfully' });
+});
+
+// REST endpoints for Curriculum Courses
+app.get('/api/courses', (req, res) => {
+  const courses = readJsonFile('courses.json', []);
+  res.json({ success: true, courses });
+});
+
+app.post('/api/courses', (req, res) => {
+  const course = req.body;
+  if (!course || !course.title) {
+    return res.status(400).json({ success: false, error: 'Course title is required.' });
+  }
+  const id = course.id || ('course-' + Date.now());
+  const courseWithId = { ...course, id, updatedAt: new Date().toISOString() };
+
+  const courses = readJsonFile('courses.json', []);
+  const idx = courses.findIndex(c => c.id === id);
+  if (idx !== -1) {
+    courses[idx] = { ...courses[idx], ...courseWithId };
+  } else {
+    courses.push(courseWithId);
+  }
+  writeJsonFile('courses.json', courses);
+  res.json({ success: true, course: courseWithId });
+});
+
+app.delete('/api/courses/:id', (req, res) => {
+  const id = req.params.id;
+  let courses = readJsonFile('courses.json', []);
+  courses = courses.filter(c => c.id !== id);
+  writeJsonFile('courses.json', courses);
+  res.json({ success: true, message: 'Deleted successfully' });
+});
+
 // =========================================================
 // FIREBASE AI LOGIC & DOUBT SOLVER ENDPOINTS
 // =========================================================

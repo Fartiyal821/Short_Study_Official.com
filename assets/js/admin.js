@@ -30,22 +30,46 @@ import {
 import { 
   PRE_EXISTING_COURSES, 
   PRE_EXISTING_LESSONS,
-  PRE_EXISTING_PAID_COURSES
+  PRE_EXISTING_PAID_COURSES,
+  DEFAULT_COURSE_IDS,
+  DEFAULT_POST_IDS
 } from "./catalog-data.js";
 
 // State Management
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 
-const deletedCourseIds = new Set(JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"));
-const deletedPostIds = new Set(JSON.parse(localStorage.getItem("deletedPostIds") || "[]"));
-const deletedPaidCourseIds = new Set(JSON.parse(localStorage.getItem("deletedPaidCourseIds") || "[]"));
+const deletedCourseIds = new Set([
+  ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
+  ...Array.from(DEFAULT_COURSE_IDS)
+]);
+const deletedPostIds = new Set([
+  ...JSON.parse(localStorage.getItem("deletedPostIds") || "[]"),
+  ...Array.from(DEFAULT_POST_IDS)
+]);
+const deletedPaidCourseIds = new Set([
+  ...JSON.parse(localStorage.getItem("deletedPaidCourseIds") || "[]"),
+  ...Array.from(DEFAULT_COURSE_IDS)
+]);
+
+try {
+  const cachedCourses = JSON.parse(localStorage.getItem("shortstudy_cached_courses") || "[]");
+  if (Array.isArray(cachedCourses)) {
+    const cleaned = cachedCourses.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
+    localStorage.setItem("shortstudy_cached_courses", JSON.stringify(cleaned));
+  }
+  const cachedPaid = JSON.parse(localStorage.getItem("shortstudy_cached_paid_courses") || "[]");
+  if (Array.isArray(cachedPaid)) {
+    const cleaned = cachedPaid.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
+    localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(cleaned));
+  }
+} catch (e) {}
 
 let currentUser = null;
 let currentAdminProfile = null;
 let activeTab = "courses"; // 'overview', 'courses', 'posts', 'preview', 'config'
-let coursesData = [...PRE_EXISTING_COURSES].filter(c => !deletedCourseIds.has(c.id));
-let postsData = [...PRE_EXISTING_LESSONS].filter(p => !deletedPostIds.has(p.id));
-let paidCoursesData = [...(PRE_EXISTING_PAID_COURSES || [])].filter(c => !deletedPaidCourseIds.has(c.id));
+let coursesData = [...PRE_EXISTING_COURSES].filter(c => !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
+let postsData = [...PRE_EXISTING_LESSONS].filter(p => !deletedPostIds.has(p.id) && !DEFAULT_POST_IDS.has(p.id));
+let paidCoursesData = [...(PRE_EXISTING_PAID_COURSES || [])].filter(c => !deletedPaidCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
 let ordersData = [];
 
 let currentPostVideos = [];
@@ -60,6 +84,7 @@ const firestoreCoursesMap = new Map();
 const firestorePostsMap = new Map();
 const firestoreLessonsMap = new Map();
 const firestorePaidCoursesMap = new Map();
+const serverPaidCoursesMap = new Map();
 const firestoreOrdersMap = new Map();
 
 let editingCourseId = null;
@@ -437,6 +462,43 @@ if (el.btnDeniedSignout) {
   });
 }
 
+async function fetchServerCourses() {
+  try {
+    const res = await fetch('/api/courses');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.courses)) {
+        json.courses.forEach(c => {
+          if (!deletedCourseIds.has(c.id)) {
+            firestoreCoursesMap.set(c.id, c);
+          }
+        });
+        rebuildAndRenderContent();
+      }
+    }
+  } catch (e) {
+    console.warn("Server courses sync note:", e);
+  }
+}
+
+async function fetchServerPaidCourses() {
+  try {
+    const res = await fetch('/api/paid-courses');
+    if (res.ok) {
+      const json = await res.json();
+      if (json.success && Array.isArray(json.courses)) {
+        serverPaidCoursesMap.clear();
+        json.courses.forEach(c => {
+          if (!deletedPaidCourseIds.has(c.id)) serverPaidCoursesMap.set(c.id, c);
+        });
+        rebuildAndRenderPaidCourses();
+      }
+    }
+  } catch (e) {
+    console.warn("Server paid courses sync note:", e);
+  }
+}
+
 function loadDashboardData() {
   // Database CRUD operations run here securely via onSnapshot
   console.log("Admin Dashboard Loaded Successfully");
@@ -445,6 +507,8 @@ function loadDashboardData() {
     if (el.userDisplayName) el.userDisplayName.textContent = displayName;
     if (el.userAvatarInitial) el.userAvatarInitial.textContent = displayName.charAt(0).toUpperCase();
   }
+  fetchServerCourses();
+  fetchServerPaidCourses();
   startRealtimeListeners();
 }
 
@@ -545,26 +609,29 @@ async function syncCatalogToFirestore() {
   isSyncingCatalog = true;
 
   try {
-    for (const c of PRE_EXISTING_COURSES) {
-      if (!firestoreCoursesMap.has(c.id)) {
-        await setDoc(doc(db, "courses", c.id), c, { merge: true }).catch(() => {});
+    // Purge any default courses and posts that might exist in Firestore
+    for (const id of DEFAULT_COURSE_IDS) {
+      if (firestoreCoursesMap.has(id)) {
+        await deleteDoc(doc(db, "courses", id)).catch(() => {});
+        firestoreCoursesMap.delete(id);
+      }
+      if (firestorePaidCoursesMap.has(id)) {
+        await deleteDoc(doc(db, "paid_courses", id)).catch(() => {});
+        firestorePaidCoursesMap.delete(id);
       }
     }
-    for (const l of PRE_EXISTING_LESSONS) {
-      if (!firestorePostsMap.has(l.id)) {
-        await setDoc(doc(db, "posts", l.id), l, { merge: true }).catch(() => {});
+    for (const id of DEFAULT_POST_IDS) {
+      if (firestorePostsMap.has(id)) {
+        await deleteDoc(doc(db, "posts", id)).catch(() => {});
+        firestorePostsMap.delete(id);
       }
-      if (!firestoreLessonsMap.has(l.id)) {
-        await setDoc(doc(db, "lessons", l.id), l, { merge: true }).catch(() => {});
-      }
-    }
-    for (const p of PRE_EXISTING_PAID_COURSES) {
-      if (!firestorePaidCoursesMap.has(p.id)) {
-        await setDoc(doc(db, "paid_courses", p.id), p, { merge: true }).catch(() => {});
+      if (firestoreLessonsMap.has(id)) {
+        await deleteDoc(doc(db, "lessons", id)).catch(() => {});
+        firestoreLessonsMap.delete(id);
       }
     }
   } catch (e) {
-    console.debug("Catalog sync note:", e);
+    console.debug("Catalog purge note:", e);
   } finally {
     isSyncingCatalog = false;
   }
@@ -1024,45 +1091,73 @@ if (el.courseTitle) {
 }
 
 if (el.courseForm) {
-  el.courseForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const coursePayload = {
-    title: el.courseTitle.value.trim(),
-    slug: el.courseSlug.value.trim() || slugify(el.courseTitle.value),
-    description: el.courseDescription.value.trim(),
-    icon: el.courseIcon.value.trim() || "📘",
-    status: el.courseStatus.value,
-    order: parseInt(el.courseOrder.value, 10) || 0,
-    updatedAt: serverTimestamp()
-  };
+  el.courseForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const coursePayload = {
+      title: el.courseTitle.value.trim(),
+      slug: el.courseSlug.value.trim() || slugify(el.courseTitle.value),
+      description: el.courseDescription.value.trim(),
+      icon: el.courseIcon.value.trim() || "📘",
+      status: el.courseStatus.value,
+      order: parseInt(el.courseOrder.value, 10) || 0,
+      updatedAt: new Date().toISOString()
+    };
 
-  try {
-    if (editingCourseId) {
-      const docRef = doc(db, "courses", editingCourseId);
-      await updateDoc(docRef, coursePayload);
-      showToast("Course updated live!", "success");
+    const targetCourseId = editingCourseId || ("course-" + Date.now());
+    coursePayload.id = targetCourseId;
+
+    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
+    firestoreCoursesMap.set(targetCourseId, coursePayload);
+    const existingIdx = coursesData.findIndex(c => c.id === targetCourseId);
+    if (existingIdx !== -1) {
+      coursesData[existingIdx] = { ...coursesData[existingIdx], ...coursePayload };
     } else {
-      coursePayload.createdAt = serverTimestamp();
-      await addDoc(collection(db, "courses"), coursePayload);
-      showToast("New course published!", "success");
-    }
-    closeCourseModal();
-  } catch (err) {
-    console.error("Course save error:", err);
-    // Local fallback update if offline/rules
-    if (editingCourseId) {
-      const idx = coursesData.findIndex(c => c.id === editingCourseId);
-      if (idx !== -1) coursesData[idx] = { ...coursesData[idx], ...coursePayload };
-    } else {
-      coursesData.unshift({ id: "course-" + Date.now(), ...coursePayload });
+      coursesData.unshift(coursePayload);
     }
     renderCoursesTable();
     populateCourseSelects();
     updateMetrics();
     closeCourseModal();
-    showToast("Course saved locally (sync updated)", "info");
-  }
-});
+    showToast(editingCourseId ? "Course updated instantly!" : "New course published instantly!", "success");
+
+    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
+    try {
+      localStorage.setItem("shortstudy_cached_courses", JSON.stringify(coursesData));
+    } catch (e) {}
+
+    try {
+      const syncChannel = new BroadcastChannel("shortstudy_courses_sync");
+      syncChannel.postMessage({
+        type: "COURSES_UPDATED",
+        action: "upsert",
+        courseId: targetCourseId,
+        course: coursePayload,
+        courses: coursesData
+      });
+      syncChannel.close();
+    } catch (e) {}
+
+    // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
+    (async () => {
+      try {
+        await fetch('/api/courses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(coursePayload)
+        });
+      } catch (e) {}
+
+      try {
+        if (editingCourseId) {
+          await updateDoc(doc(db, "courses", editingCourseId), { ...coursePayload, updatedAt: serverTimestamp() });
+        } else {
+          await setDoc(doc(db, "courses", targetCourseId), { ...coursePayload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        }
+      } catch (err) {
+        console.warn("Background course Firestore note:", err);
+      }
+    })();
+  });
 }
 
 function confirmDeleteCourse(courseId) {
@@ -1071,23 +1166,49 @@ function confirmDeleteCourse(courseId) {
   if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
   if (el.deleteModal) el.deleteModal.classList.add("open");
 
-  el.deleteConfirmBtn.onclick = async () => {
+  el.deleteConfirmBtn.onclick = () => {
+    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
     deletedCourseIds.add(courseId);
-    localStorage.setItem("deletedCourseIds", JSON.stringify(Array.from(deletedCourseIds)));
-    firestoreCoursesMap.delete(courseId);
-
     try {
-      await deleteDoc(doc(db, "courses", courseId));
-    } catch (err) {
-      console.warn("Firestore delete course notice:", err);
-    }
+      localStorage.setItem("deletedCourseIds", JSON.stringify(Array.from(deletedCourseIds)));
+    } catch (e) {}
+    firestoreCoursesMap.delete(courseId);
 
     coursesData = coursesData.filter(c => c.id !== courseId);
     renderCoursesTable();
     populateCourseSelects();
     updateMetrics();
-    showToast(`Course "${title}" deleted successfully.`, "success");
+    showToast(`Course "${title}" deleted instantly.`, "success");
     if (el.deleteModal) el.deleteModal.classList.remove("open");
+
+    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
+    try {
+      localStorage.setItem("shortstudy_cached_courses", JSON.stringify(coursesData));
+    } catch (e) {}
+
+    try {
+      const syncChannel = new BroadcastChannel("shortstudy_courses_sync");
+      syncChannel.postMessage({
+        type: "COURSES_UPDATED",
+        action: "delete",
+        courseId: courseId,
+        courses: coursesData
+      });
+      syncChannel.close();
+    } catch (e) {}
+
+    // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
+    (async () => {
+      try {
+        await fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
+      } catch (e) {}
+
+      try {
+        await deleteDoc(doc(db, "courses", courseId));
+      } catch (err) {
+        console.warn("Background Firestore delete course notice:", err);
+      }
+    })();
   };
 }
 
@@ -1497,88 +1618,51 @@ if (el.postPublishContentBtn) {
       updatedAt: serverTimestamp()
     };
 
-    try {
-      const courseDocRef = doc(db, "courses", selectedCourseId);
-      
-      if (editingPostId) {
-        const postDocRef = doc(db, "posts", editingPostId);
-        const lessonDocRef = doc(db, "lessons", editingPostId);
-        await runTransaction(db, async (transaction) => {
-          transaction.update(postDocRef, postPayload);
-          transaction.set(lessonDocRef, postPayload, { merge: true });
-          transaction.update(courseDocRef, {
-            status: "published",
-            updatedAt: serverTimestamp(),
-            latestLessonTitle: titleVal
-          });
-        });
-        firestorePostsMap.set(editingPostId, postPayload);
-      } else {
-        const newPostDocRef = doc(collection(db, "posts"));
-        const newLessonDocRef = doc(db, "lessons", newPostDocRef.id);
-        postPayload.createdAt = serverTimestamp();
-        await runTransaction(db, async (transaction) => {
-          transaction.set(newPostDocRef, postPayload);
-          transaction.set(newLessonDocRef, postPayload);
-          transaction.update(courseDocRef, {
-            status: "published",
-            updatedAt: serverTimestamp(),
-            latestLessonTitle: titleVal
-          });
-        });
-        firestorePostsMap.set(newPostDocRef.id, postPayload);
-      }
+    const targetPostId = editingPostId || ("post-" + Date.now());
+    postPayload.id = targetPostId;
 
-      // Update in-memory state and re-render
-      const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
-      firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
-      rebuildAndRenderContent();
+    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
+    firestorePostsMap.set(targetPostId, postPayload);
+    firestoreLessonsMap.set(targetPostId, postPayload);
+    const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
+    if (cExisting) {
+      firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published", latestLessonTitle: titleVal });
+    }
+    const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
+    if (cIdx !== -1) {
+      coursesData[cIdx].status = "published";
+      coursesData[cIdx].latestLessonTitle = titleVal;
+    }
 
-      showToast(`Course "${selectedCourse.title}" & content successfully published! "In Development" badge permanently removed.`, "success");
-      closePostModal();
-    } catch (err) {
-      console.warn("Atomic transaction fallback, trying sequential writes:", err);
+    rebuildAndRenderContent();
+    closePostModal();
+    showToast(`Course "${selectedCourse ? selectedCourse.title : ''}" & content published instantly!`, "success");
+
+    // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
+    (async () => {
       try {
+        const courseDocRef = doc(db, "courses", selectedCourseId);
         if (editingPostId) {
-          await updateDoc(doc(db, "posts", editingPostId), postPayload);
-          await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
+          const postDocRef = doc(db, "posts", editingPostId);
+          const lessonDocRef = doc(db, "lessons", editingPostId);
+          await updateDoc(postDocRef, postPayload);
+          await setDoc(lessonDocRef, postPayload, { merge: true }).catch(() => {});
         } else {
+          const newPostDocRef = doc(db, "posts", targetPostId);
+          const newLessonDocRef = doc(db, "lessons", targetPostId);
           postPayload.createdAt = serverTimestamp();
-          const addedDoc = await addDoc(collection(db, "posts"), postPayload);
-          await setDoc(doc(db, "lessons", addedDoc.id), postPayload, { merge: true }).catch(() => {});
+          await setDoc(newPostDocRef, postPayload);
+          await setDoc(newLessonDocRef, postPayload);
         }
-        await updateDoc(doc(db, "courses", selectedCourseId), {
+        await updateDoc(courseDocRef, {
           status: "published",
           updatedAt: serverTimestamp(),
           latestLessonTitle: titleVal
         });
-
-        const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
-        firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
-        rebuildAndRenderContent();
-
-        showToast(`Course "${selectedCourse.title}" & content published! "In Development" badge removed.`, "success");
-        closePostModal();
-      } catch (innerErr) {
-        console.error("Publish content & course error:", innerErr);
-        // Fallback local memory update
-        if (editingPostId) {
-          const idx = postsData.findIndex(p => p.id === editingPostId);
-          if (idx !== -1) postsData[idx] = { ...postsData[idx], ...postPayload };
-        } else {
-          postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
-        }
-        const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
-        if (cIdx !== -1) coursesData[cIdx].status = "published";
-
-        renderPostsTable();
-        renderCoursesTable();
-        populateCourseSelects();
-        updateMetrics();
-        showToast(`Saved locally! "In Development" badge removed.`, "info");
-        closePostModal();
+      } catch (err) {
+        console.warn("Background publish post notice:", err);
       }
-    }
+    })();
   });
 }
 
@@ -1633,62 +1717,52 @@ if (el.postForm) {
     updatedAt: serverTimestamp()
   };
 
-  try {
-    let targetDocId = editingPostId;
-    if (editingPostId) {
-      const docRef = doc(db, "posts", editingPostId);
-      await updateDoc(docRef, postPayload);
-      await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
-      firestorePostsMap.set(editingPostId, postPayload);
-      showToast("Post updated live!", "success");
-    } else {
-      postPayload.createdAt = serverTimestamp();
-      const added = await addDoc(collection(db, "posts"), postPayload);
-      targetDocId = added.id;
-      await setDoc(doc(db, "lessons", added.id), postPayload, { merge: true }).catch(() => {});
-      firestorePostsMap.set(added.id, postPayload);
-      showToast("Post published live!", "success");
-    }
+  const targetDocId = editingPostId || ("post-" + Date.now());
+  postPayload.id = targetDocId;
 
-    // If the post is published and the course is currently in_development, auto-update course to published!
-    if (el.postStatus.value === "published" && selectedCourse && selectedCourse.status === "in_development") {
-      try {
+  // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
+  firestorePostsMap.set(targetDocId, postPayload);
+  firestoreLessonsMap.set(targetDocId, postPayload);
+
+  const isPublished = el.postStatus.value === "published";
+  if (isPublished && selectedCourse && selectedCourse.status === "in_development") {
+    const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
+    firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published", latestLessonTitle: titleVal });
+    const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
+    if (cIdx !== -1) {
+      coursesData[cIdx].status = "published";
+      coursesData[cIdx].latestLessonTitle = titleVal;
+    }
+  }
+
+  rebuildAndRenderContent();
+  closePostModal();
+  showToast(editingPostId ? "Lesson updated instantly!" : "Lesson published instantly!", "success");
+
+  // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
+  (async () => {
+    try {
+      if (editingPostId) {
+        const docRef = doc(db, "posts", editingPostId);
+        await updateDoc(docRef, postPayload);
+        await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
+      } else {
+        postPayload.createdAt = serverTimestamp();
+        await setDoc(doc(db, "posts", targetDocId), postPayload);
+        await setDoc(doc(db, "lessons", targetDocId), postPayload, { merge: true }).catch(() => {});
+      }
+
+      if (isPublished && selectedCourse && selectedCourse.status === "in_development") {
         await updateDoc(doc(db, "courses", selectedCourseId), {
           status: "published",
           updatedAt: serverTimestamp(),
           latestLessonTitle: titleVal
         });
-        const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
-        firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published" });
-        showToast(`Course "${selectedCourse.title}" status updated to Published! "In Development" badge removed.`, "success");
-      } catch (cErr) {
-        console.warn("Could not auto-update course status:", cErr);
       }
+    } catch (err) {
+      console.warn("Background post save notice:", err);
     }
-
-    rebuildAndRenderContent();
-    closePostModal();
-  } catch (err) {
-    console.error("Post save error:", err);
-    // Local fallback update if offline/rules
-    if (editingPostId) {
-      const idx = postsData.findIndex(p => p.id === editingPostId);
-      if (idx !== -1) postsData[idx] = { ...postsData[idx], ...postPayload };
-    } else {
-      postsData.unshift({ id: "post-" + Date.now(), ...postPayload });
-    }
-
-    if (el.postStatus.value === "published" && selectedCourse && selectedCourse.status === "in_development") {
-      const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
-      if (cIdx !== -1) coursesData[cIdx].status = "published";
-      renderCoursesTable();
-    }
-
-    renderPostsTable();
-    updateMetrics();
-    closePostModal();
-    showToast("Post saved locally (sync updated)", "info");
-  }
+  })();
 });
 }
 
@@ -1698,24 +1772,30 @@ function confirmDeletePost(postId) {
   if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
   if (el.deleteModal) el.deleteModal.classList.add("open");
 
-  el.deleteConfirmBtn.onclick = async () => {
+  el.deleteConfirmBtn.onclick = () => {
+    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
     deletedPostIds.add(postId);
-    localStorage.setItem("deletedPostIds", JSON.stringify(Array.from(deletedPostIds)));
+    try {
+      localStorage.setItem("deletedPostIds", JSON.stringify(Array.from(deletedPostIds)));
+    } catch (e) {}
     firestorePostsMap.delete(postId);
     firestoreLessonsMap.delete(postId);
-
-    try {
-      await deleteDoc(doc(db, "posts", postId));
-      await deleteDoc(doc(db, "lessons", postId));
-    } catch (err) {
-      console.warn("Firestore delete post notice:", err);
-    }
 
     postsData = postsData.filter(p => p.id !== postId);
     renderPostsTable();
     updateMetrics();
-    showToast(`Lesson "${title}" deleted successfully.`, "success");
+    showToast(`Lesson "${title}" deleted instantly.`, "success");
     if (el.deleteModal) el.deleteModal.classList.remove("open");
+
+    // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
+    (async () => {
+      try {
+        await deleteDoc(doc(db, "posts", postId));
+        await deleteDoc(doc(db, "lessons", postId));
+      } catch (err) {
+        console.warn("Background Firestore delete post notice:", err);
+      }
+    })();
   };
 }
 
@@ -1732,23 +1812,22 @@ if (el.postSearch) el.postSearch.addEventListener("input", (e) => renderPostsTab
 // -------------------------------------------------------------
 // 5. PAID COURSES CRUD OPERATIONS (Programming Video's Store)
 // -------------------------------------------------------------
+const DUMMY_PAID_COURSE_IDS = new Set(["paid-fullstack-webdev", "paid-python-ai-analytics", "paid-dsa-mastery"]);
+
 function rebuildAndRenderPaidCourses() {
   const map = new Map();
-  (PRE_EXISTING_PAID_COURSES || []).forEach(c => {
-    if (!deletedPaidCourseIds.has(c.id)) map.set(c.id, { ...c });
+
+  serverPaidCoursesMap.forEach((val, key) => {
+    if (deletedPaidCourseIds.has(key) || val.isDeleted || DUMMY_PAID_COURSE_IDS.has(key)) return;
+    map.set(key, { id: key, ...val });
   });
 
   firestorePaidCoursesMap.forEach((val, key) => {
-    if (deletedPaidCourseIds.has(key) || val.isDeleted) return;
-    const existing = map.get(key) || Array.from(map.values()).find(c => c.title === val.title);
-    if (existing) {
-      map.set(existing.id, { ...existing, ...val, id: existing.id });
-    } else {
-      map.set(key, { id: key, ...val });
-    }
+    if (deletedPaidCourseIds.has(key) || val.isDeleted || DUMMY_PAID_COURSE_IDS.has(key)) return;
+    map.set(key, { id: key, ...val });
   });
 
-  paidCoursesData = Array.from(map.values()).filter(c => !deletedPaidCourseIds.has(c.id));
+  paidCoursesData = Array.from(map.values()).filter(c => !deletedPaidCourseIds.has(c.id) && !DUMMY_PAID_COURSE_IDS.has(c.id));
   renderPaidCoursesTable(el.paidCourseSearch ? el.paidCourseSearch.value : "");
   updateMetrics();
 }
@@ -2256,31 +2335,54 @@ if (el.paidCourseForm) {
       videoUrl: firstVideoEmbed,
       videos: videosList,
       description,
-      updatedAt: serverTimestamp()
+      updatedAt: new Date().toISOString()
     };
 
     const targetId = editingPaidCourseId || ("paid-" + Date.now());
     payload.id = targetId;
 
+    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
+    serverPaidCoursesMap.set(targetId, payload);
+    firestorePaidCoursesMap.set(targetId, payload);
+    rebuildAndRenderPaidCourses();
+    closePaidCourseModal();
+    showToast(`Paid course "${title}" saved instantly!`, "success");
+
+    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      await setDoc(doc(db, "paid_courses", targetId), payload, { merge: true });
-      firestorePaidCoursesMap.set(targetId, payload);
-      rebuildAndRenderPaidCourses();
-      showToast(`Paid course "${title}" saved & live in database!`, "success");
-      closePaidCourseModal();
-    } catch (err) {
-      console.warn("Firestore write fallback for paid course:", err);
-      if (editingPaidCourseId) {
-        const idx = paidCoursesData.findIndex(c => c.id === editingPaidCourseId);
-        if (idx !== -1) paidCoursesData[idx] = { ...paidCoursesData[idx], ...payload };
-      } else {
-        paidCoursesData.push(payload);
+      localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(paidCoursesData));
+    } catch (e) {}
+
+    try {
+      const syncChannel = new BroadcastChannel("shortstudy_paid_courses_sync");
+      syncChannel.postMessage({
+        type: "PAID_COURSES_UPDATED",
+        action: "upsert",
+        courseId: targetId,
+        course: payload,
+        courses: paidCoursesData
+      });
+      syncChannel.close();
+    } catch (e) {}
+
+    // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
+    (async () => {
+      try {
+        await fetch('/api/paid-courses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.warn("Background API paid course save notice:", e);
       }
-      renderPaidCoursesTable();
-      updateMetrics();
-      showToast(`Paid course saved locally.`, "info");
-      closePaidCourseModal();
-    }
+
+      try {
+        await setDoc(doc(db, "paid_courses", targetId), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
+      } catch (err) {
+        console.warn("Background Firestore write notice for paid course:", err);
+      }
+    })();
   });
 }
 
@@ -2290,22 +2392,52 @@ function confirmDeletePaidCourse(courseId) {
   if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? Students will no longer see it on the website.`;
   if (el.deleteModal) el.deleteModal.classList.add("open");
 
-  el.deleteConfirmBtn.onclick = async () => {
+  el.deleteConfirmBtn.onclick = () => {
+    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
     deletedPaidCourseIds.add(courseId);
-    localStorage.setItem("deletedPaidCourseIds", JSON.stringify(Array.from(deletedPaidCourseIds)));
-    firestorePaidCoursesMap.delete(courseId);
-
     try {
-      await deleteDoc(doc(db, "paid_courses", courseId));
-    } catch (err) {
-      console.warn("Firestore delete paid course notice:", err);
-    }
+      localStorage.setItem("deletedPaidCourseIds", JSON.stringify(Array.from(deletedPaidCourseIds)));
+    } catch (e) {}
+    serverPaidCoursesMap.delete(courseId);
+    firestorePaidCoursesMap.delete(courseId);
 
     paidCoursesData = paidCoursesData.filter(c => c.id !== courseId);
     rebuildAndRenderPaidCourses();
     updateMetrics();
-    showToast(`Paid course "${title}" deleted successfully.`, "success");
+
     if (el.deleteModal) el.deleteModal.classList.remove("open");
+    showToast(`Paid course "${title}" deleted instantly.`, "success");
+
+    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
+    try {
+      localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(paidCoursesData));
+    } catch (e) {}
+
+    try {
+      const syncChannel = new BroadcastChannel("shortstudy_paid_courses_sync");
+      syncChannel.postMessage({
+        type: "PAID_COURSES_UPDATED",
+        action: "delete",
+        courseId,
+        courses: paidCoursesData
+      });
+      syncChannel.close();
+    } catch (e) {}
+
+    // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
+    (async () => {
+      try {
+        await fetch(`/api/paid-courses/${courseId}`, { method: 'DELETE' });
+      } catch (e) {
+        console.warn("Background server API delete notice:", e);
+      }
+
+      try {
+        await deleteDoc(doc(db, "paid_courses", courseId));
+      } catch (err) {
+        console.warn("Background Firestore delete paid course notice:", err);
+      }
+    })();
   };
 }
 

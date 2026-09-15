@@ -110,12 +110,10 @@
 
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li><a href="courses.html">Courses</a></li>
       <li><a href="programming.html" class="active">Tutorials</a></li>
       <li><a href="test.html">MCQ Tests</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
-      <li><a href="courses.html" class="nav-cta-btn">Browse Courses →</a></li>
     </ul>
 
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
@@ -132,7 +130,7 @@
   </nav>
 
   <!-- Hero Header (CodeWithHarry Style) -->
-  <section class="paper" style="background: #ffffff; border: 1px solid var(--paper-line); border-radius: 12px; padding: 40px 32px; margin-bottom: 40px;">
+  <section class="paper" style="background: #ffffff; border: 1px solid var(--paper-line); border-radius: 12px; padding: 40px 32px; margin-bottom: 24px;">
     <div style="max-width: 860px;">
       <span class="kicker" style="color: var(--pink-dark); font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;">100% Free Computer Science Tracks</span>
       <h1 style="font-size: clamp(28px, 4vw, 40px); color: #0f172a; margin: 10px 0 16px;">Programming Courses &amp; Master Notes</h1>
@@ -143,6 +141,49 @@
       <div style="display: flex; gap: 12px; flex-wrap: wrap;">
         <a href="#core-lessons" class="cwh-btn-primary" style="margin: 0;">Browse All Tracks ↓</a>
         <a href="test.html" class="cwh-btn-secondary" style="margin: 0; background: #ffffff; color: var(--board-dark); border: 1px solid var(--paper-line);">Take MCQ Test →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Relatable Human-Written Guide Section (450+ Words) -->
+  <section class="paper" style="background: #ffffff; border: 1px solid var(--paper-line); border-radius: 12px; padding: 36px 32px; margin-bottom: 32px;">
+    <div style="max-width: 980px;">
+      <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 14px;">
+        <span style="font-size: 24px;">💡</span>
+        <h2 style="font-size: 22px; color: #0f172a; margin: 0;">Why These Free Tutorials Exist: Breaking Out of Tutorial Hell</h2>
+      </div>
+
+      <div style="color: #334155; font-size: 15.5px; line-height: 1.8;">
+        <p style="margin-bottom: 16px;">
+          We have all been there at some point in our coding journey. You open dozens of browser tabs, hop from one YouTube playlist to another, and copy code line-by-line without truly understanding how the pieces fit together. Months go by, but when it is time to build an original software project from scratch or face a technical interview, you still feel unsure where to begin. That frustrating loop is commonly known as tutorial hell, and our entire platform was created to help you break out of it once and for all.
+        </p>
+
+        <p style="margin-bottom: 16px;">
+          Programming is not just about memorizing syntax. If you only memorize how to write a <code>for</code> loop in Python, you will struggle when you need to write one in Java or C++. True software engineering is about developing mental models. It is about understanding how the computer manages memory, how data structures store information efficiently, and how different components of a system communicate with each other. Once you understand the core underlying logic, picking up a new language or framework becomes a matter of days, not months.
+        </p>
+
+        <p style="margin-bottom: 16px;">
+          ShortStudy Tutorials are not just random collections of articles. They are carefully sequenced, hands-on learning tracks designed by engineers who went through that exact same grind. We strip away the unnecessary fluff, skipping the repetitive theory that you will never use in a real job, to focus on how real-world code is architected, tested, and deployed in top tech teams. Whether you are learning Python for data analysis, writing clean C++ system code, mastering modern React and Node.js for full-stack engineering, or preparing for Data Structures and Algorithms (DSA) interviews, each track is crafted with one single goal: making you self-reliant and job-ready.
+        </p>
+
+        <div style="background: #f8fafc; border-left: 4px solid var(--pink-dark); padding: 18px 20px; border-radius: 0 8px 8px 0; margin: 22px 0;">
+          <h3 style="font-size: 16.5px; color: #0f172a; margin-bottom: 10px;">Our Three Learning Pillars:</h3>
+          <ul style="list-style-type: disc; padding-left: 20px; margin: 0; color: #475569; font-size: 15px; line-height: 1.75;">
+            <li style="margin-bottom: 8px;">
+              <strong>Mental Models First, Syntax Later:</strong> We break down complex algorithms, database queries, and system architectures into clear visual concepts before typing a single line of code. When you understand the logic deeply, coding it is the easy part.
+            </li>
+            <li style="margin-bottom: 8px;">
+              <strong>Hands-on Execution Dry Runs:</strong> We don't just give you the final code. We show you exactly how the variables change state step-by-step during execution, helping you trace code just like a debugger.
+            </li>
+            <li>
+              <strong>Accessible and Always Free:</strong> Education should not be gatekept by expensive paywalls. All our core curriculum, master notes, and conceptual tutorials are completely free and openly accessible to students across the globe.
+            </li>
+          </ul>
+        </div>
+
+        <p style="margin: 0;">
+          Learning to program is one of the most empowering skills in today's world, but you do not have to figure it all out alone. Choose the roadmap that matches your career aspirations below, dedicate one focused hour each day, write code along with every module, and let us build your tech future together. Stop watching, start reading, and start building.
+        </p>
       </div>
     </div>
   </section>
@@ -158,119 +199,7 @@
   <!-- Core Lessons Grid (CodeWithHarry Card Grid) -->
   <section id="core-lessons" style="margin-bottom: 56px;">
     <div id="curriculum-courses-grid" class="cwh-courses-grid">
-
-      <!-- Lesson 1: Python Basics -->
-      <div class="cwh-card" data-category="programming all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">🐍</span>
-          <span class="cwh-card-level">Beginner</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">Python Basics: Variables &amp; Types</h3>
-          <p class="cwh-card-desc">Variables, dynamic typing, typecasting, console input/output, string formatting, keywords, and identifiers.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 15 min read · 3.1k words</span>
-            <a href="python-basics.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 2: Python Operators & Conditionals -->
-      <div class="cwh-card" data-category="programming all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">⚙️</span>
-          <span class="cwh-card-level">Beginner</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">Python Operators &amp; Conditional Logic</h3>
-          <p class="cwh-card-desc">Master arithmetic, logical, and bitwise operators along with nested if-elif-else branching and real code exercises.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 16 min read · 3.2k words</span>
-            <a href="python-operators-conditionals.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 3: C Basics -->
-      <div class="cwh-card" data-category="programming all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">⚡</span>
-          <span class="cwh-card-level">Core Systems</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">C Programming &amp; Memory Logic</h3>
-          <p class="cwh-card-desc">Understand memory, pointers, printf/scanf format specifiers, primitive data types, and compilation logic.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 14 min read · 2.2k words</span>
-            <a href="c-basics.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 4: Data Structures Arrays -->
-      <div class="cwh-card" data-category="dsa all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">📊</span>
-          <span class="cwh-card-level">Interview Prep</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">Data Structures: Arrays &amp; Indexing</h3>
-          <p class="cwh-card-desc">Contiguous memory layout, 0-based indexing arithmetic, time complexities, two-pointer techniques, and interview patterns.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 12 min read · 1.8k words</span>
-            <a href="data-structures-arrays.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 5: Java OOP Basics -->
-      <div class="cwh-card" data-category="programming all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">☕</span>
-          <span class="cwh-card-level">Object Oriented</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">Java &amp; OOP Concepts</h3>
-          <p class="cwh-card-desc">Classes, objects, constructors, encapsulation, inheritance, method overriding/overloading, interfaces, and memory models.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 15 min read · 2.4k words</span>
-            <a href="java-oop-basics.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 6: HTML & CSS Basics -->
-      <div class="cwh-card" data-category="web all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">🌐</span>
-          <span class="cwh-card-level">Web Dev</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">HTML5 &amp; Modern CSS3 Fundamentals</h3>
-          <p class="cwh-card-desc">Semantic document structures, CSS Box Model, Flexbox alignment, CSS Grid fundamentals, and responsive mobile-first design.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 12 min read · 1.8k words</span>
-            <a href="html-css-basics.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
-      <!-- Lesson 7: SQL Basics -->
-      <div class="cwh-card" data-category="web all">
-        <div class="cwh-card-banner">
-          <span class="cwh-card-icon">🗄️</span>
-          <span class="cwh-card-level">Database</span>
-        </div>
-        <div class="cwh-card-body">
-          <h3 class="cwh-card-title">SQL Fundamentals &amp; Relational DBs</h3>
-          <p class="cwh-card-desc">Master SELECT, INSERT, UPDATE, DELETE queries, WHERE filtering, INNER/LEFT/RIGHT JOINs, GROUP BY, and aggregations.</p>
-          <div class="cwh-card-footer">
-            <span class="cwh-card-time">⏱ 14 min read · 2.0k words</span>
-            <a href="sql-basics.html" class="cwh-card-btn">Start Learning →</a>
-          </div>
-        </div>
-      </div>
-
+      <!-- Dynamic curriculum tracks will render here -->
     </div>
   </section>
 
@@ -374,12 +303,29 @@
 <script type="module">
   import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
   import { db } from "./assets/js/firebase-config.js";
-  import { PRE_EXISTING_COURSES } from "./assets/js/catalog-data.js";
+  import { PRE_EXISTING_COURSES, DEFAULT_COURSE_IDS } from "./assets/js/catalog-data.js";
 
   const grid = document.getElementById("curriculum-courses-grid");
   const filterBtns = document.querySelectorAll(".cwh-filter-btn");
   let activeFilter = "all";
-  let liveCourses = [...PRE_EXISTING_COURSES];
+
+  // Load deleted IDs
+  let deletedCourseIds = new Set([
+    ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
+    ...Array.from(DEFAULT_COURSE_IDS)
+  ]);
+
+  let liveCourses = [];
+  try {
+    const cached = JSON.parse(localStorage.getItem("shortstudy_cached_courses") || "null");
+    if (Array.isArray(cached) && cached.length > 0) {
+      liveCourses = cached.filter(c => c && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
+    } else {
+      liveCourses = PRE_EXISTING_COURSES.filter(c => !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
+    }
+  } catch (e) {
+    liveCourses = PRE_EXISTING_COURSES.filter(c => !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
+  }
 
   const staticMap = {
     "python-basics": "python-basics.html",
@@ -392,10 +338,43 @@
     "sql-basics": "sql-basics.html"
   };
 
+  function mergeCourses(newCourses) {
+    if (!Array.isArray(newCourses)) return;
+    try {
+      deletedCourseIds = new Set([
+        ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
+        ...Array.from(DEFAULT_COURSE_IDS)
+      ]);
+    } catch (e) {}
+
+    const map = new Map();
+    liveCourses.forEach(c => {
+      if (c && c.id && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) {
+        map.set(c.id, { ...c });
+      }
+    });
+
+    newCourses.forEach(c => {
+      if (c && c.id && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) {
+        const existing = map.get(c.id) || {};
+        map.set(c.id, { ...existing, ...c });
+      }
+    });
+
+    liveCourses = Array.from(map.values()).filter(c => !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
+    liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+    try {
+      localStorage.setItem("shortstudy_cached_courses", JSON.stringify(liveCourses));
+    } catch (e) {}
+
+    render();
+  }
+
   function render() {
     if (!grid) return;
     const filtered = liveCourses.filter(c => {
-      if (c.status === "inactive" || c.status === "draft") return false;
+      if (c.status === "inactive" || c.status === "draft" || c.isDeleted || deletedCourseIds.has(c.id) || DEFAULT_COURSE_IDS.has(c.id) || DEFAULT_COURSE_IDS.has(c.slug)) return false;
       if (activeFilter === "all") return true;
       const cat = (c.category || "").toLowerCase();
       const slug = (c.slug || "").toLowerCase();
@@ -406,8 +385,21 @@
       return cat.includes(activeFilter);
     });
 
+    if (filtered.length === 0) {
+      grid.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--paper-line);">
+          <span style="font-size: 36px; display: block; margin-bottom: 10px;">💻</span>
+          <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">No Curriculum Tracks Yet</h3>
+          <p style="color: #64748b; font-size: 14px; max-width: 440px; margin: 0 auto 16px;">
+            Curriculum tracks are currently being updated. Please check back later for new programming tutorials and notes.
+          </p>
+        </div>
+      `;
+      return;
+    }
+
     grid.innerHTML = filtered.map(course => {
-      const link = staticMap[course.slug] || staticMap[course.id] || `course.html?id=${encodeURIComponent(course.id || course.slug)}`;
+      const link = staticMap[course.slug] || staticMap[course.id] || (course.staticUrl || `course.html?id=${encodeURIComponent(course.id || course.slug)}`);
       const icon = course.icon || "📘";
       const level = course.level || (course.status === "in_development" ? "In Development" : "Published");
       const categoryAttr = `${course.category || "programming"} all`;
@@ -440,23 +432,65 @@
     });
   });
 
+  render();
+
+  // 1. Instant API Fetch from server
+  async function fetchServerCourses() {
+    try {
+      const res = await fetch('/api/courses');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && Array.isArray(json.courses)) {
+          mergeCourses(json.courses);
+        }
+      }
+    } catch (e) {
+      console.warn("Server courses fetch notice:", e);
+    }
+  }
+
+  fetchServerCourses();
+
+  // 2. Cross-tab Broadcast Channel (< 1ms instant sync)
+  try {
+    const courseSyncChannel = new BroadcastChannel("shortstudy_courses_sync");
+    courseSyncChannel.onmessage = (event) => {
+      if (event.data && event.data.type === "COURSES_UPDATED") {
+        if (Array.isArray(event.data.courses)) {
+          mergeCourses(event.data.courses);
+        } else if (event.data.course) {
+          if (event.data.action === "delete") {
+            liveCourses = liveCourses.filter(c => c.id !== (event.data.courseId || event.data.course.id));
+            render();
+          } else {
+            mergeCourses([event.data.course]);
+          }
+        }
+        fetchServerCourses();
+      }
+    };
+  } catch (e) {}
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "shortstudy_cached_courses" && e.newValue) {
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed)) mergeCourses(parsed);
+      } catch (err) {}
+    }
+  });
+
+  // 3. Firestore Snapshot
   try {
     onSnapshot(collection(db, "courses"), (snapshot) => {
       const firestoreCourses = [];
       snapshot.forEach(docSnap => {
         const d = docSnap.data();
-        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
+        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft" && !deletedCourseIds.has(docSnap.id)) {
           firestoreCourses.push({ id: docSnap.id, ...d });
         }
       });
-
-      const map = new Map();
-      PRE_EXISTING_COURSES.forEach(c => map.set(c.id, { ...c }));
-      firestoreCourses.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
-
-      liveCourses = Array.from(map.values());
-      liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      render();
+      mergeCourses(firestoreCourses);
     }, (err) => {
       console.warn("Firestore courses listener notice:", err);
     });

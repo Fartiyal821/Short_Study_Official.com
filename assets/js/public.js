@@ -4,12 +4,17 @@ import {
   query 
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { db } from "./firebase-config.js";
-import { PRE_EXISTING_COURSES, PRE_EXISTING_LESSONS } from "./catalog-data.js";
+import { 
+  PRE_EXISTING_COURSES, 
+  PRE_EXISTING_LESSONS,
+  DEFAULT_COURSE_IDS,
+  DEFAULT_POST_IDS
+} from "./catalog-data.js";
 
 const pathwayGrid = document.getElementById("dynamic-pathway-grid") || document.querySelector(".class-grid");
 
-let liveCourses = [...PRE_EXISTING_COURSES];
-let livePosts = [...PRE_EXISTING_LESSONS];
+let liveCourses = [...PRE_EXISTING_COURSES].filter(c => !DEFAULT_COURSE_IDS.has(c.id));
+let livePosts = [...PRE_EXISTING_LESSONS].filter(p => !DEFAULT_POST_IDS.has(p.id));
 
 /**
  * Real-Time Listener for Courses on Public Index Page
@@ -28,22 +33,22 @@ export function initPublicRealtimeSync() {
         const firestoreCourses = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          if (data.status !== "draft") {
+          if (data.status !== "draft" && !data.isDeleted && !DEFAULT_COURSE_IDS.has(docSnap.id) && !DEFAULT_COURSE_IDS.has(data.slug)) {
             firestoreCourses.push({ id: docSnap.id, ...data });
           }
         });
 
-        // Merge with pre-existing catalog so pre-existing courses are never lost
         const merged = new Map();
-        PRE_EXISTING_COURSES.forEach(c => merged.set(c.id, { ...c }));
+        PRE_EXISTING_COURSES.forEach(c => {
+          if (!DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) merged.set(c.id, { ...c });
+        });
         firestoreCourses.forEach(c => merged.set(c.id, { ...(merged.get(c.id) || {}), ...c }));
 
-        liveCourses = Array.from(merged.values());
+        liveCourses = Array.from(merged.values()).filter(c => !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
         liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
     }, () => {
-      // Offline fallback
       renderDynamicPathway();
     });
 
@@ -54,26 +59,26 @@ export function initPublicRealtimeSync() {
         const firestorePosts = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data();
-          if (data.status !== "draft") {
+          if (data.status !== "draft" && !data.isDeleted && !DEFAULT_POST_IDS.has(docSnap.id) && !DEFAULT_POST_IDS.has(data.slug)) {
             firestorePosts.push({ id: docSnap.id, ...data });
           }
         });
 
         const mergedPosts = new Map();
-        PRE_EXISTING_LESSONS.forEach(l => mergedPosts.set(l.id, { ...l }));
+        PRE_EXISTING_LESSONS.forEach(l => {
+          if (!DEFAULT_POST_IDS.has(l.id) && !DEFAULT_POST_IDS.has(l.slug)) mergedPosts.set(l.id, { ...l });
+        });
         firestorePosts.forEach(p => mergedPosts.set(p.id, { ...(mergedPosts.get(p.id) || {}), ...p }));
 
-        livePosts = Array.from(mergedPosts.values());
+        livePosts = Array.from(mergedPosts.values()).filter(p => !DEFAULT_POST_IDS.has(p.id) && !DEFAULT_POST_IDS.has(p.slug));
         livePosts.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
         renderDynamicPathway();
       }
     }, () => {
-      // Offline fallback
       renderDynamicPathway();
     });
 
   } catch (e) {
-    // Offline fallback
     renderDynamicPathway();
   }
 }
@@ -82,7 +87,21 @@ export function initPublicRealtimeSync() {
  * Render Pathway Cards Reactively
  */
 function renderDynamicPathway() {
-  if (!pathwayGrid || liveCourses.length === 0) return;
+  if (!pathwayGrid) return;
+
+  if (liveCourses.length === 0) {
+    pathwayGrid.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; padding: 40px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--paper-line); width: 100%;">
+        <span style="font-size: 32px; display: block; margin-bottom: 8px;">📚</span>
+        <h3 style="font-size: 17px; font-weight: 700; color: #0f172a; margin-bottom: 4px;">No Courses Published Yet</h3>
+        <p style="color: #64748b; font-size: 13.5px; max-width: 400px; margin: 0 auto 12px;">
+          New courses published in the Admin Panel will be listed here automatically.
+        </p>
+        <a href="admin.html" class="go" style="display: inline-block;">Open Admin Panel →</a>
+      </div>
+    `;
+    return;
+  }
 
   pathwayGrid.innerHTML = "";
 

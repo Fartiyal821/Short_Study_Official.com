@@ -39,7 +39,7 @@ let currentPost = null;
 let siblingLessons = [];
 
 // Fallback lesson for initial preview
-const sampleLesson = PRE_EXISTING_LESSONS[0];
+const sampleLesson = PRE_EXISTING_LESSONS[0] || null;
 
 /**
  * Find fallback lesson from catalog
@@ -61,9 +61,13 @@ function findCatalogLesson(idOrSlug, courseId) {
  */
 function initLessonListener() {
   const catalogFallback = findCatalogLesson(lessonId || lessonSlug, courseParam);
-  // Render catalog fallback immediately for fast perceived performance
-  renderLesson(catalogFallback);
-  loadCourseSiblings(catalogFallback.courseId);
+  if (catalogFallback) {
+    renderLesson(catalogFallback);
+    if (catalogFallback.courseId) loadCourseSiblings(catalogFallback.courseId);
+  } else {
+    if (el.lessonTitle) el.lessonTitle.textContent = "Lesson";
+    if (el.lessonContent) el.lessonContent.innerHTML = "<p style='color: var(--ink-soft);'>Waiting for published lesson data...</p>";
+  }
 
   if (!lessonId && !lessonSlug && !courseParam) {
     return;
