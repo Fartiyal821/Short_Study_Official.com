@@ -233,6 +233,27 @@ function initDoubtSolverWidget() {
     uMsg.innerHTML = '<div class="msg-content">' + escapeHtml(q) + '</div>';
     messagesContainer.appendChild(uMsg);
 
+    // Fast check for strict guardrails client-side (instant response)
+    var devPatterns = /(who (built|made|created|developed|is the developer|is the creator|designed|wrote|owns) (this|the)? (website|site|app|platform|shortstudy)|developer name|who built this|who made this)/i;
+    if (devPatterns.test(q)) {
+      var devMsg = document.createElement('div');
+      devMsg.className = 'ai-msg bot-msg';
+      devMsg.innerHTML = '<div class="msg-content"><strong>Gaurav Fartiyal</strong></div>';
+      messagesContainer.appendChild(devMsg);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return;
+    }
+
+    var privatePatterns = /(private|secret|password|credential|backend|database|user data|admin|order log|transaction ledger|payment details|user account|firestore rule|env var)/i;
+    if (privatePatterns.test(q)) {
+      var privMsg = document.createElement('div');
+      privMsg.className = 'ai-msg bot-msg';
+      privMsg.innerHTML = '<div class="msg-content">Sorry, The content is not publicly available.</div>';
+      messagesContainer.appendChild(privMsg);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      return;
+    }
+
     // Append Fast Loading Indicator
     var loadingMsg = document.createElement('div');
     loadingMsg.className = 'ai-msg bot-msg loading-msg';
@@ -240,7 +261,7 @@ function initDoubtSolverWidget() {
     messagesContainer.appendChild(loadingMsg);
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 
-    // Fetch API with page overview context
+    // Try server API first; seamlessly fall back to local knowledge engine for GitHub Pages & static hosting
     fetch('/api/ai/doubt-solver', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -250,42 +271,224 @@ function initDoubtSolverWidget() {
         pageInfo: pageOverview
       })
     })
-    .then(function (res) { return res.json(); })
+    .then(function (res) {
+      if (!res.ok) throw new Error('API Unavailable');
+      return res.json();
+    })
     .then(function (data) {
       loadingMsg.remove();
       var botMsg = document.createElement('div');
       botMsg.className = 'ai-msg bot-msg';
-      var ansText = (data && data.answer) ? data.answer : "Sorry, I couldn't answer that. Try rephrasing.";
+      var ansText = (data && data.answer) ? data.answer : getLocalKnowledgeAnswer(q, topic, pageOverview);
       botMsg.innerHTML = '<div class="msg-content">' + formatMarkdown(ansText) + '</div>';
       messagesContainer.appendChild(botMsg);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     })
     .catch(function () {
+      // Offline / GitHub Pages fallback
       loadingMsg.remove();
       var botMsg = document.createElement('div');
       botMsg.className = 'ai-msg bot-msg';
-      botMsg.innerHTML = '<div class="msg-content">Sorry, could not connect to AI service right now. Please check your network connection.</div>';
+      var ansText = getLocalKnowledgeAnswer(q, topic, pageOverview);
+      botMsg.innerHTML = '<div class="msg-content">' + formatMarkdown(ansText) + '</div>';
       messagesContainer.appendChild(botMsg);
       messagesContainer.scrollTop = messagesContainer.scrollHeight;
     });
   }
 
+  function getLocalKnowledgeAnswer(query, currentTopic, pageInfo) {
+    var lower = query.toLowerCase();
+
+    // 1. Page / Menu overview query
+    if (lower.indexOf('explain this page') !== -1 || lower.indexOf('what is this page') !== -1 || lower.indexOf('menu') !== -1 || lower.indexOf('topics are covered') !== -1 || lower.indexOf('about this page') !== -1) {
+      var res = "### Overview of " + pageInfo.title + "\n\n";
+      res += "You are currently on the **" + pageInfo.title + "** section of ShortStudy.\n\n";
+      if (pageInfo.navLinks && pageInfo.navLinks.length > 0) {
+        res += "**Navigation Menu:** " + pageInfo.navLinks.join(' | ') + "\n\n";
+      }
+      if (pageInfo.headings && pageInfo.headings.length > 0) {
+        res += "**Key Curriculum Sections Available:**\n";
+        pageInfo.headings.forEach(function(h) {
+          res += "- " + h + "\n";
+        });
+        res += "\n";
+      }
+      res += "You can ask me to explain any of these topics, solve coding questions, or clarify syntax!";
+      return res;
+    }
+
+    // 2. C & Memory Pointers
+    if (lower.indexOf('pointer') !== -1 || lower.indexOf('malloc') !== -1 || lower.indexOf('memory') !== -1) {
+      return "### Understanding Pointers & Memory in C\n\n" +
+        "A **pointer** is a variable that stores the memory address of another variable.\n\n" +
+        "```c\n" +
+        "int num = 42;\n" +
+        "int *ptr = &num; // ptr stores address of num\n\n" +
+        "printf(\"Address: %p\\n\", ptr);   // Memory address\n" +
+        "printf(\"Value: %d\\n\", *ptr);    // Dereferencing outputs 42\n" +
+        "```\n\n" +
+        "**Key Functions:**\n" +
+        "- `malloc(bytes)`: Allocates uninitialized memory on the heap.\n" +
+        "- `calloc(n, size)`: Allocates and zero-initializes memory.\n" +
+        "- `free(ptr)`: Releases allocated heap memory back to the OS to prevent memory leaks.";
+    }
+
+    // 3. Java & OOP
+    if (lower.indexOf('oop') !== -1 || lower.indexOf('pillar') !== -1 || lower.indexOf('polymorphism') !== -1 || lower.indexOf('encapsulation') !== -1 || lower.indexOf('inheritance') !== -1 || lower.indexOf('abstraction') !== -1) {
+      return "### The 4 Pillars of Object-Oriented Programming (OOP)\n\n" +
+        "1. **Encapsulation**: Bundling data (private fields) and methods together with getters/setters to protect state.\n" +
+        "2. **Inheritance**: Subclass deriving attributes and methods from a superclass using `extends`.\n" +
+        "3. **Polymorphism**: Ability of a method or object to take multiple forms (Compile-time overloading & Runtime method overriding with `@Override`).\n" +
+        "4. **Abstraction**: Hiding internal complexities and exposing essential interfaces via `abstract` classes and `interface` definitions.\n\n" +
+        "```java\n" +
+        "abstract class Shape {\n" +
+        "    abstract double getArea();\n" +
+        "}\n\n" +
+        "class Circle extends Shape {\n" +
+        "    private double radius;\n" +
+        "    public Circle(double r) { this.radius = r; }\n" +
+        "    @Override\n" +
+        "    double getArea() { return Math.PI * radius * radius; }\n" +
+        "}\n" +
+        "```";
+    }
+
+    // 4. Interface vs Abstract Class
+    if (lower.indexOf('interface vs abstract') !== -1 || lower.indexOf('abstract vs interface') !== -1) {
+      return "### Interface vs. Abstract Class in Java\n\n" +
+        "| Feature | Interface | Abstract Class |\n" +
+        "| :--- | :--- | :--- |\n" +
+        "| **Inheritance** | Multiple interfaces can be implemented (`implements A, B`) | Single inheritance only (`extends Base`) |\n" +
+        "| **State/Variables** | `public static final` constants only | Can have instance variables with any access modifier |\n" +
+        "| **Constructors** | Cannot have constructors | Can define constructors for subclasses |\n" +
+        "| **Methods** | Abstract, `default`, or `static` methods | Abstract or fully implemented concrete methods |";
+    }
+
+    // 5. HTML / CSS
+    if (lower.indexOf('flexbox') !== -1 || lower.indexOf('grid') !== -1 || lower.indexOf('box model') !== -1 || lower.indexOf('z-index') !== -1 || lower.indexOf('css') !== -1 || lower.indexOf('html') !== -1) {
+      return "### Modern CSS Layout & Box Model\n\n" +
+        "**The Box Model**: Content ➔ Padding ➔ Border ➔ Margin.\n\n" +
+        "**Flexbox vs Grid:**\n" +
+        "- **Flexbox (1D)**: Perfect for aligning elements along a single row or column.\n" +
+        "- **Grid (2D)**: Ideal for complex grid systems with both rows and columns simultaneously.\n\n" +
+        "```css\n" +
+        "/* Modern Centering with Flexbox */\n" +
+        ".container {\n" +
+        "  display: flex;\n" +
+        "  justify-content: center; /* Main axis */\n" +
+        "  align-items: center;     /* Cross axis */\n" +
+        "  gap: 16px;\n" +
+        "}\n" +
+        "```";
+    }
+
+    // 6. SQL Queries & Joins
+    if (lower.indexOf('sql') !== -1 || lower.indexOf('join') !== -1 || lower.indexOf('where') !== -1 || lower.indexOf('having') !== -1) {
+      return "### SQL Query Fundamentals\n\n" +
+        "**WHERE vs HAVING:**\n" +
+        "- `WHERE` filters individual rows **before** any aggregation (`GROUP BY`) takes place.\n" +
+        "- `HAVING` filters aggregated groups **after** `GROUP BY`.\n\n" +
+        "```sql\n" +
+        "SELECT department_id, COUNT(*) AS employee_count\n" +
+        "FROM employees\n" +
+        "WHERE salary > 50000        -- Filter rows first\n" +
+        "GROUP BY department_id\n" +
+        "HAVING COUNT(*) >= 5;       -- Filter groups\n" +
+        "```\n\n" +
+        "**Relational JOINs:**\n" +
+        "- `INNER JOIN`: Returns records matching both tables.\n" +
+        "- `LEFT JOIN`: Returns all records from the left table and matched records from the right table.";
+    }
+
+    // 7. Data Structures & Big-O
+    if (lower.indexOf('big-o') !== -1 || lower.indexOf('time complexity') !== -1 || lower.indexOf('stack') !== -1 || lower.indexOf('queue') !== -1 || lower.indexOf('array') !== -1 || lower.indexOf('data structure') !== -1) {
+      return "### Data Structures & Complexity Overview\n\n" +
+        "**Big-O Hierarchy (Fastest to Slowest):**\n" +
+        "`O(1)` (Constant) ➔ `O(log n)` (Binary Search) ➔ `O(n)` (Linear) ➔ `O(n log n)` (MergeSort) ➔ `O(n²)` (Nested Loops).\n\n" +
+        "**Core Linear Structures:**\n" +
+        "- **Array**: Contiguous memory, `O(1)` random index access.\n" +
+        "- **Stack**: **LIFO** (Last In, First Out) with `push()` and `pop()` operations (e.g. browser history, undo stack).\n" +
+        "- **Queue**: **FIFO** (First In, First Out) with `enqueue()` and `dequeue()` operations (e.g. CPU task scheduling).";
+    }
+
+    // 8. Python Basics
+    if (lower.indexOf('python') !== -1 || lower.indexOf('mutable') !== -1 || lower.indexOf('tuple') !== -1 || lower.indexOf('list') !== -1) {
+      return "### Python Data Types & Mutability\n\n" +
+        "**Mutable vs. Immutable:**\n" +
+        "- **Mutable** (Can be modified in place): `list`, `dict`, `set`.\n" +
+        "- **Immutable** (Cannot be altered after creation): `int`, `float`, `str`, `tuple`, `bool`.\n\n" +
+        "```python\n" +
+        "# List vs Tuple\n" +
+        "my_list = [1, 2, 3]\n" +
+        "my_list.append(4)  # Allowed\n\n" +
+        "my_tuple = (1, 2, 3)\n" +
+        "# my_tuple[0] = 99 -> Raises TypeError (immutable)\n" +
+        "```";
+    }
+
+    // 9. Online Test / Quizzes
+    if (lower.indexOf('test') !== -1 || lower.indexOf('quiz') !== -1 || lower.indexOf('exam') !== -1) {
+      return "### ShortStudy Online Testing Portal\n\n" +
+        "You can practice multiple-choice assessments across programming tracks:\n" +
+        "- Head over to the **Online Test** tab (`/test.html`).\n" +
+        "- Select your subject (Python, C, Java, HTML/CSS, SQL, DSA).\n" +
+        "- Pick a difficulty: **Easy** (10 questions), **Medium** (15 questions), or **Hard** (20 questions).\n" +
+        "- Tests feature live countdown timers and immediate score analysis upon submission.";
+    }
+
+    // 10. Video Masterclasses & Courses
+    if (lower.indexOf('video') !== -1 || lower.indexOf('masterclass') !== -1 || lower.indexOf('paid course') !== -1) {
+      return "### Programming Video Masterclasses Hub\n\n" +
+        "Our video library on the **Programming Video's** menu is built for hands-on, visual learning:\n" +
+        "- **Step-by-Step Walkthroughs**: Watch experienced engineers build full-stack projects, write clean code, and debug real errors in real-time.\n" +
+        "- **Lifetime On-Demand Access**: Learn at your own pace without time pressure or arbitrary deadlines.\n" +
+        "- **Complete Source Code**: Download all project repositories, cheatsheets, and starter templates to code along side-by-side.\n" +
+        "- **Instant Enrollment**: Seamless enrollment with cloud receipts and instant student dashboard access.";
+    }
+
+    // Default intelligent programming guidance
+    return "### ShortStudy AI Assistant (" + currentTopic + ")\n\n" +
+      "Thank you for asking: **\"" + escapeHtml(query) + "\"**.\n\n" +
+      "Here is a complete breakdown:\n" +
+      "- **Context**: In `" + currentTopic + "`, understanding core principles and applying clean syntax is key.\n" +
+      "- **Best Practice**: Always break complex problems into smaller sub-tasks, write unit test cases, and verify edge conditions (like `null` checks or array boundaries).\n" +
+      "- **Curriculum Access**: Check the free lecture notes on this page for in-depth diagrams and runnable examples!\n\n" +
+      "Feel free to ask for specific code snippets or step-by-step algorithms on any programming topic.";
+  }
+
   function escapeHtml(str) {
-    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function formatMarkdown(str) {
+    if (!str) return '';
     var escaped = escapeHtml(str);
+
     // Code block formatting
-    escaped = escaped.replace(/```([\s\S]*?)```/g, function (match, p1) {
-      return '<pre class="ai-code-block"><code>' + p1.trim() + '</code></pre>';
+    escaped = escaped.replace(/```([a-zA-Z0-9_-]*)\n?([\s\S]*?)```/g, function (match, lang, code) {
+      return '<pre class="ai-code-block"><code class="language-' + (lang || 'text') + '">' + code.trim() + '</code></pre>';
     });
+
     // Inline code
     escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-    // Bold
+
+    // Headers
+    escaped = escaped.replace(/^### (.*$)/gim, '<h4 style="color:var(--yellow);margin:10px 0 4px;font-size:14px;">$1</h4>');
+    escaped = escaped.replace(/^## (.*$)/gim, '<h3 style="color:var(--yellow);margin:12px 0 6px;font-size:15px;">$1</h3>');
+
+    // Bold & Italic
     escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-    // Newlines to br
+    escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+    // Unordered list items
+    escaped = escaped.replace(/^- (.*$)/gim, '<li style="margin-left:14px;list-style:disc;">$1</li>');
+
+    // Newlines to br (avoiding duplicate br after pre/headers/lists)
+    escaped = escaped.replace(/\n\n/g, '<br><br>');
     escaped = escaped.replace(/\n/g, '<br>');
+    escaped = escaped.replace(/<\/pre><br>/g, '</pre>');
+    escaped = escaped.replace(/<\/h[34]><br>/g, '</h$1>');
     return escaped;
   }
 }

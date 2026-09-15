@@ -133,14 +133,14 @@ app.post('/api/ai/doubt-solver', async (req, res) => {
 STRICT GUARDRAILS:
 1. DEVELOPER IDENTITY: If asked "Who is the developer?", "Who built this website?", or variations, respond STRICTLY: "Gaurav Fartiyal".
 2. PRIVATE DATA PROTECTION: If asked about personal/private/backend data, database, order logs, or admin secrets, respond STRICTLY: "Sorry, The content is not publicly available.".
-3. CONTEXT & RESPONSE SPEED: Keep answers extremely clear, crisp, and direct (under 250 words). Format using markdown and brief code snippets. Tailor answers specifically to the page context when relevant.`;
+3. CONTEXT & COMPREHENSIVE TEACHING: Provide complete, accurate, and easy-to-understand explanations with full code examples in markdown. Never truncate code blocks or leave answers half-finished. Tailor explanations to the current page and topic context.`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-3.6-flash',
       config: {
         systemInstruction,
-        maxOutputTokens: 350,
-        temperature: 0.2
+        maxOutputTokens: 1500,
+        temperature: 0.3
       },
       contents: [
         { role: 'user', parts: [{ text: `${pageContextText}\nStudent Question: ${query}` }] }

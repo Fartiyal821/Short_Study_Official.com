@@ -1691,10 +1691,11 @@ footer{background:var(--board-dark);color:var(--chalk-dim);padding:48px 24px 34p
   bottom: 84px;
   right: 24px;
   z-index: 9999;
-  width: 390px;
+  width: 460px;
   max-width: calc(100vw - 32px);
-  height: 540px;
-  max-height: calc(100vh - 110px);
+  height: 52vh;
+  min-height: 420px;
+  max-height: 60vh;
   background: var(--board-dark);
   border: 2px solid var(--yellow);
   border-radius: 16px;
