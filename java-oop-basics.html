@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800" crossorigin="anonymous"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800" crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -52,58 +52,87 @@
 </head>
 <body>
 
-<!-- ============ HEADER / NAVBAR ============ -->
+<!-- ============ NAVBAR (CODEWITHHARRY STYLE) ============ -->
 <header>
-  <div class="nav">
+  <div class="nav" style="gap: 16px;">
     <a class="brand" href="index.html">Short<span>Study</span></a>
+
+    <div class="nav-search-wrap">
+      <svg class="nav-search-icon" viewBox="0 0 24 24">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input type="text" id="siteSearchInput" class="nav-search-input" placeholder="Search courses &amp; notes..." aria-label="Search courses and notes">
+    </div>
+
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html">Curriculum</a></li>
-      <li><a href="programming-videos.html">Programming Videos</a></li>
-      <li><a href="test.html">Test</a></li>
+      <li><a href="programming.html" class="active">Courses</a></li>
+      <li><a href="test.html">MCQ Tests</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
+      <li><a href="programming.html" class="nav-cta-btn">All Tracks →</a></li>
     </ul>
+
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
   </div>
 </header>
 
-<!-- ============ PAGE HEADER ============ -->
-<section class="page-header">
-  <span class="kicker">Curriculum Track · Module 05</span>
-  <h1>Java &amp; OOP Concepts Masterclass</h1>
-  <p>An exhaustive architectural guide to Java fundamentals, class modeling, the four pillars of OOP, JVM internals, and interview problem-solving.</p>
-</section>
+<!-- ============ 2-COLUMN DOCUMENTATION LAYOUT (CODEWITHHARRY STYLE) ============ -->
+<div class="cwh-doc-layout">
 
-<!-- ============ MAIN LESSON ============ -->
-<section class="paper">
-  <div class="wrap">
+  <!-- Left Sticky Sidebar Index -->
+  <aside class="cwh-doc-sidebar">
+    
+    <div class="cwh-sidebar-title">Course Modules</div>
+    <ul class="cwh-sidebar-nav">
+      <li><a href="python-basics.html" class="cwh-sidebar-link ">🐍 Python Basics</a></li>
+      <li><a href="python-operators-conditionals.html" class="cwh-sidebar-link ">⚙️ Python Operators</a></li>
+      <li><a href="c-basics.html" class="cwh-sidebar-link ">⚡ C Programming</a></li>
+      <li><a href="data-structures-arrays.html" class="cwh-sidebar-link ">📊 Data Structures (Arrays)</a></li>
+      <li><a href="java-oop-basics.html" class="cwh-sidebar-link active">☕ Java &amp; OOP Concepts</a></li>
+      <li><a href="html-css-basics.html" class="cwh-sidebar-link ">🌐 HTML5 &amp; CSS3</a></li>
+      <li><a href="sql-basics.html" class="cwh-sidebar-link ">🗄️ SQL Relational DBs</a></li>
+    </ul>
 
-    <div class="breadcrumb">
-      <a href="index.html">Home</a>
-      <span class="sep">/</span>
-      <a href="programming-videos.html">Programming Track</a>
-      <span class="sep">/</span>
-      <span>Java &amp; OOP Concepts</span>
+    <div class="cwh-sidebar-toc">
+      <div class="cwh-sidebar-toc-title">On This Page</div>
+      <ul>
+        <li><a href="#topic-1">1. Introduction to Java and the JVM Ecosystem</a></li>
+        <li><a href="#topic-2">2. Anatomy of a Java Application: Syntax &amp; Memory Layout</a></li>
+        <li><a href="#topic-3">3. Classes, Objects, and Constructor Mechanics</a></li>
+        <li><a href="#topic-4">4. The Four Pillars of Object-Oriented Programming (OOP)</a></li>
+        <li><a href="#topic-5">5. Access Modifiers Summary Table</a></li>
+        <li><a href="#topic-6">6. Common Beginner Pitfalls &amp; Compilation Traps</a></li>
+        <li><a href="#topic-7">7. Hands-On Practice Exercises</a></li>
+        <li><a href="#topic-8">8. Frequently Asked Technical Interview Questions</a></li>
+      </ul>
+    </div>
+  
+  </aside>
+
+  <!-- Right Main Content Canvas -->
+  <main class="cwh-doc-content">
+    <nav class="breadcrumbs" aria-label="Breadcrumb" style="margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft);">
+      <a href="index.html" style="color: var(--pink-dark); text-decoration: underline;">Home</a>
+      <span style="margin: 0 6px;">/</span>
+      <a href="programming.html" style="color: var(--pink-dark); text-decoration: underline;">Courses</a>
+      <span style="margin: 0 6px;">/</span>
+      <span style="color: #0f172a; font-weight: 600;">Java OOP</span>
+    </nav>
+
+    <div class="cwh-doc-header">
+      <span class="cwh-doc-kicker">Object Oriented Architecture</span>
+      <h1 class="cwh-doc-title">Java &amp; OOP Concepts Masterclass</h1>
+      <div class="cwh-doc-meta">
+        <span class="cwh-doc-badge">⏱ 15 min read</span>
+        <span class="cwh-doc-badge">📖 2,400+ Words</span>
+        <span class="cwh-doc-badge" style="background: #ecfdf5; color: #065f46;">✓ Verified &amp; Current</span>
+      </div>
     </div>
 
-    <div class="lesson-meta">
-      <span class="tag">Topic: Java &amp; Object-Oriented Programming</span>
-      <span class="tag">Target Audience: Beginners, Students &amp; Freshers</span>
-      <span class="tag">Estimated Reading Time: 25 Minutes</span>
-      <span class="tag">Language Version: Java 17 / 21 LTS</span>
-    </div>
-
-    <!-- Ad Placeholder Top (Zero CLS) -->
-    <div class="ad-slot-wrapper ad-banner-desktop" aria-hidden="true">
-      <span class="ad-slot-label">Advertisement · Supports Free Curriculum</span>
-      <div style="color:var(--ink-soft); font-size:13px; text-align:center; padding:10px;">Reserved Editorial Placement Container</div>
-    </div>
-
-    <div class="lesson-content fade-up">
-
+    <div class="cwh-doc-body">
       <div class="topic-block">
-        <h2>1. Introduction to Java and the JVM Ecosystem</h2>
+        <h2 id="topic-1" style="scroll-margin-top: 90px;" >1. Introduction to Java and the JVM Ecosystem</h2>
         <p>Java is an object-oriented, class-based, statically typed, concurrent programming language developed by James Gosling and Sun Microsystems (now Oracle Corporation) in 1995. Engineered with the philosophy of <em>"Write Once, Run Anywhere" (WORA)</em>, Java revolutionized software engineering by divorcing compiled application logic from underlying microprocessor architectures.</p>
         <p>In traditional native languages like C and C++, source code is compiled directly into machine-level binary instructions specifically targeted to the host CPU (e.g., x86_64, ARM64). A binary compiled on macOS will not execute on Windows or Linux without cross-compilation. Java solves this fragmentation by inserting an intermediate abstraction layer: the <strong>Java Virtual Machine (JVM)</strong>.</p>
 
@@ -114,21 +143,42 @@
           <li><strong>Java Virtual Machine (JVM):</strong> The platform-specific software engine that executes compiled Java bytecode. While bytecode is globally universal across all operating systems, each operating system requires a custom JVM built for its kernel (Windows JVM, macOS JVM, Linux JVM). The JVM includes a ClassLoader subsystem, Bytecode Verifier, and Execution Engine with a Just-In-Time (JIT) compiler and Garbage Collector.</li>
         </ul>
 
-        <div class="code-block">
-<span class="cm">// Step 1: Human-readable source code (Main.java)</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm">// Step 1: Human-readable source code (Main.java)</span>
 <span class="cm">// Step 2: Compiled by javac -> Platform-independent bytecode (Main.class)</span>
 <span class="cm">// Step 3: Executed by JVM -> High-speed JIT converted to Native CPU Machine Code</span>
 public class HelloWorld {
     public static void main(String[] args) {
         System.out.println("Hello, Java Virtual Machine!");
     }
-}</div>
+}</code></pre>
+    </div>
       </div>
 
       <div class="topic-block">
-        <h2>2. Anatomy of a Java Application: Syntax &amp; Memory Layout</h2>
+        <h2 id="topic-2" style="scroll-margin-top: 90px;" >2. Anatomy of a Java Application: Syntax &amp; Memory Layout</h2>
         <p>Every executable Java statement must reside within a class. Java enforces strict file naming parity: a file containing <code>public class PaymentGateway</code> must be named identically as <code>PaymentGateway.java</code>. The entry point of every standalone Java program is the canonical method signature:</p>
-        <div class="code-block">public static void main(String[] args)</div>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code>public static void main(String[] args)</code></pre>
+    </div>
         <p>Let us deconstruct each keyword of this signature with architectural precision:</p>
         <ul>
           <li><strong>public:</strong> An access modifier that makes the method globally visible to the JVM runtime from outside the package boundaries.</li>
@@ -147,11 +197,20 @@ public class HelloWorld {
       </div>
 
       <div class="topic-block">
-        <h2>3. Classes, Objects, and Constructor Mechanics</h2>
+        <h2 id="topic-3" style="scroll-margin-top: 90px;" >3. Classes, Objects, and Constructor Mechanics</h2>
         <p>In object-oriented programming, a <strong>Class</strong> serves as an architectural blueprint or user-defined type that defines the data attributes (state) and member methods (behavior) common to entities of that kind. An <strong>Object</strong> is a concrete, living instance of that class materialized in Heap memory.</p>
 
-        <div class="code-block">
-public class BankAccount {
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code>public class BankAccount {
     <span class="cm">// Instance variables (State)</span>
     private String accountNumber;
     private String accountHolder;
@@ -199,19 +258,29 @@ public class BankAccount {
     public double getBalance() {
         return this.balance;
     }
-}</div>
+}</code></pre>
+    </div>
 
         <p>The <code>this</code> keyword is a reference variable in Java that refers directly to the current executing object instance. It is indispensable for resolving shadowing collisions between method parameters and instance attributes.</p>
       </div>
 
       <div class="topic-block">
-        <h2>4. The Four Pillars of Object-Oriented Programming (OOP)</h2>
+        <h2 id="topic-4" style="scroll-margin-top: 90px;" >4. The Four Pillars of Object-Oriented Programming (OOP)</h2>
         <p>Modern software engineering relies upon four core paradigms to manage code complexity, isolate business domains, and facilitate scalable code reusability. Let us examine each pillar with rigorous real-world examples.</p>
 
         <h3>Pillar 1: Encapsulation (Data Hiding &amp; Invariants)</h3>
         <p>Encapsulation is the technique of packaging data attributes and the methods that manipulate them into a cohesive unit (class) while restricting unauthorized direct access to internal representations. By declaring fields <code>private</code> and exposing access solely through controlled <code>public</code> accessor (getter) and mutator (setter) methods, we enforce <em>business invariants</em>.</p>
-        <div class="code-block">
-public class Employee {
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code>public class Employee {
     private int id;
     private String name;
     private double monthlySalary;
@@ -238,14 +307,24 @@ public class Employee {
     public double getMonthlySalary() {
         return monthlySalary;
     }
-}</div>
+}</code></pre>
+    </div>
 
         <h3>Pillar 2: Inheritance (Reusability &amp; The 'IS-A' Hierarchy)</h3>
         <p>Inheritance permits a new class (derived class or subclass) to acquire the attributes and methods of an existing class (base class or superclass) using the <code>extends</code> keyword. It models an <em>"IS-A"</em> relationship (e.g., a <code>SoftwareEngineer</code> IS-A <code>Employee</code>) and eliminates duplicate code.</p>
         <p>In Java, a class can directly inherit from only one parent class—Java deliberately forbids multiple class inheritance to eliminate the infamous "Diamond Problem" of ambiguous method inheritance. However, multiple inheritance of interface contracts is fully supported.</p>
 
-        <div class="code-block">
-<span class="cm">// Superclass</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm">// Superclass</span>
 public class Vehicle {
     protected String brand;
     protected int maxSpeed;
@@ -279,7 +358,8 @@ public class ElectricCar extends Vehicle {
     public void recharge() {
         System.out.println("Connected to Supercharger. Charging " + brand + "...");
     }
-}</div>
+}</code></pre>
+    </div>
 
         <h3>Pillar 3: Polymorphism (Compile-Time vs. Runtime)</h3>
         <p>The term polymorphism originates from Greek, meaning "many forms." In computer science, it describes the ability of a single interface or reference type to control entities of varying underlying implementations. Java features two primary classifications of polymorphism:</p>
@@ -288,8 +368,17 @@ public class ElectricCar extends Vehicle {
           <li><strong>Runtime (Dynamic) Polymorphism — Method Overriding:</strong> Occurs when a subclass provides a specific implementation of a method already declared in its superclass. The JVM determines which method implementation to execute at runtime based on the actual object instance present on the Heap, a mechanism known as <em>Dynamic Method Dispatch</em>.</li>
         </ul>
 
-        <div class="code-block">
-<span class="cm">// Compile-time Polymorphism: Method Overloading</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm">// Compile-time Polymorphism: Method Overloading</span>
 public class MathUtility {
     public int multiply(int a, int b) {
         return a * b;
@@ -313,7 +402,8 @@ public class PolymorphismDemo {
         <span class="cm">// Dynamically resolves to ElectricCar's overridden method!</span>
         myVehicle.startEngine(); 
     }
-}</div>
+}</code></pre>
+    </div>
 
         <h3>Pillar 4: Abstraction (Interfaces vs. Abstract Classes)</h3>
         <p>Abstraction is the discipline of hiding intricate internal implementation mechanics and presenting only the essential, high-level behavioral contract to external clients. For example, a driver interacts with an accelerator pedal and steering wheel without needing to comprehend fuel injection manifolds or electronic valve timings.</p>
@@ -323,8 +413,17 @@ public class PolymorphismDemo {
           <li><strong>Interface:</strong> A pure formal blueprint of behavior declared with the <code>interface</code> keyword. All fields in an interface are implicitly <code>public static final</code> (constants). Methods are implicitly <code>public abstract</code> (though Java 8 introduced <code>default</code> and <code>static</code> methods with bodies, and Java 9 added private helper methods). Classes bind to interfaces using the <code>implements</code> keyword.</li>
         </ul>
 
-        <div class="code-block">
-<span class="cm">// 1. Defining an Interface</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm">// 1. Defining an Interface</span>
 public interface PaymentMethod {
     void authorizePayment(double amount);
     boolean verifyTransaction(String transactionId);
@@ -366,11 +465,12 @@ public class CryptoPayment implements PaymentMethod {
     public boolean verifyTransaction(String transactionId) {
         return transactionId != null &amp;&amp; transactionId.length() == 64;
     }
-}</div>
+}</code></pre>
+    </div>
       </div>
 
       <div class="topic-block">
-        <h2>5. Access Modifiers Summary Table</h2>
+        <h2 id="topic-5" style="scroll-margin-top: 90px;" >5. Access Modifiers Summary Table</h2>
         <p>Java provides four distinct visibility levels to safeguard structural boundaries:</p>
         <div class="notes-table-wrap" style="margin:20px 0;">
           <table class="notes-table">
@@ -418,7 +518,7 @@ public class CryptoPayment implements PaymentMethod {
       </div>
 
       <div class="topic-block">
-        <h2>6. Common Beginner Pitfalls &amp; Compilation Traps</h2>
+        <h2 id="topic-6" style="scroll-margin-top: 90px;" >6. Common Beginner Pitfalls &amp; Compilation Traps</h2>
         <div class="mistake-list">
           <ul>
             <li><strong>NullPointerException (NPE):</strong> Occurs when attempting to invoke a method or access an attribute on a reference variable that currently points to <code>null</code> in Heap memory. Guard against this using explicit null checks, defensive copying, or Java 8's <code>Optional&lt;T&gt;</code> container.</li>
@@ -430,7 +530,7 @@ public class CryptoPayment implements PaymentMethod {
       </div>
 
       <div class="topic-block">
-        <h2>7. Hands-On Practice Exercises</h2>
+        <h2 id="topic-7" style="scroll-margin-top: 90px;" >7. Hands-On Practice Exercises</h2>
         <div class="exercise-list">
           <ol>
             <li><strong>Design a Library Catalog Hierarchy:</strong> Implement a base abstract class <code>LibraryItem</code> with attributes <code>title</code>, <code>itemId</code>, and abstract method <code>calculateLateFee(int daysOverdue)</code>. Create concrete derived classes <code>Book</code> ($0.25/day) and <code>DVD</code> ($1.00/day). Demonstrate dynamic method dispatch with an array of items.</li>
@@ -441,7 +541,7 @@ public class CryptoPayment implements PaymentMethod {
       </div>
 
       <div class="topic-block">
-        <h2>8. Frequently Asked Technical Interview Questions</h2>
+        <h2 id="topic-8" style="scroll-margin-top: 90px;" >8. Frequently Asked Technical Interview Questions</h2>
         <div class="hard-q-list">
           <ol>
             <li>
@@ -471,23 +571,73 @@ public class CryptoPayment implements PaymentMethod {
       <a href="html-css-basics.html">Next: HTML &amp; CSS Fundamentals →</a>
     </div>
 
-  </div>
-</section>
+    <div class="cwh-doc-pagination">
+      <a href="data-structures-arrays.html" class="cwh-nav-page-btn">← Data Structures (Arrays)</a>
+      <a href="html-css-basics.html" class="cwh-nav-page-btn" style="background: var(--yellow); color: var(--board-dark); border-color: var(--board-dark); font-weight: 700;">HTML5 & CSS3 Web Basics →</a>
+    </div>
+  </main>
 
-<!-- ============ FOOTER ============ -->
-<footer>
-  <div class="footer-inner">
-    <ul class="footer-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="programming-videos.html">Programming Videos</a></li>
-      <li><a href="test.html">Take a Test</a></li>
-      <li><a href="about.html">About Us</a></li>
-      <li><a href="contact.html">Contact Us</a></li>
-      <li><a href="disclaimer.html">Disclaimer</a></li>
-      <li><a href="privacy-policy.html">Privacy Policy</a></li>
-      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
-    </ul>
-    <div class="footer-bottom">@ short study copyright all rights reserved</div>
+</div>
+
+<!-- ============ 4-COLUMN FOOTER (CODEWITHHARRY STYLE) ============ -->
+<footer class="cwh-footer">
+  <div class="cwh-footer-container">
+    <div class="cwh-footer-grid">
+
+      <!-- Col 1: Brand & Mission -->
+      <div class="cwh-footer-col">
+        <a class="brand" href="index.html" style="font-size: 28px; margin-bottom: 12px; display: inline-block;">Short<span>Study</span></a>
+        <p style="color: var(--chalk-dim); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          Short Study is a free educational platform dedicated to teaching coding and computer science fundamentals through structured, textbook-quality written guides and interactive test quizzes.
+        </p>
+      </div>
+
+      <!-- Col 2: Core Tutorials -->
+      <div class="cwh-footer-col">
+        <h4>Programming Tracks</h4>
+        <ul>
+          <li><a href="python-basics.html">Python Basics</a></li>
+          <li><a href="python-operators-conditionals.html">Python Operators</a></li>
+          <li><a href="c-basics.html">C Programming</a></li>
+          <li><a href="data-structures-arrays.html">Data Structures (Arrays)</a></li>
+          <li><a href="java-oop-basics.html">Java &amp; OOP Concepts</a></li>
+          <li><a href="html-css-basics.html">HTML5 &amp; CSS3</a></li>
+          <li><a href="sql-basics.html">SQL Relational DBs</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Practice & Guides -->
+      <div class="cwh-footer-col">
+        <h4>Practice &amp; Resources</h4>
+        <ul>
+          <li><a href="programming.html">Full Curriculum Directory</a></li>
+          <li><a href="test.html">Practice MCQ Tests</a></li>
+          <li><a href="python-basics.html">Python Pathway</a></li>
+          <li><a href="c-basics.html">C Memory &amp; Pointers</a></li>
+          <li><a href="data-structures-arrays.html">DSA &amp; Algorithms</a></li>
+          <li><a href="sql-basics.html">Database Queries &amp; SQL</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 4: Legal & Company -->
+      <div class="cwh-footer-col">
+        <h4>Company &amp; Legal</h4>
+        <ul>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="disclaimer.html">Disclaimer</a></li>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+          <li><a href="javascript:void(0);" onclick="showConsentPreferences();">Cookie Preferences</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="cwh-footer-bottom">
+      <div>© 2026 Short Study. All rights reserved.</div>
+      <div>Designed for developers, computer science students &amp; educators worldwide.</div>
+    </div>
   </div>
 </footer>
 

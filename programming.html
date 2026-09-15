@@ -6,28 +6,28 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
-  <title>Programming Curriculum &amp; Tutorials — Short Study</title>
+  <title>Programming Courses &amp; Notes — Short Study</title>
   <meta name="description" content="Explore the complete Short Study programming curriculum. Free, structured textbook-style lessons covering Python, C, Data Structures, Java OOP, HTML/CSS, and SQL.">
   <link rel="canonical" href="https://short-study-official-com-qsk8.onrender.com/programming.html">
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://short-study-official-com-qsk8.onrender.com/programming.html">
-  <meta property="og:title" content="Programming Curriculum &amp; Tutorials — Short Study">
+  <meta property="og:title" content="Programming Courses &amp; Notes — Short Study">
   <meta property="og:description" content="Comprehensive, free written lessons covering Python, C, Java, Data Structures, SQL, and Web Development.">
   <meta property="og:image" content="https://short-study-official-com-qsk8.onrender.com/logo.png">
   <meta property="og:site_name" content="Short Study">
 
   <!-- Twitter Card -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Programming Curriculum &amp; Tutorials — Short Study">
+  <meta name="twitter:title" content="Programming Courses &amp; Notes — Short Study">
   <meta name="twitter:description" content="Comprehensive, free written lessons covering Python, C, Java, Data Structures, SQL, and Web Development.">
   <meta name="twitter:image" content="https://short-study-official-com-qsk8.onrender.com/logo.png">
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Work+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 
   <!-- JSON-LD Schema Markup -->
@@ -96,18 +96,28 @@
 </head>
 <body>
 
-<!-- Header -->
+<!-- ============ NAVBAR (CODEWITHHARRY STYLE) ============ -->
 <header>
-  <div class="nav">
+  <div class="nav" style="gap: 16px;">
     <a class="brand" href="index.html">Short<span>Study</span></a>
+
+    <div class="nav-search-wrap">
+      <svg class="nav-search-icon" viewBox="0 0 24 24">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input type="text" id="siteSearchInput" class="nav-search-input" placeholder="Search courses &amp; notes..." aria-label="Search courses and notes">
+    </div>
+
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html" class="active">Curriculum</a></li>
-      <li><a href="programming-videos.html">Programming Videos</a></li>
-      <li><a href="test.html">Test</a></li>
+      <li><a href="courses.html">Courses</a></li>
+      <li><a href="programming.html" class="active">Tutorials</a></li>
+      <li><a href="test.html">MCQ Tests</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
+      <li><a href="courses.html" class="nav-cta-btn">Browse Courses →</a></li>
     </ul>
+
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
   </div>
 </header>
@@ -115,192 +125,248 @@
 <main class="page-container" style="max-width: 1200px; margin: 32px auto; padding: 0 20px;">
 
   <!-- Breadcrumbs -->
-  <nav class="breadcrumbs" aria-label="Breadcrumb" style="margin-bottom: 24px;">
-    <a href="index.html">Home</a>
-    <span>/</span>
-    <span style="color: var(--ink);">Curriculum Directory</span>
+  <nav class="breadcrumbs" aria-label="Breadcrumb" style="margin-bottom: 24px; font-family: 'JetBrains Mono', monospace; font-size: 13.5px; color: var(--ink-soft);">
+    <a href="index.html" style="color: var(--pink-dark); text-decoration: underline;">Home</a>
+    <span style="margin: 0 8px;">/</span>
+    <span style="color: #0f172a; font-weight: 600;">Programming Curriculum</span>
   </nav>
 
-  <!-- Hero Header -->
-  <section class="paper" style="margin-bottom: 32px;">
-    <span class="kicker">Core Learning Tracks</span>
-    <h1 style="font-size: clamp(28px, 4vw, 42px); color: #0f172a; margin: 12px 0 16px;">Programming Curriculum &amp; Master Guides</h1>
-    <p style="font-size: 16px; line-height: 1.6; color: var(--ink); max-width: 800px; margin-bottom: 24px;">
-      Welcome to the complete Short Study written curriculum. Every chapter is authored like an in-depth textbook module—featuring conceptual walkthroughs, syntax breakdowns, commented code examples, common beginner mistakes, and practice questions.
-    </p>
-    
-    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-      <a href="#core-lessons" class="cta-btn" style="min-height: 44px; display: inline-flex; align-items: center;">Browse Lessons ↓</a>
-      <a href="test.html" class="cta-btn" style="min-height: 44px; display: inline-flex; align-items: center; background: rgba(0,0,0,0.06); color: var(--ink); border: 1px solid var(--paper-line);">Take Practice MCQ Test →</a>
+  <!-- Hero Header (CodeWithHarry Style) -->
+  <section class="paper" style="background: #ffffff; border: 1px solid var(--paper-line); border-radius: 12px; padding: 40px 32px; margin-bottom: 40px;">
+    <div style="max-width: 860px;">
+      <span class="kicker" style="color: var(--pink-dark); font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;">100% Free Computer Science Tracks</span>
+      <h1 style="font-size: clamp(28px, 4vw, 40px); color: #0f172a; margin: 10px 0 16px;">Programming Courses &amp; Master Notes</h1>
+      <p style="font-size: 16px; line-height: 1.7; color: #334155; margin-bottom: 24px;">
+        Welcome to the complete Short Study written curriculum. Every chapter is authored with textbook depth — featuring conceptual walkthroughs, syntax breakdowns, memory models, execution dry-runs, and practice questions.
+      </p>
+      
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="#core-lessons" class="cwh-btn-primary" style="margin: 0;">Browse All Tracks ↓</a>
+        <a href="test.html" class="cwh-btn-secondary" style="margin: 0; background: #ffffff; color: var(--board-dark); border: 1px solid var(--paper-line);">Take MCQ Test →</a>
+      </div>
     </div>
   </section>
 
-  <!-- Core Lessons Grid -->
-  <section id="core-lessons" style="margin-bottom: 48px;">
-    <div class="section-head" style="text-align: left; margin-bottom: 24px;">
-      <span class="kicker">7 Complete Lessons (&gt;14,000 Words)</span>
-      <h2 style="font-size: 28px; color: #0f172a;">Foundation Coding &amp; Interview Curriculum</h2>
-    </div>
+  <!-- Filter Buttons -->
+  <div class="cwh-filter-container" style="margin-bottom: 32px;">
+    <button type="button" class="cwh-filter-btn active" data-filter="all">All Tracks</button>
+    <button type="button" class="cwh-filter-btn" data-filter="programming">Programming (Python/C/Java)</button>
+    <button type="button" class="cwh-filter-btn" data-filter="dsa">Data Structures</button>
+    <button type="button" class="cwh-filter-btn" data-filter="web">Web &amp; SQL</button>
+  </div>
 
-    <div class="class-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 24px;">
+  <!-- Core Lessons Grid (CodeWithHarry Card Grid) -->
+  <section id="core-lessons" style="margin-bottom: 56px;">
+    <div class="cwh-courses-grid">
 
       <!-- Lesson 1: Python Basics -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 01 · 3,100+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #059669; font-weight: 600;">Beginner</span>
+      <div class="cwh-card" data-category="programming all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">🐍</span>
+          <span class="cwh-card-level">Beginner</span>
         </div>
-        <h3>🐍 Python Fundamentals: print(), Variables &amp; Types</h3>
-        <p>Comprehensive guide covering variables, dynamic typing, typecasting, console I/O, string formatting, keywords, and identifiers.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 15 min read</span>
-          <a href="python-basics.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">Python Basics: Variables &amp; Types</h3>
+          <p class="cwh-card-desc">Variables, dynamic typing, typecasting, console input/output, string formatting, keywords, and identifiers.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 15 min read · 3.1k words</span>
+            <a href="python-basics.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 2: Python Operators & Conditionals -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 02 · 3,200+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #059669; font-weight: 600;">Beginner</span>
+      <div class="cwh-card" data-category="programming all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">⚙️</span>
+          <span class="cwh-card-level">Beginner</span>
         </div>
-        <h3>⚙️ Python Operators &amp; Conditional Logic</h3>
-        <p>Master arithmetic, logical, and bitwise operators along with nested if-elif-else branching and real code exercises.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 16 min read</span>
-          <a href="python-operators-conditionals.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">Python Operators &amp; Conditional Logic</h3>
+          <p class="cwh-card-desc">Master arithmetic, logical, and bitwise operators along with nested if-elif-else branching and real code exercises.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 16 min read · 3.2k words</span>
+            <a href="python-operators-conditionals.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 3: C Basics -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 03 · 2,200+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #2563eb; font-weight: 600;">Intermediate</span>
+      <div class="cwh-card" data-category="programming all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">⚡</span>
+          <span class="cwh-card-level">Core Systems</span>
         </div>
-        <h3>⚡ C Programming Basics &amp; Memory Architecture</h3>
-        <p>Understand variables, primitive data types, printf/scanf format specifiers, operators, and low-level execution logic.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 14 min read</span>
-          <a href="c-basics.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">C Programming &amp; Memory Logic</h3>
+          <p class="cwh-card-desc">Understand memory, pointers, printf/scanf format specifiers, primitive data types, and compilation logic.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 14 min read · 2.2k words</span>
+            <a href="c-basics.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 4: Data Structures Arrays -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 04 · 1,850+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #d97706; font-weight: 600;">Interview Prep</span>
+      <div class="cwh-card" data-category="dsa all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">📊</span>
+          <span class="cwh-card-level">Interview Prep</span>
         </div>
-        <h3>📊 Data Structures: Arrays &amp; Indexing</h3>
-        <p>Contiguous memory layout, 0-based indexing arithmetic, time complexities, two-pointer techniques, and interview patterns.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 12 min read</span>
-          <a href="data-structures-arrays.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">Data Structures: Arrays &amp; Indexing</h3>
+          <p class="cwh-card-desc">Contiguous memory layout, 0-based indexing arithmetic, time complexities, two-pointer techniques, and interview patterns.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 12 min read · 1.8k words</span>
+            <a href="data-structures-arrays.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 5: Java OOP Basics -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 05 · 2,400+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #2563eb; font-weight: 600;">Core OOP</span>
+      <div class="cwh-card" data-category="programming all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">☕</span>
+          <span class="cwh-card-level">Object Oriented</span>
         </div>
-        <h3>☕ Java &amp; Object-Oriented Programming (OOP)</h3>
-        <p>Classes, objects, constructors, encapsulation, inheritance, method overriding/overloading, interfaces, and memory models.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 15 min read</span>
-          <a href="java-oop-basics.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">Java &amp; OOP Concepts</h3>
+          <p class="cwh-card-desc">Classes, objects, constructors, encapsulation, inheritance, method overriding/overloading, interfaces, and memory models.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 15 min read · 2.4k words</span>
+            <a href="java-oop-basics.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 6: HTML & CSS Basics -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 06 · 1,850+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #059669; font-weight: 600;">Web Dev</span>
+      <div class="cwh-card" data-category="web all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">🌐</span>
+          <span class="cwh-card-level">Web Dev</span>
         </div>
-        <h3>🌐 HTML5 &amp; Modern CSS Fundamentals</h3>
-        <p>Semantic document structures, CSS Box Model, Flexbox alignment, CSS Grid fundamentals, and responsive mobile-first design.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 12 min read</span>
-          <a href="html-css-basics.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">HTML5 &amp; Modern CSS3 Fundamentals</h3>
+          <p class="cwh-card-desc">Semantic document structures, CSS Box Model, Flexbox alignment, CSS Grid fundamentals, and responsive mobile-first design.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 12 min read · 1.8k words</span>
+            <a href="html-css-basics.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
       <!-- Lesson 7: SQL Basics -->
-      <div class="class-card">
-        <div class="tape"></div>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-          <span class="num">LESSON 07 · 2,000+ WORDS</span>
-          <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color: #7c3aed; font-weight: 600;">Database</span>
+      <div class="cwh-card" data-category="web all">
+        <div class="cwh-card-banner">
+          <span class="cwh-card-icon">🗄️</span>
+          <span class="cwh-card-level">Database</span>
         </div>
-        <h3>🗄️ SQL Fundamentals &amp; Relational Databases</h3>
-        <p>Master SELECT, INSERT, UPDATE, DELETE queries, WHERE filtering, INNER/LEFT/RIGHT JOINs, GROUP BY, and aggregations.</p>
-        <div style="margin-top: auto; padding-top: 16px; border-top: 1px dashed var(--paper-line); display: flex; justify-content: space-between; align-items: center;">
-          <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color: var(--ink-soft);">⏱ 14 min read</span>
-          <a href="sql-basics.html" class="go">Read Lesson →</a>
+        <div class="cwh-card-body">
+          <h3 class="cwh-card-title">SQL Fundamentals &amp; Relational DBs</h3>
+          <p class="cwh-card-desc">Master SELECT, INSERT, UPDATE, DELETE queries, WHERE filtering, INNER/LEFT/RIGHT JOINs, GROUP BY, and aggregations.</p>
+          <div class="cwh-card-footer">
+            <span class="cwh-card-time">⏱ 14 min read · 2.0k words</span>
+            <a href="sql-basics.html" class="cwh-card-btn">Start Learning →</a>
+          </div>
         </div>
       </div>
 
     </div>
   </section>
 
-  <!-- School/Board CS Notes Section -->
-  <section class="paper" style="margin-bottom: 48px;">
-    <div class="section-head" style="text-align: left; margin-bottom: 20px;">
-      <span class="kicker">School &amp; College Syllabus Guides</span>
-      <h2 style="font-size: 26px; color: #0f172a;">CBSE / NCERT Computer Science Notes</h2>
-      <p style="color: var(--ink);">Comprehensive chapter notes, revision questions, and exam preparation guides for students.</p>
+  <!-- Interactive Coding & Interview Practice Section -->
+  <section class="paper" style="background: #ffffff; border: 1px solid var(--paper-line); border-radius: 12px; padding: 36px 28px; margin-bottom: 48px;">
+    <div class="section-head" style="text-align: left; margin-bottom: 24px;">
+      <span class="kicker" style="color: var(--pink-dark); font-family: 'JetBrains Mono', monospace; font-size: 13px; text-transform: uppercase;">Interactive Skill Assessments</span>
+      <h2 style="font-size: 26px; color: #0f172a; margin: 6px 0;">Test Your Programming Proficiency</h2>
+      <p style="color: #475569; margin: 0;">Practice multiple-choice questions, trace code outputs, and test your conceptual mastery.</p>
     </div>
 
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-      <div class="offer-card">
-        <span class="offer-icon">📘</span>
-        <h3>Class 8 Computer Science</h3>
-        <p>Networks, topologies, MS Access/DBMS fundamentals, algorithms, and cyber safety rules.</p>
-        <a href="class8.html" class="promo-cta">Open Class 8 Notes →</a>
+      <div class="cwh-feature-card">
+        <div class="cwh-feature-icon-box">🐍</div>
+        <h3>Python Logic Quizzes</h3>
+        <p>Variables, dynamic scoping, mutable objects, conditionals, loops, and built-in functions.</p>
+        <a href="test.html" class="cwh-btn-primary" style="margin-top: auto; padding: 8px 16px; font-size: 14px;">Take Python Quiz →</a>
       </div>
 
-      <div class="offer-card">
-        <span class="offer-icon">📙</span>
-        <h3>Class 9 Computer Science</h3>
-        <p>Cyber security, computer architecture, Python syntax intro, office tools, and netiquette.</p>
-        <a href="class9.html" class="promo-cta">Open Class 9 Notes →</a>
+      <div class="cwh-feature-card">
+        <div class="cwh-feature-icon-box">⚡</div>
+        <h3>C &amp; Memory Assessments</h3>
+        <p>Pointer arithmetic, data types, format specifiers, and memory layout quiz challenges.</p>
+        <a href="test.html" class="cwh-btn-primary" style="margin-top: auto; padding: 8px 16px; font-size: 14px;">Take C Quiz →</a>
       </div>
 
-      <div class="offer-card">
-        <span class="offer-icon">📕</span>
-        <h3>Class 10 Computer Science</h3>
-        <p>Board syllabus: Internet protocols, HTML/CSS web authoring, cyber ethics, and RDBMS/SQL.</p>
-        <a href="class10.html" class="promo-cta">Open Class 10 Notes →</a>
+      <div class="cwh-feature-card">
+        <div class="cwh-feature-icon-box">📊</div>
+        <h3>Data Structures &amp; SQL</h3>
+        <p>Array time complexities, two-pointer logic, relational database queries, and table joins.</p>
+        <a href="test.html" class="cwh-btn-primary" style="margin-top: auto; padding: 8px 16px; font-size: 14px;">Take DSA &amp; SQL Quiz →</a>
       </div>
     </div>
   </section>
 
 </main>
 
-<!-- Footer -->
-<footer>
-  <div class="footer-inner">
-    <ul class="footer-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html">Curriculum</a></li>
-      <li><a href="programming-videos.html">Programming Videos</a></li>
-      <li><a href="test.html">Take a Test</a></li>
-      <li><a href="about.html">About Us</a></li>
-      <li><a href="contact.html">Contact Us</a></li>
-      <li><a href="disclaimer.html">Disclaimer</a></li>
-      <li><a href="privacy-policy.html">Privacy Policy</a></li>
-      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
-    </ul>
-    <div class="footer-bottom">@ short study copyright all right reserved</div>
+<!-- ============ 4-COLUMN FOOTER (CODEWITHHARRY STYLE) ============ -->
+<footer class="cwh-footer">
+  <div class="cwh-footer-container">
+    <div class="cwh-footer-grid">
+
+      <!-- Col 1: Brand & Mission -->
+      <div class="cwh-footer-col">
+        <a class="brand" href="index.html" style="font-size: 28px; margin-bottom: 12px; display: inline-block;">Short<span>Study</span></a>
+        <p style="color: var(--chalk-dim); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          Short Study is a free educational platform dedicated to teaching coding and computer science fundamentals through structured, textbook-quality written guides and interactive test quizzes.
+        </p>
+      </div>
+
+      <!-- Col 2: Core Tutorials -->
+      <div class="cwh-footer-col">
+        <h4>Programming Tracks</h4>
+        <ul>
+          <li><a href="python-basics.html">Python Basics</a></li>
+          <li><a href="python-operators-conditionals.html">Python Operators</a></li>
+          <li><a href="c-basics.html">C Programming</a></li>
+          <li><a href="data-structures-arrays.html">Data Structures (Arrays)</a></li>
+          <li><a href="java-oop-basics.html">Java &amp; OOP Concepts</a></li>
+          <li><a href="html-css-basics.html">HTML5 &amp; CSS3</a></li>
+          <li><a href="sql-basics.html">SQL Relational DBs</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Practice & Guides -->
+      <div class="cwh-footer-col">
+        <h4>Practice &amp; Resources</h4>
+        <ul>
+          <li><a href="programming.html">Full Curriculum Directory</a></li>
+          <li><a href="test.html">Practice MCQ Tests</a></li>
+          <li><a href="python-basics.html">Python Pathway</a></li>
+          <li><a href="c-basics.html">C Memory &amp; Pointers</a></li>
+          <li><a href="data-structures-arrays.html">DSA &amp; Algorithms</a></li>
+          <li><a href="sql-basics.html">Database Queries &amp; SQL</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 4: Legal & Company -->
+      <div class="cwh-footer-col">
+        <h4>Company &amp; Legal</h4>
+        <ul>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="disclaimer.html">Disclaimer</a></li>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+          <li><a href="javascript:void(0);" onclick="showConsentPreferences();">Cookie Preferences</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="cwh-footer-bottom">
+      <div>© 2026 Short Study. All rights reserved.</div>
+      <div>Designed for developers, computer science students &amp; educators worldwide.</div>
+    </div>
   </div>
 </footer>
 

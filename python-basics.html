@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800" crossorigin="anonymous"></script>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800" crossorigin="anonymous"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="icon" type="image/png" href="favicon.png">
@@ -50,49 +50,108 @@
 </head>
 <body>
 
-<!-- ============ HEADER / NAVBAR ============ -->
+<!-- ============ NAVBAR (CODEWITHHARRY STYLE) ============ -->
 <header>
-  <div class="nav">
+  <div class="nav" style="gap: 16px;">
     <a class="brand" href="index.html">Short<span>Study</span></a>
+
+    <div class="nav-search-wrap">
+      <svg class="nav-search-icon" viewBox="0 0 24 24">
+        <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+      </svg>
+      <input type="text" id="siteSearchInput" class="nav-search-input" placeholder="Search courses &amp; notes..." aria-label="Search courses and notes">
+    </div>
+
     <ul class="nav-links" id="navLinks">
       <li><a href="index.html">Home</a></li>
-      <li><a href="programming-videos.html" class="active">Programming Videos</a></li>
-      <li><a href="test.html">Test</a></li>
+      <li><a href="programming.html" class="active">Courses</a></li>
+      <li><a href="test.html">MCQ Tests</a></li>
       <li><a href="about.html">About</a></li>
       <li><a href="contact.html">Contact</a></li>
+      <li><a href="programming.html" class="nav-cta-btn">All Tracks →</a></li>
     </ul>
+
     <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
   </div>
 </header>
 
-<!-- ============ PAGE HEADER ============ -->
-<section class="page-header">
-  <span class="kicker">Programming · Python Deep Dive · Part 1 of 6</span>
-  <h1>Python Fundamentals</h1>
-  <p>print(), Variables, Data Types, input(), Type Casting, Comments, Keywords &amp; Identifiers — in depth.</p>
-</section>
+<!-- ============ 2-COLUMN DOCUMENTATION LAYOUT (CODEWITHHARRY STYLE) ============ -->
+<div class="cwh-doc-layout">
 
-<section class="paper" style="padding-bottom:20px;">
-  <div class="wrap">
-    <div class="lesson-meta fade-up">
-      <span class="tag">Last Reviewed: August 2026</span>
-      <span class="tag">Syllabus: Core Computer Science</span>
-      <span class="tag">Level: Beginner → Intermediate</span>
+  <!-- Left Sticky Sidebar Index -->
+  <aside class="cwh-doc-sidebar">
+    
+    <div class="cwh-sidebar-title">Course Modules</div>
+    <ul class="cwh-sidebar-nav">
+      <li><a href="python-basics.html" class="cwh-sidebar-link active">🐍 Python Basics</a></li>
+      <li><a href="python-operators-conditionals.html" class="cwh-sidebar-link ">⚙️ Python Operators</a></li>
+      <li><a href="c-basics.html" class="cwh-sidebar-link ">⚡ C Programming</a></li>
+      <li><a href="data-structures-arrays.html" class="cwh-sidebar-link ">📊 Data Structures (Arrays)</a></li>
+      <li><a href="java-oop-basics.html" class="cwh-sidebar-link ">☕ Java &amp; OOP Concepts</a></li>
+      <li><a href="html-css-basics.html" class="cwh-sidebar-link ">🌐 HTML5 &amp; CSS3</a></li>
+      <li><a href="sql-basics.html" class="cwh-sidebar-link ">🗄️ SQL Relational DBs</a></li>
+    </ul>
+
+    <div class="cwh-sidebar-toc">
+      <div class="cwh-sidebar-toc-title">On This Page</div>
+      <ul>
+        <li><a href="#topic-1">1. The print() Function</a></li>
+        <li><a href="#topic-2">2. Variables</a></li>
+        <li><a href="#topic-3">3. Data Types</a></li>
+        <li><a href="#topic-4">4. The input() Function</a></li>
+        <li><a href="#topic-5">5. Type Casting</a></li>
+        <li><a href="#topic-6">6. Comments</a></li>
+        <li><a href="#topic-7">7. Keywords</a></li>
+        <li><a href="#topic-8">8. Identifiers</a></li>
+      </ul>
+    </div>
+  
+  </aside>
+
+  <!-- Right Main Content Canvas -->
+  <main class="cwh-doc-content">
+    <nav class="breadcrumbs" aria-label="Breadcrumb" style="margin-bottom: 20px; font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--ink-soft);">
+      <a href="index.html" style="color: var(--pink-dark); text-decoration: underline;">Home</a>
+      <span style="margin: 0 6px;">/</span>
+      <a href="programming.html" style="color: var(--pink-dark); text-decoration: underline;">Courses</a>
+      <span style="margin: 0 6px;">/</span>
+      <span style="color: #0f172a; font-weight: 600;">Python Basics</span>
+    </nav>
+
+    <div class="cwh-doc-header">
+      <span class="cwh-doc-kicker">Python Core Masterclass · Part 1</span>
+      <h1 class="cwh-doc-title">Python Fundamentals</h1>
+      <div class="cwh-doc-meta">
+        <span class="cwh-doc-badge">⏱ 15 min read</span>
+        <span class="cwh-doc-badge">📖 3,100+ Words</span>
+        <span class="cwh-doc-badge" style="background: #ecfdf5; color: #065f46;">✓ Verified &amp; Current</span>
+      </div>
     </div>
 
-    <div class="lesson-content fade-up">
+    <div class="cwh-doc-body">
       <p style="margin-bottom:30px;">This is Part 1 of a 6-part deep-dive series on Python, building directly on the <a href="python-basics.html" style="color:var(--pink-dark); font-weight:600;">Python Basics</a> lesson. Each topic below is covered in depth, followed by 10 genuinely challenging practice questions to test how well the concept actually stuck — not just whether you can recognise the syntax.</p>
 
       <!-- ============ TOPIC 1: print() ============ -->
       <div class="topic-block">
-        <h2>1. The print() Function</h2>
+        <h2 id="topic-1" style="scroll-margin-top: 90px;" >1. The print() Function</h2>
         <p><code>print()</code> is the first function almost every Python learner meets, and it's more configurable than it first appears. By default, <code>print()</code> writes its arguments to standard output, separated by a single space, and ends with a newline character. Both of those defaults can be overridden with the <code>sep</code> and <code>end</code> keyword arguments — <code>sep</code> controls what goes between multiple printed values, and <code>end</code> controls what's printed after the last value instead of the default newline.</p>
         <p><code>print()</code> can also accept any number of positional arguments, automatically converts non-string values to their string representation, and — since Python 3.6 — is commonly paired with f-strings (<code>f"..."</code>) to embed expressions directly inside a string. It's worth remembering that <code>print()</code> always returns <code>None</code>; it displays output as a side effect, it does not hand back a usable value the way <code>input()</code> or a normal function call does.</p>
-        <div class="code-block"><span class="cm"># Customising sep and end</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># Customising sep and end</span>
 print("Python", "is", "fun", sep="-", end="!\n")
 <span class="cm"># Using an f-string</span>
 name = "Aarav"
-print(f"Hello, {name}!")</div>
+print(f"Hello, {name}!")</code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>Python-is-fun!
 Hello, Aarav!</div>
 
@@ -113,16 +172,27 @@ Hello, Aarav!</div>
 
       <!-- ============ TOPIC 2: Variables ============ -->
       <div class="topic-block">
-        <h2>2. Variables</h2>
+        <h2 id="topic-2" style="scroll-margin-top: 90px;" >2. Variables</h2>
         <p>In Python, a variable is best understood not as a labelled box holding a value, but as a <strong>name bound to an object</strong> that exists independently in memory. When you write <code>x = 10</code>, Python creates an integer object <code>10</code> and makes the name <code>x</code> point to it — it doesn't copy the value into a container called <code>x</code>. This distinction matters once you start reassigning variables or working with mutable objects like lists, because two names can point to the exact same object.</p>
         <p>Python supports multiple assignment in a single line (<code>a, b, c = 1, 2, 3</code>), chained assignment (<code>a = b = c = 0</code>), and augmented assignment (<code>x += 1</code>). Variable names are case-sensitive, can contain letters, digits, and underscores, but cannot start with a digit or match a reserved keyword. There is no variable declaration step in Python — a name comes into existence the moment it's first assigned a value.</p>
-        <div class="code-block"><span class="cm"># Multiple assignment</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># Multiple assignment</span>
 a, b, c = 1, 2, 3
 <span class="cm"># Two names pointing to the same list object</span>
 list1 = [1, 2, 3]
 list2 = list1
 list2.append(4)
-print(list1)  <span class="cm"># list1 changes too!</span></div>
+print(list1)  <span class="cm"># list1 changes too!</span></code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>[1, 2, 3, 4]</div>
 
         <span class="hard-q-heading">Top 10 Very Hard Questions</span>
@@ -142,12 +212,23 @@ print(list1)  <span class="cm"># list1 changes too!</span></div>
 
       <!-- ============ TOPIC 3: Data Types ============ -->
       <div class="topic-block">
-        <h2>3. Data Types</h2>
+        <h2 id="topic-3" style="scroll-margin-top: 90px;" >3. Data Types</h2>
         <p>Python is dynamically typed, meaning a variable's type is determined by the value currently assigned to it, and can change if reassigned. The core built-in types are <code>int</code>, <code>float</code>, <code>complex</code>, <code>str</code>, <code>bool</code>, and the special singleton <code>None</code> (of type <code>NoneType</code>). Beyond these, Python's built-in container types — <code>list</code>, <code>tuple</code>, <code>set</code>, and <code>dict</code> — are covered in depth later in this series.</p>
         <p>A crucial distinction beginners often miss is <strong>mutability</strong>: <code>int</code>, <code>float</code>, <code>str</code>, <code>bool</code>, and <code>tuple</code> are immutable — once created, their value cannot change in place — while <code>list</code>, <code>set</code>, and <code>dict</code> are mutable. You can check a value's type at runtime with <code>type()</code>, and check whether it belongs to a type (including subclasses) with <code>isinstance()</code>, which is generally the preferred, more Pythonic approach.</p>
-        <div class="code-block"><span class="cm"># bool is actually a subclass of int in Python</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># bool is actually a subclass of int in Python</span>
 print(isinstance(True, int))   <span class="cm"># True</span>
-print(True + True)             <span class="cm"># 2</span></div>
+print(True + True)             <span class="cm"># 2</span></code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>True
 2</div>
 
@@ -168,10 +249,20 @@ print(True + True)             <span class="cm"># 2</span></div>
 
       <!-- ============ TOPIC 4: input() ============ -->
       <div class="topic-block">
-        <h2>4. The input() Function</h2>
+        <h2 id="topic-4" style="scroll-margin-top: 90px;" >4. The input() Function</h2>
         <p><code>input()</code> pauses program execution, optionally displays a prompt string, waits for the user to type a response and press Enter, and then returns whatever was typed as a <strong>string</strong> — always, with no exceptions, even if the user types a number. This is one of the most common sources of bugs for beginners, who assume <code>input()</code> "knows" they wanted a number and are surprised when arithmetic on the result fails or behaves unexpectedly (string concatenation instead of addition).</p>
         <p>To work with numeric input, you must explicitly convert the result using <code>int()</code> or <code>float()</code>. To accept multiple values on one line, a common pattern is combining <code>input()</code> with <code>.split()</code> to break the line into a list of strings, which can then be converted individually.</p>
-        <div class="code-block"><span class="cm"># WRONG: this concatenates strings, doesn't add numbers</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># WRONG: this concatenates strings, doesn't add numbers</span>
 a = input("Enter first number: ")
 b = input("Enter second number: ")
 print(a + b)   <span class="cm"># e.g. "5" + "3" = "53", not 8</span>
@@ -179,7 +270,8 @@ print(a + b)   <span class="cm"># e.g. "5" + "3" = "53", not 8</span>
 <span class="cm"># CORRECT: cast to int first</span>
 a = int(input("Enter first number: "))
 b = int(input("Enter second number: "))
-print(a + b)   <span class="cm"># 8</span></div>
+print(a + b)   <span class="cm"># 8</span></code></pre>
+    </div>
 
         <span class="hard-q-heading">Top 10 Very Hard Questions</span>
         <ol class="hard-q-list">
@@ -198,17 +290,28 @@ print(a + b)   <span class="cm"># 8</span></div>
 
       <!-- ============ TOPIC 5: Type Casting ============ -->
       <div class="topic-block">
-        <h2>5. Type Casting</h2>
+        <h2 id="topic-5" style="scroll-margin-top: 90px;" >5. Type Casting</h2>
         <p>Type casting (or type conversion) is the process of converting a value from one data type to another. Python performs some conversions automatically — this is called <strong>implicit</strong> casting, and it happens, for example, when you add an <code>int</code> and a <code>float</code> together and Python automatically produces a <code>float</code> result. <strong>Explicit</strong> casting is when you deliberately convert a value using functions like <code>int()</code>, <code>float()</code>, <code>str()</code>, or <code>bool()</code>.</p>
         <p>Casting isn't always safe: <code>int("abc")</code> raises a <code>ValueError</code> because the string isn't a valid number, and <code>int(3.9)</code> truncates toward zero rather than rounding, giving <code>3</code> — not <code>4</code>. Casting to <code>bool()</code> follows Python's "truthiness" rules: <code>0</code>, <code>0.0</code>, <code>""</code>, <code>[]</code>, <code>{}</code>, and <code>None</code> are all falsy, while almost everything else is truthy.</p>
-        <div class="code-block"><span class="cm"># Implicit casting: int + float = float</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># Implicit casting: int + float = float</span>
 result = 5 + 2.0
 print(result, type(result))
 
 <span class="cm"># Explicit casting: truncation, not rounding</span>
 print(int(9.9))   <span class="cm"># 9, not 10</span>
 print(bool(""))    <span class="cm"># False</span>
-print(bool("0"))   <span class="cm"># True — non-empty string!</span></div>
+print(bool("0"))   <span class="cm"># True — non-empty string!</span></code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>7.0 &lt;class 'float'&gt;
 9
 False
@@ -231,15 +334,26 @@ True</div>
 
       <!-- ============ TOPIC 6: Comments ============ -->
       <div class="topic-block">
-        <h2>6. Comments</h2>
+        <h2 id="topic-6" style="scroll-margin-top: 90px;" >6. Comments</h2>
         <p>Comments are lines that Python's interpreter ignores entirely — they exist purely for human readers. A single-line comment starts with <code>#</code> and extends to the end of the line. Python has no dedicated multi-line comment syntax, but developers commonly achieve the same effect by stacking multiple <code>#</code> lines, or by using a triple-quoted string (<code>"""..."""</code>) as a standalone statement — though technically the latter is a string literal, not a comment, and is more properly reserved for <strong>docstrings</strong>, which document functions, classes, and modules and can be accessed programmatically via the <code>__doc__</code> attribute.</p>
         <p>Good commenting explains <em>why</em> code does something, not <em>what</em> it does — the "what" should be obvious from clear code itself. Over-commenting obvious code is considered a code smell just as much as under-commenting complex logic.</p>
-        <div class="code-block"><span class="cm"># This is a single-line comment</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># This is a single-line comment</span>
 def add(a, b):
     """This is a docstring, not a comment — it's stored and retrievable."""
     return a + b
 
-print(add.__doc__)</div>
+print(add.__doc__)</code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>This is a docstring, not a comment — it's stored and retrievable.</div>
 
         <span class="hard-q-heading">Top 10 Very Hard Questions</span>
@@ -259,13 +373,24 @@ print(add.__doc__)</div>
 
       <!-- ============ TOPIC 7: Keywords ============ -->
       <div class="topic-block">
-        <h2>7. Keywords</h2>
+        <h2 id="topic-7" style="scroll-margin-top: 90px;" >7. Keywords</h2>
         <p>Keywords are reserved words that form the syntax of the Python language itself — words like <code>if</code>, <code>else</code>, <code>for</code>, <code>while</code>, <code>def</code>, <code>class</code>, <code>return</code>, <code>import</code>, <code>True</code>, <code>False</code>, and <code>None</code>. Because they have fixed meaning to the interpreter, keywords <strong>cannot</strong> be used as variable, function, or class names — attempting to do so raises a <code>SyntaxError</code>. Python provides the built-in <code>keyword</code> module, which exposes <code>keyword.kwlist</code>, a list of every current keyword, useful for checking programmatically whether a given string is reserved.</p>
         <p>Recent Python versions introduced <strong>soft keywords</strong> — words like <code>match</code>, <code>case</code>, and <code>type</code> that have special meaning only in specific syntactic contexts (like the <code>match</code> statement introduced in Python 3.10) but remain valid as ordinary identifiers elsewhere, unlike true keywords.</p>
-        <div class="code-block">import keyword
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code>import keyword
 print(keyword.iskeyword("for"))    <span class="cm"># True</span>
 print(keyword.iskeyword("match"))  <span class="cm"># False — it's a soft keyword</span>
-print(len(keyword.kwlist))         <span class="cm"># total number of keywords</span></div>
+print(len(keyword.kwlist))         <span class="cm"># total number of keywords</span></code></pre>
+    </div>
         <div class="output-block"><span class="label">Output</span>True
 False
 35</div>
@@ -287,17 +412,28 @@ False
 
       <!-- ============ TOPIC 8: Identifiers ============ -->
       <div class="topic-block">
-        <h2>8. Identifiers</h2>
+        <h2 id="topic-8" style="scroll-margin-top: 90px;" >8. Identifiers</h2>
         <p>An identifier is the name you give to a variable, function, class, module, or any other user-defined object. Python's rules for valid identifiers: they must start with a letter (a-z, A-Z) or an underscore, followed by any combination of letters, digits, and underscores; they cannot start with a digit; they cannot be a reserved keyword; and — since Python 3 — they can also include valid Unicode characters beyond the basic ASCII set, though this is rarely used in practice.</p>
         <p>Python is case-sensitive, so <code>score</code>, <code>Score</code>, and <code>SCORE</code> are three entirely distinct identifiers. Beyond the language's hard rules, PEP 8 (Python's style guide) recommends conventions: <code>snake_case</code> for variables and functions, <code>PascalCase</code> for classes, and <code>UPPER_SNAKE_CASE</code> for constants — these are conventions, not enforced by the interpreter, but following them is considered a mark of idiomatic Python.</p>
-        <div class="code-block"><span class="cm"># Valid identifiers</span>
+        <div class="cwh-code-container">
+      <div class="cwh-code-topbar">
+        <div class="cwh-code-dots">
+          <span class="cwh-dot cwh-dot-red"></span>
+          <span class="cwh-dot cwh-dot-yellow"></span>
+          <span class="cwh-dot cwh-dot-green"></span>
+        </div>
+        <span class="cwh-code-lang">Code Example</span>
+        <button type="button" class="cwh-copy-btn">Copy</button>
+      </div>
+      <pre class="cwh-code-pre"><code><span class="cm"># Valid identifiers</span>
 _private = 1
 student_name = "Aarav"
 MAX_SIZE = 100
 
 <span class="cm"># These would raise a SyntaxError if uncommented:</span>
 <span class="cm"># 2nd_place = "silver"</span>
-<span class="cm"># class = "Physics"</span></div>
+<span class="cm"># class = "Physics"</span></code></pre>
+    </div>
 
         <span class="hard-q-heading">Top 10 Very Hard Questions</span>
         <ol class="hard-q-list">
@@ -329,25 +465,73 @@ MAX_SIZE = 100
       <a href="python-operators-conditionals.html">Next: Operators &amp; Conditionals (Part 2) →</a>
     </div>
 
-  </div>
-</section>
+    <div class="cwh-doc-pagination">
+      <div></div>
+      <a href="python-operators-conditionals.html" class="cwh-nav-page-btn" style="background: var(--yellow); color: var(--board-dark); border-color: var(--board-dark); font-weight: 700;">Python Operators & Conditionals →</a>
+    </div>
+  </main>
 
-<!-- ============ FOOTER ============ -->
-<!-- ============ FOOTER ============ -->
-<footer>
-  <div class="footer-inner">
-    <ul class="footer-links">
-      <li><a href="index.html">Home</a></li>
-      <li><a href="programming.html">Curriculum</a></li>
-      <li><a href="programming-videos.html">Programming Videos</a></li>
-      <li><a href="test.html">Take a Test</a></li>
-      <li><a href="about.html">About Us</a></li>
-      <li><a href="contact.html">Contact Us</a></li>
-      <li><a href="disclaimer.html">Disclaimer</a></li>
-      <li><a href="privacy-policy.html">Privacy Policy</a></li>
-      <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
-    </ul>
-    <div class="footer-bottom">@ short study copyright all rights reserved</div>
+</div>
+
+<!-- ============ 4-COLUMN FOOTER (CODEWITHHARRY STYLE) ============ -->
+<footer class="cwh-footer">
+  <div class="cwh-footer-container">
+    <div class="cwh-footer-grid">
+
+      <!-- Col 1: Brand & Mission -->
+      <div class="cwh-footer-col">
+        <a class="brand" href="index.html" style="font-size: 28px; margin-bottom: 12px; display: inline-block;">Short<span>Study</span></a>
+        <p style="color: var(--chalk-dim); font-size: 14px; line-height: 1.6; margin-bottom: 16px;">
+          Short Study is a free educational platform dedicated to teaching coding and computer science fundamentals through structured, textbook-quality written guides and interactive test quizzes.
+        </p>
+      </div>
+
+      <!-- Col 2: Core Tutorials -->
+      <div class="cwh-footer-col">
+        <h4>Programming Tracks</h4>
+        <ul>
+          <li><a href="python-basics.html">Python Basics</a></li>
+          <li><a href="python-operators-conditionals.html">Python Operators</a></li>
+          <li><a href="c-basics.html">C Programming</a></li>
+          <li><a href="data-structures-arrays.html">Data Structures (Arrays)</a></li>
+          <li><a href="java-oop-basics.html">Java &amp; OOP Concepts</a></li>
+          <li><a href="html-css-basics.html">HTML5 &amp; CSS3</a></li>
+          <li><a href="sql-basics.html">SQL Relational DBs</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 3: Practice & Guides -->
+      <div class="cwh-footer-col">
+        <h4>Practice &amp; Resources</h4>
+        <ul>
+          <li><a href="programming.html">Full Curriculum Directory</a></li>
+          <li><a href="test.html">Practice MCQ Tests</a></li>
+          <li><a href="python-basics.html">Python Pathway</a></li>
+          <li><a href="c-basics.html">C Memory &amp; Pointers</a></li>
+          <li><a href="data-structures-arrays.html">DSA &amp; Algorithms</a></li>
+          <li><a href="sql-basics.html">Database Queries &amp; SQL</a></li>
+        </ul>
+      </div>
+
+      <!-- Col 4: Legal & Company -->
+      <div class="cwh-footer-col">
+        <h4>Company &amp; Legal</h4>
+        <ul>
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="contact.html">Contact Us</a></li>
+          <li><a href="disclaimer.html">Disclaimer</a></li>
+          <li><a href="privacy-policy.html">Privacy Policy</a></li>
+          <li><a href="terms-conditions.html">Terms &amp; Conditions</a></li>
+          <li><a href="javascript:void(0);" onclick="showConsentPreferences();">Cookie Preferences</a></li>
+        </ul>
+      </div>
+
+    </div>
+
+    <div class="cwh-footer-bottom">
+      <div>© 2026 Short Study. All rights reserved.</div>
+      <div>Designed for developers, computer science students &amp; educators worldwide.</div>
+    </div>
   </div>
 </footer>
 

@@ -41,8 +41,15 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "courseId": { "type": "string" },
+        "name": { "type": "string" },
+        "studentName": { "type": "string" },
         "studentEmail": { "type": "string" },
+        "studentPhone": { "type": "string" },
+        "courseId": { "type": "string" },
+        "courseTitle": { "type": "string" },
+        "amount": { "type": "string" },
+        "utr": { "type": "string" },
+        "purchased": { "type": "boolean" },
         "status": { "type": "string" }
       }
     }

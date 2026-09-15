@@ -95,6 +95,8 @@ function initLessonListener() {
           renderLesson(currentPost);
           loadCourseSiblings(currentPost.courseId);
         }
+      }, (err) => {
+        console.warn("Firestore slug listener warning:", err);
       });
     } catch (err) {
       console.error("Slug query error:", err);

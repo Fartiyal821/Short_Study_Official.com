@@ -813,74 +813,186 @@ print('Hello ShortStudy')
   </div>
 
   <!-- =========================================================
-       MODAL: CREATE / EDIT PAID COURSE
+       MODAL: CREATE / EDIT PAID COURSE (CODEWITHHARRY STYLE)
        ========================================================= -->
   <div class="modal-overlay" id="paid-course-modal">
-    <div class="modal-card" style="max-width: 720px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-card" style="max-width: 780px; max-height: 92vh; overflow-y: auto;">
       <div class="modal-header">
-        <h3 class="modal-title" id="paid-course-modal-heading">Add Paid Video Course</h3>
+        <div>
+          <h3 class="modal-title" id="paid-course-modal-heading">Add Paid Video Course</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin: 2px 0 0;">
+            Manage premium video courses formatted with 16:9 thumbnail banners, discount badges, and cost reductions.
+          </p>
+        </div>
         <button class="modal-close" id="paid-course-modal-close" aria-label="Close modal">✕</button>
       </div>
 
       <form id="paid-course-form">
         <div class="modal-body">
-          <!-- Course Title -->
-          <div class="form-group">
-            <label class="form-label" for="paid-modal-title">Course Title *</label>
-            <input type="text" id="paid-modal-title" class="form-input" placeholder="e.g. Master Full-Stack Web Development" required>
+
+          <!-- 1. LIVE COURSE CARD PREVIEW (Exact CodeWithHarry Style Reference) -->
+          <div class="cwh-live-preview-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <span style="font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--indigo-light);">
+                🖥️ Live Course Card Preview (Exact Public Website Display)
+              </span>
+              <span style="font-size: 11px; color: var(--text-muted);">Updates in real time as you edit below</span>
+            </div>
+
+            <!-- Replica Card Box -->
+            <div class="cwh-live-preview-card" id="cwh-modal-live-card">
+              <div class="cwh-preview-banner-wrap">
+                <span class="cwh-preview-discount-pill" id="prev-card-discount">33% OFF</span>
+                <span class="cwh-preview-featured-pill" id="prev-card-featured" style="display: block;">Featured</span>
+                <img id="prev-card-img" class="cwh-preview-banner-img" src="https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80" alt="Course Thumbnail">
+              </div>
+
+              <div class="cwh-preview-card-body">
+                <h4 class="cwh-preview-card-title" id="prev-card-title">Ultimate Job-Ready AI-Powered Data Analytics Course</h4>
+                <p class="cwh-preview-card-desc" id="prev-card-desc">This is a to-the-point, CodeWithHarry style AI-Powered Data Analytics course...</p>
+
+                <div class="cwh-preview-meta-row">
+                  <span id="prev-card-instructor">👨‍🏫 ShortStudy</span>
+                  <span id="prev-card-level">🔍 Beginner</span>
+                </div>
+
+                <div class="cwh-preview-meta-row">
+                  <span id="prev-card-duration">⏱️ 36h 22m</span>
+                  <span id="prev-card-lessons">📚 219 lessons</span>
+                  <span id="prev-card-lang">🗣️ Hindi</span>
+                </div>
+
+                <div class="cwh-preview-price-row">
+                  <span class="cwh-preview-sale-price" id="prev-card-sale-price">₹2599</span>
+                  <span class="cwh-preview-orig-price" id="prev-card-orig-price">₹3899</span>
+                </div>
+
+                <button type="button" class="cwh-preview-btn">View Course</button>
+              </div>
+            </div>
           </div>
 
-          <!-- Fees & Discount Management -->
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <!-- 2. PHOTO RESOLUTION REQUIREMENT & UPLOAD -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(99, 102, 241, 0.35); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+              <span style="font-size: 16px;">📷</span>
+              <label class="form-label" style="margin: 0; font-size: 13px; font-weight: 700; color: #ffffff;">
+                Course Cover Image / Photo (Host Upload Guidelines)
+              </label>
+            </div>
+
+            <!-- Explicit Pixel Specification Box for Host -->
+            <div style="background: rgba(2, 6, 23, 0.85); border: 1px dashed var(--indigo-border); border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; font-size: 12px; line-height: 1.6; color: #cbd5e1;">
+              <div style="color: #fbbf24; font-weight: 700; font-size: 12.5px; margin-bottom: 4px; display: flex; align-items: center; gap: 6px;">
+                <span>📐 Required Image Dimensions &amp; Aspect Ratio</span>
+              </div>
+              <ul style="margin: 0 0 0 18px; padding: 0;">
+                <li><strong>Recommended Resolution:</strong> <code style="color: #818cf8; font-family: 'JetBrains Mono', monospace; font-weight: 600;">1280 × 720 px</code> (HD 16:9 Landscape)</li>
+                <li><strong>Minimum Resolution:</strong> <code style="color: #818cf8; font-family: 'JetBrains Mono', monospace;">640 × 360 px</code> (16:9 ratio)</li>
+                <li><strong>Aspect Ratio:</strong> <strong>16:9</strong> (Matches the card box size displayed in public catalog)</li>
+                <li><strong>Accepted Formats:</strong> PNG, JPG, WebP | Maximum File Size: <strong>5 MB</strong></li>
+              </ul>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+              <div>
+                <span style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Option A: Upload Image File from Device:</span>
+                <input type="file" id="paid-modal-image-file" accept="image/*" class="form-input" style="padding: 8px 10px; font-size: 12px; background: var(--bg-slate-900);">
+              </div>
+              <div>
+                <span style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">Option B: Or Enter Image Web URL:</span>
+                <input type="text" id="paid-modal-image" class="form-input font-mono" placeholder="https://images.unsplash.com/... or data URL">
+              </div>
+              <div id="paid-modal-image-preview-container" style="display: none;">
+                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Uploaded Image Thumbnail:</span>
+                <img id="paid-modal-image-preview" src="" alt="Course Cover Preview" style="aspect-ratio: 16/9; width: 100%; max-height: 140px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light);">
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. COURSE TITLE -->
+          <div class="form-group" style="margin-bottom: 16px;">
+            <label class="form-label" for="paid-modal-title">Course Title *</label>
+            <input type="text" id="paid-modal-title" class="form-input" placeholder="e.g. [English] Ultimate Web Development Course 2026 - Build Modern Websites" required>
+          </div>
+
+          <!-- 4. PRICING, COST REDUCTION & DISCOUNT CALCULATION -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
             <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--amber); letter-spacing: 0.5px; display: block; margin-bottom: 10px;">
-              🏷️ Pricing &amp; Discount Management (Backend Calculated)
+              🏷️ Pricing, Cost Reduction &amp; Discount Calculation
             </span>
             <div class="form-row">
               <div class="form-group">
                 <label class="form-label" for="paid-modal-orig-price">Original Price / MRP (₹) *</label>
-                <input type="text" id="paid-modal-orig-price" class="form-input font-mono" placeholder="₹2,999" value="₹2,999" required>
+                <input type="text" id="paid-modal-orig-price" class="form-input font-mono" placeholder="₹3,899" value="₹3,899" required>
+                <span class="form-hint" style="font-size: 11px;">Original full price shown with strikethrough</span>
               </div>
               <div class="form-group">
-                <label class="form-label" for="paid-modal-price">Discounted Sale Price (₹) *</label>
-                <input type="text" id="paid-modal-price" class="form-input font-mono" placeholder="₹1,499" value="₹1,499" required>
+                <label class="form-label" for="paid-modal-price">Discounted / Sale Price (₹) *</label>
+                <input type="text" id="paid-modal-price" class="form-input font-mono" placeholder="₹2,599" value="₹2,599" required>
+                <span class="form-hint" style="font-size: 11px;">Final cost charged to student</span>
               </div>
             </div>
+
             <!-- Live Discount Badge Output -->
-            <div id="paid-modal-discount-calc" style="margin-top: 4px; padding: 10px 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between;">
-              <span id="paid-modal-discount-text" style="color: #ef4444; font-weight: 700; font-size: 13px;">🔥 50% OFF</span>
-              <span id="paid-modal-discount-savings" style="color: var(--text-white); font-size: 12.5px;">Student Saves ₹1,500</span>
+            <div id="paid-modal-discount-calc" style="margin-top: 8px; padding: 10px 14px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 6px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <span id="paid-modal-discount-text" style="color: #ef4444; font-weight: 700; font-size: 13px;">🔥 33% OFF</span>
+              <span id="paid-modal-discount-savings" style="color: var(--text-white); font-size: 12.5px;">Cost Reduction: Student Saves ₹1,300</span>
             </div>
           </div>
 
-          <!-- Course Cover Photo Access (Device Directories + URL) -->
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <label class="form-label" style="display: flex; align-items: center; justify-content: space-between;">
-              <span>📷 Course Cover Image / Photo</span>
-              <span style="font-size: 11px; color: var(--indigo-light); font-weight: 400;">Select from Device or Paste URL</span>
-            </label>
+          <!-- 5. COURSE METADATA & FEATURED BADGE -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <span style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--text-white); letter-spacing: 0.5px; display: block; margin-bottom: 10px;">
+              📊 Course Meta Attributes (Matches Screenshot Badges)
+            </span>
 
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 6px;">
-              <div>
-                <span style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">1. Upload from Device Directories:</span>
-                <input type="file" id="paid-modal-image-file" accept="image/*" class="form-input" style="padding: 6px 10px; font-size: 12px; background: var(--bg-slate-900);">
+            <div class="form-row" style="margin-bottom: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="paid-modal-instructor">Instructor Name</label>
+                <input type="text" id="paid-modal-instructor" class="form-input" placeholder="e.g. CodeWithHarry or ShortStudy" value="ShortStudy">
               </div>
-              <div>
-                <span style="font-size: 11.5px; color: var(--text-muted); display: block; margin-bottom: 4px;">2. Or Image Web URL:</span>
-                <input type="text" id="paid-modal-image" class="form-input font-mono" placeholder="https://images.unsplash.com/... or base64 data url">
+              <div class="form-group">
+                <label class="form-label" for="paid-modal-level">Target Difficulty Level</label>
+                <select id="paid-modal-level" class="form-select">
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                  <option value="All Levels">All Levels</option>
+                </select>
               </div>
-              <div id="paid-modal-image-preview-container" style="display: none; margin-top: 6px;">
-                <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 4px;">Selected Image Preview:</span>
-                <img id="paid-modal-image-preview" src="" alt="Course Cover Preview" style="max-height: 120px; width: 100%; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-light);">
+            </div>
+
+            <div class="form-row" style="margin-bottom: 10px;">
+              <div class="form-group">
+                <label class="form-label" for="paid-modal-duration">Total Duration</label>
+                <input type="text" id="paid-modal-duration" class="form-input" placeholder="e.g. 36h 22m" value="36h 22m">
               </div>
+              <div class="form-group">
+                <label class="form-label" for="paid-modal-lessons">Total Lessons Count</label>
+                <input type="text" id="paid-modal-lessons" class="form-input" placeholder="e.g. 219 lessons" value="219 lessons">
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="paid-modal-language">Audio Language</label>
+                <input type="text" id="paid-modal-language" class="form-input" placeholder="e.g. Hindi / English" value="Hindi">
+              </div>
+            </div>
+
+            <!-- Featured Course Toggle -->
+            <div style="display: flex; align-items: center; gap: 10px; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border-slate);">
+              <input type="checkbox" id="paid-modal-featured" style="width: 18px; height: 18px; cursor: pointer;" checked>
+              <label for="paid-modal-featured" style="font-size: 13px; font-weight: 600; color: #facc15; cursor: pointer; display: flex; align-items: center; gap: 4px;">
+                ⭐ Mark as "Featured" Course (Shows Golden Badge on Top-Right of Card)
+              </label>
             </div>
           </div>
 
-          <!-- Multiple Videos Playlist Builder -->
-          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <!-- 6. MULTIPLE VIDEOS PLAYLIST -->
+          <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid var(--border-slate); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
               <div>
                 <span style="font-size: 13px; font-weight: 700; color: var(--text-white);">🎥 Multiple Course Videos &amp; Descriptions</span>
-                <span style="font-size: 11.5px; color: var(--text-muted); display: block;">Embed multiple videos. Write descriptions normally in plain text without HTML tags.</span>
+                <span style="font-size: 11.5px; color: var(--text-muted); display: block;">Embed video lectures. Write descriptions normally in plain text.</span>
               </div>
               <button type="button" class="btn btn-sm btn-success" id="btn-add-paid-video" style="padding: 6px 12px; font-size: 12px;">
                 + Add Video
@@ -892,30 +1004,26 @@ print('Hello ShortStudy')
             </div>
           </div>
 
-          <!-- Metadata & Status -->
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="paid-modal-duration">Total Duration Label</label>
-              <input type="text" id="paid-modal-duration" class="form-input" placeholder="e.g. 28 Hours HD Video" value="20 Hours HD Video">
+          <!-- 7. SUMMARY & PUBLICATION STATUS -->
+          <div class="form-row" style="margin-bottom: 12px;">
+            <div class="form-group" style="flex: 2;">
+              <label class="form-label" for="paid-modal-badge">Custom Badge (Optional Override)</label>
+              <input type="text" id="paid-modal-badge" class="form-input" placeholder="e.g. Masterclass · Best Seller" value="Featured Masterclass">
             </div>
-            <div class="form-group">
-              <label class="form-label" for="paid-modal-badge">Badge Tag</label>
-              <input type="text" id="paid-modal-badge" class="form-input" placeholder="e.g. Masterclass · Best Seller" value="Comprehensive Masterclass">
-            </div>
-            <div class="form-group">
+            <div class="form-group" style="flex: 1;">
               <label class="form-label" for="paid-modal-status">Publish Status</label>
               <select id="paid-modal-status" class="form-select">
-                <option value="published">Published (Live on Website)</option>
+                <option value="published">Published (Live)</option>
                 <option value="draft">Draft (Hidden)</option>
               </select>
             </div>
           </div>
 
-          <!-- Main Course Summary -->
           <div class="form-group">
             <label class="form-label" for="paid-modal-desc">Overall Course Summary *</label>
-            <textarea id="paid-modal-desc" class="form-textarea" style="min-height: 70px;" placeholder="Summary of what students will achieve in this complete course..." required></textarea>
+            <textarea id="paid-modal-desc" class="form-textarea" style="min-height: 70px;" placeholder="This is a to-the-point, CodeWithHarry style course designed for..." required>This is a to-the-point, CodeWithHarry style comprehensive course designed for job readiness and real-world mastery.</textarea>
           </div>
+
         </div>
 
         <div class="modal-footer">

@@ -123,3 +123,134 @@ window.showConsentPreferences = function () {
   localStorage.removeItem('shortstudy_cookie_consent_v1');
   initConsentBanner();
 };
+
+/* =========================================================
+   5. CODEWITHHARRY-STYLE INTERACTIVE LAYOUT ENHANCEMENTS
+   ========================================================= */
+document.addEventListener('DOMContentLoaded', function () {
+  // Hero typing text animation
+  initHeroTyping();
+
+  // Course category filter buttons
+  initCourseFilters();
+
+  // Search input filter
+  initSiteSearch();
+
+  // Code block copy buttons
+  initCodeCopyButtons();
+});
+
+function initCodeCopyButtons() {
+  var copyButtons = document.querySelectorAll('.cwh-copy-btn');
+  copyButtons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var container = btn.closest('.cwh-code-container');
+      if (!container) return;
+      var pre = container.querySelector('.cwh-code-pre') || container.querySelector('code');
+      if (!pre) return;
+
+      var textToCopy = pre.innerText || pre.textContent;
+      navigator.clipboard.writeText(textToCopy).then(function () {
+        var originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.style.background = '#10b981';
+        btn.style.color = '#ffffff';
+        setTimeout(function () {
+          btn.textContent = originalText;
+          btn.style.background = '';
+          btn.style.color = '';
+        }, 2000);
+      }).catch(function () {
+        btn.textContent = 'Copied!';
+      });
+    });
+  });
+}
+
+function initHeroTyping() {
+  var el = document.getElementById('typingWord');
+  if (!el) return;
+
+  var words = [
+    'Python Programming',
+    'Data Structures & Arrays',
+    'C Language & Memory',
+    'Java & OOP Concepts',
+    'HTML5 & Modern CSS',
+    'SQL Databases'
+  ];
+  var wordIdx = 0;
+  var charIdx = 0;
+  var isDeleting = false;
+  var typingSpeed = 100;
+
+  function type() {
+    var currentWord = words[wordIdx];
+    if (isDeleting) {
+      el.textContent = currentWord.substring(0, charIdx - 1);
+      charIdx--;
+      typingSpeed = 50;
+    } else {
+      el.textContent = currentWord.substring(0, charIdx + 1);
+      charIdx++;
+      typingSpeed = 110;
+    }
+
+    if (!isDeleting && charIdx === currentWord.length) {
+      typingSpeed = 1800; // Pause at end of word
+      isDeleting = true;
+    } else if (isDeleting && charIdx === 0) {
+      isDeleting = false;
+      wordIdx = (wordIdx + 1) % words.length;
+      typingSpeed = 400;
+    }
+
+    setTimeout(type, typingSpeed);
+  }
+
+  type();
+}
+
+function initCourseFilters() {
+  var buttons = document.querySelectorAll('.cwh-filter-btn');
+  var cards = document.querySelectorAll('.cwh-card');
+  if (!buttons.length || !cards.length) return;
+
+  buttons.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      buttons.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+
+      var cat = btn.getAttribute('data-filter');
+      cards.forEach(function (card) {
+        var cardCat = card.getAttribute('data-category') || '';
+        if (cat === 'all' || cardCat.includes(cat)) {
+          card.style.display = 'flex';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    });
+  });
+}
+
+function initSiteSearch() {
+  var searchInput = document.getElementById('siteSearchInput');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', function () {
+    var query = searchInput.value.toLowerCase().trim();
+    var cards = document.querySelectorAll('.cwh-card, .class-card');
+
+    cards.forEach(function (card) {
+      var text = card.textContent.toLowerCase();
+      if (!query || text.includes(query)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  });
+}
+

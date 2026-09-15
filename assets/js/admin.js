@@ -1778,29 +1778,49 @@ function renderPaidCoursesTable(filterQuery = "") {
     const tr = document.createElement("tr");
     const isPublished = course.status === "published";
     const imgUrl = course.image || "https://images.unsplash.com/photo-1516116211227-bbc141e6c38a?auto=format&fit=crop&w=400&q=80";
-    const hasVideo = course.videoEmbed && course.videoEmbed.trim() !== "";
+    const hasVideo = (Array.isArray(course.videos) && course.videos.length > 0) || (course.videoEmbed && course.videoEmbed.trim() !== "");
+    const isFeatured = Boolean(course.isFeatured || course.featured);
+
+    const origNum = parseFloat((course.origPrice || course.originalPrice || "").replace(/[^0-9.]/g, "")) || 0;
+    const priceNum = parseFloat((course.price || "").replace(/[^0-9.]/g, "")) || 0;
+    const discount = (origNum > priceNum && origNum > 0) 
+      ? Math.round(((origNum - priceNum) / origNum) * 100) 
+      : (course.discountPercent || 0);
 
     tr.innerHTML = `
       <td>
         <div style="display:flex; align-items:center; gap:12px;">
-          <img src="${escapeHtml(imgUrl)}" alt="" style="width:48px; height:48px; object-fit:cover; border-radius:6px; border:1px solid var(--border-light); background:var(--bg-slate-800); flex-shrink:0;">
+          <div style="position:relative; width:64px; aspect-ratio:16/9; border-radius:6px; overflow:hidden; border:1px solid var(--border-light); background:var(--bg-slate-800); flex-shrink:0;">
+            <img src="${escapeHtml(imgUrl)}" alt="" style="width:100%; height:100%; object-fit:cover;">
+            ${discount > 0 ? `<span style="position:absolute; top:2px; left:2px; background:#ef4444; color:#fff; font-size:9px; font-weight:700; padding:1px 4px; border-radius:2px;">${discount}%</span>` : ''}
+          </div>
           <div>
-            <strong style="color:var(--text-white); font-size:14px; display:block;">${escapeHtml(course.title)}</strong>
-            <span style="font-size:12px; color:var(--text-muted); line-height:1.4; display:block; max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-              ${escapeHtml(course.description || "")}
-            </span>
+            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+              <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(course.title)}</strong>
+              ${isFeatured ? `<span style="background:#eab308; color:#000; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; text-transform:uppercase;">Featured</span>` : ''}
+            </div>
+            <div style="font-size:11.5px; color:var(--text-muted); display:flex; gap:8px; margin-top:2px;">
+              <span>👨‍🏫 ${escapeHtml(course.instructor || "ShortStudy")}</span>
+              <span>•</span>
+              <span>🔍 ${escapeHtml(course.level || "Beginner")}</span>
+              <span>•</span>
+              <span>⏱️ ${escapeHtml(course.duration || "36h 22m")}</span>
+            </div>
           </div>
         </div>
       </td>
       <td>
-        <span class="badge badge-published" style="background:rgba(242,201,76,0.15); color:#F2C94C; border-color:rgba(242,201,76,0.3); font-size:10.5px;">
+        <span class="badge" style="background:rgba(99, 102, 241, 0.15); color:var(--indigo-light); border-color:rgba(99, 102, 241, 0.3); font-size:11px;">
           ${escapeHtml(course.badge || "Masterclass")}
         </span>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${escapeHtml(course.duration || "")}</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${escapeHtml(course.language || "Hindi")} · ${escapeHtml(course.lessonsCount || "219 lessons")}</div>
       </td>
       <td>
-        <strong style="color:#F2C94C; font-size:14px;">${escapeHtml(course.price || "₹499")}</strong>
-        ${course.origPrice ? `<div style="font-size:11px; color:var(--text-muted); text-decoration:line-through;">${escapeHtml(course.origPrice)}</div>` : ''}
+        <div style="display:flex; align-items:baseline; gap:6px;">
+          <strong style="color:#ffffff; font-size:15px; font-weight:800;">${escapeHtml(course.price || "₹2599")}</strong>
+          ${course.origPrice ? `<span style="font-size:11.5px; color:var(--text-muted); text-decoration:line-through;">${escapeHtml(course.origPrice)}</span>` : ''}
+        </div>
+        ${discount > 0 ? `<div style="font-size:10.5px; color:#ef4444; font-weight:700; margin-top:2px;">🔥 ${discount}% OFF</div>` : ''}
       </td>
       <td>
         <span class="badge ${isPublished ? 'badge-published' : 'badge-draft'}">
@@ -1812,7 +1832,7 @@ function renderPaidCoursesTable(filterQuery = "") {
       </td>
       <td>
         <div style="display:flex; gap:6px; align-items:center;">
-          <a href="programming-videos.html#paid-courses" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;" title="View on public site">View</a>
+          <a href="courses.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none; padding:4px 8px; font-size:12px;" title="View Live Course">View Live</a>
           <button class="btn btn-secondary btn-sm edit-paid-btn" data-id="${course.id}">Edit</button>
           <button class="btn btn-danger btn-sm delete-paid-btn" data-id="${course.id}">Delete</button>
         </div>
@@ -1840,19 +1860,83 @@ function updateAdminDiscountCalc() {
   const textEl = document.getElementById("paid-modal-discount-text");
   const savingsEl = document.getElementById("paid-modal-discount-savings");
 
-  if (!origEl || !priceEl || !calcBox) return;
+  const prevTitle = document.getElementById("prev-card-title");
+  const prevDesc = document.getElementById("prev-card-desc");
+  const prevSalePrice = document.getElementById("prev-card-sale-price");
+  const prevOrigPrice = document.getElementById("prev-card-orig-price");
+  const prevDiscount = document.getElementById("prev-card-discount");
+  const prevFeatured = document.getElementById("prev-card-featured");
+  const prevImg = document.getElementById("prev-card-img");
+  const prevInstructor = document.getElementById("prev-card-instructor");
+  const prevLevel = document.getElementById("prev-card-level");
+  const prevDuration = document.getElementById("prev-card-duration");
+  const prevLessons = document.getElementById("prev-card-lessons");
+  const prevLang = document.getElementById("prev-card-lang");
 
-  const origNum = parseFloat((origEl.value || "").replace(/[^0-9.]/g, "")) || 0;
-  const priceNum = parseFloat((priceEl.value || "").replace(/[^0-9.]/g, "")) || 0;
+  const titleInput = document.getElementById("paid-modal-title");
+  const descInput = document.getElementById("paid-modal-desc");
+  const urlInput = document.getElementById("paid-modal-image");
+  const instructorInput = document.getElementById("paid-modal-instructor");
+  const levelInput = document.getElementById("paid-modal-level");
+  const durationInput = document.getElementById("paid-modal-duration");
+  const lessonsInput = document.getElementById("paid-modal-lessons");
+  const langInput = document.getElementById("paid-modal-language");
+  const featuredInput = document.getElementById("paid-modal-featured");
 
-  if (origNum > priceNum && origNum > 0) {
-    const percent = Math.round(((origNum - priceNum) / origNum) * 100);
-    const savings = origNum - priceNum;
-    calcBox.style.display = "flex";
-    if (textEl) textEl.textContent = `🔥 ${percent}% OFF (Calculated Automatically)`;
-    if (savingsEl) savingsEl.textContent = `Student Saves ₹${savings.toLocaleString("en-IN")}`;
-  } else {
-    calcBox.style.display = "none";
+  if (origEl && priceEl) {
+    const origNum = parseFloat((origEl.value || "").replace(/[^0-9.]/g, "")) || 0;
+    const priceNum = parseFloat((priceEl.value || "").replace(/[^0-9.]/g, "")) || 0;
+
+    let percent = 0;
+    if (origNum > priceNum && origNum > 0) {
+      percent = Math.round(((origNum - priceNum) / origNum) * 100);
+      const savings = origNum - priceNum;
+      if (calcBox) calcBox.style.display = "flex";
+      if (textEl) textEl.textContent = `🔥 ${percent}% OFF`;
+      if (savingsEl) savingsEl.textContent = `Cost Reduction: Student Saves ₹${savings.toLocaleString("en-IN")}`;
+      if (prevDiscount) {
+        prevDiscount.style.display = "block";
+        prevDiscount.textContent = `${percent}% OFF`;
+      }
+    } else {
+      if (calcBox) calcBox.style.display = "none";
+      if (prevDiscount) prevDiscount.style.display = "none";
+    }
+
+    if (prevSalePrice) prevSalePrice.textContent = priceEl.value || "₹2599";
+    if (prevOrigPrice) {
+      prevOrigPrice.textContent = origEl.value || "₹3899";
+      prevOrigPrice.style.display = origEl.value ? "inline" : "none";
+    }
+  }
+
+  // Update other live preview elements
+  if (prevTitle && titleInput) {
+    prevTitle.textContent = titleInput.value.trim() || "Ultimate Job-Ready AI-Powered Data Analytics Course";
+  }
+  if (prevDesc && descInput) {
+    prevDesc.textContent = descInput.value.trim() || "This is a to-the-point, CodeWithHarry style comprehensive course...";
+  }
+  if (prevImg && urlInput && urlInput.value.trim()) {
+    prevImg.src = urlInput.value.trim();
+  }
+  if (prevInstructor && instructorInput) {
+    prevInstructor.textContent = `👨‍🏫 ${instructorInput.value.trim() || "ShortStudy"}`;
+  }
+  if (prevLevel && levelInput) {
+    prevLevel.textContent = `🔍 ${levelInput.value}`;
+  }
+  if (prevDuration && durationInput) {
+    prevDuration.textContent = `⏱️ ${durationInput.value.trim() || "36h 22m"}`;
+  }
+  if (prevLessons && lessonsInput) {
+    prevLessons.textContent = `📚 ${lessonsInput.value.trim() || "219 lessons"}`;
+  }
+  if (prevLang && langInput) {
+    prevLang.textContent = `🗣️ ${langInput.value.trim() || "Hindi"}`;
+  }
+  if (prevFeatured && featuredInput) {
+    prevFeatured.style.display = featuredInput.checked ? "block" : "none";
   }
 }
 
@@ -1909,6 +1993,14 @@ function initPaidCourseModalEventsOnce() {
   const addVideoBtn = document.getElementById("btn-add-paid-video");
   const origEl = document.getElementById("paid-modal-orig-price");
   const priceEl = document.getElementById("paid-modal-price");
+  const titleInput = document.getElementById("paid-modal-title");
+  const descInput = document.getElementById("paid-modal-desc");
+  const instructorInput = document.getElementById("paid-modal-instructor");
+  const levelInput = document.getElementById("paid-modal-level");
+  const durationInput = document.getElementById("paid-modal-duration");
+  const lessonsInput = document.getElementById("paid-modal-lessons");
+  const langInput = document.getElementById("paid-modal-language");
+  const featuredInput = document.getElementById("paid-modal-featured");
 
   if (fileInput && !fileInput.dataset.bound) {
     fileInput.dataset.bound = "true";
@@ -1921,34 +2013,26 @@ function initPaidCourseModalEventsOnce() {
           if (urlInput) urlInput.value = dataUrl;
           if (preview) preview.src = dataUrl;
           if (previewContainer) previewContainer.style.display = "block";
+          const prevImg = document.getElementById("prev-card-img");
+          if (prevImg) prevImg.src = dataUrl;
         };
         reader.readAsDataURL(file);
       }
     });
   }
 
-  if (urlInput && !urlInput.dataset.bound) {
-    urlInput.dataset.bound = "true";
-    urlInput.addEventListener("input", (e) => {
-      const val = e.target.value.trim();
-      if (val && preview) {
-        preview.src = val;
-        if (previewContainer) previewContainer.style.display = "block";
-      } else if (previewContainer) {
-        previewContainer.style.display = "none";
-      }
-    });
-  }
+  const liveInputs = [
+    urlInput, origEl, priceEl, titleInput, descInput,
+    instructorInput, levelInput, durationInput, lessonsInput, langInput, featuredInput
+  ];
 
-  if (origEl && !origEl.dataset.bound) {
-    origEl.dataset.bound = "true";
-    origEl.addEventListener("input", updateAdminDiscountCalc);
-  }
-
-  if (priceEl && !priceEl.dataset.bound) {
-    priceEl.dataset.bound = "true";
-    priceEl.addEventListener("input", updateAdminDiscountCalc);
-  }
+  liveInputs.forEach(input => {
+    if (input && !input.dataset.bound) {
+      input.dataset.bound = "true";
+      input.addEventListener("input", updateAdminDiscountCalc);
+      input.addEventListener("change", updateAdminDiscountCalc);
+    }
+  });
 
   if (addVideoBtn && !addVideoBtn.dataset.bound) {
     addVideoBtn.dataset.bound = "true";
@@ -1981,19 +2065,30 @@ function openPaidCourseModal(courseId = null) {
 
   const preview = document.getElementById("paid-modal-image-preview");
   const previewContainer = document.getElementById("paid-modal-image-preview-container");
+  const instructorInput = document.getElementById("paid-modal-instructor");
+  const levelInput = document.getElementById("paid-modal-level");
+  const lessonsInput = document.getElementById("paid-modal-lessons");
+  const langInput = document.getElementById("paid-modal-language");
+  const featuredInput = document.getElementById("paid-modal-featured");
 
   if (courseId) {
     const course = paidCoursesData.find(c => c.id === courseId);
     if (!course) return;
     if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Edit Paid Video Course";
     if (el.paidModalTitle) el.paidModalTitle.value = course.title || "";
-    if (el.paidModalPrice) el.paidModalPrice.value = course.price || "₹1,499";
-    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = course.originalPrice || course.origPrice || "₹2,999";
-    if (el.paidModalDuration) el.paidModalDuration.value = course.duration || "20 Hours HD Video";
-    if (el.paidModalBadge) el.paidModalBadge.value = course.badge || "Comprehensive Masterclass";
+    if (el.paidModalPrice) el.paidModalPrice.value = course.price || "₹2599";
+    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = course.originalPrice || course.origPrice || "₹3899";
+    if (el.paidModalDuration) el.paidModalDuration.value = course.duration || "36h 22m";
+    if (el.paidModalBadge) el.paidModalBadge.value = course.badge || "Featured Masterclass";
     if (el.paidModalStatus) el.paidModalStatus.value = course.status || "published";
     if (el.paidModalImage) el.paidModalImage.value = course.image || "";
     if (el.paidModalDesc) el.paidModalDesc.value = course.description || "";
+
+    if (instructorInput) instructorInput.value = course.instructor || "ShortStudy";
+    if (levelInput) levelInput.value = course.level || "Beginner";
+    if (lessonsInput) lessonsInput.value = course.lessonsCount || "219 lessons";
+    if (langInput) langInput.value = course.language || "Hindi";
+    if (featuredInput) featuredInput.checked = Boolean(course.isFeatured || course.featured);
 
     if (course.image && preview && previewContainer) {
       preview.src = course.image;
@@ -2023,16 +2118,21 @@ function openPaidCourseModal(courseId = null) {
   } else {
     if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Add Paid Video Course";
     if (el.paidCourseForm) el.paidCourseForm.reset();
-    if (el.paidModalPrice) el.paidModalPrice.value = "₹1,499";
-    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = "₹2,999";
-    if (el.paidModalDuration) el.paidModalDuration.value = "20 Hours HD Video";
-    if (el.paidModalBadge) el.paidModalBadge.value = "Comprehensive Masterclass";
+    if (el.paidModalPrice) el.paidModalPrice.value = "₹2599";
+    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = "₹3899";
+    if (el.paidModalDuration) el.paidModalDuration.value = "36h 22m";
+    if (el.paidModalBadge) el.paidModalBadge.value = "Featured Masterclass";
     if (el.paidModalStatus) el.paidModalStatus.value = "published";
+    if (instructorInput) instructorInput.value = "ShortStudy";
+    if (levelInput) levelInput.value = "Beginner";
+    if (lessonsInput) lessonsInput.value = "219 lessons";
+    if (langInput) langInput.value = "Hindi";
+    if (featuredInput) featuredInput.checked = true;
 
     if (previewContainer) previewContainer.style.display = "none";
     currentCourseVideos = [{
       id: "v-1",
-      title: "Lesson 1: Introduction & Overview",
+      title: "Lesson 1: Introduction & Masterclass Overview",
       videoUrl: "",
       description: ""
     }];
@@ -2075,6 +2175,12 @@ if (el.paidCourseForm) {
     const status = el.paidModalStatus ? el.paidModalStatus.value : "published";
     const image = el.paidModalImage ? el.paidModalImage.value.trim() : "";
     const description = el.paidModalDesc ? el.paidModalDesc.value.trim() : "";
+
+    const instructor = document.getElementById("paid-modal-instructor")?.value.trim() || "ShortStudy";
+    const level = document.getElementById("paid-modal-level")?.value || "Beginner";
+    const lessonsCount = document.getElementById("paid-modal-lessons")?.value.trim() || "219 lessons";
+    const language = document.getElementById("paid-modal-language")?.value.trim() || "Hindi";
+    const isFeatured = Boolean(document.getElementById("paid-modal-featured")?.checked);
 
     // Gather videos array from DOM rows
     const videoRows = document.querySelectorAll("#paid-modal-videos-list .paid-video-row");
@@ -2129,7 +2235,12 @@ if (el.paidCourseForm) {
       duration,
       badge,
       status,
-      image: image || "https://images.unsplash.com/photo-1516116211227-bbc00e57e849?w=700&auto=format&fit=crop&q=80",
+      instructor,
+      level,
+      lessonsCount,
+      language,
+      isFeatured,
+      image: image || "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
       videoEmbed: firstVideoEmbed,
       videoUrl: firstVideoEmbed,
       videos: videosList,
@@ -2144,7 +2255,7 @@ if (el.paidCourseForm) {
       await setDoc(doc(db, "paid_courses", targetId), payload, { merge: true });
       firestorePaidCoursesMap.set(targetId, payload);
       rebuildAndRenderPaidCourses();
-      showToast(`Paid course "${title}" saved with ${videosList.length} video(s)!`, "success");
+      showToast(`Paid course "${title}" saved successfully!`, "success");
       closePaidCourseModal();
     } catch (err) {
       console.warn("Firestore write fallback for paid course:", err);
@@ -2248,8 +2359,8 @@ function renderOrdersTable(filter = "all") {
 
   filtered.forEach((order) => {
     const tr = document.createElement("tr");
-    const isGranted = order.accessGranted === true;
-    const isPendingManual = !isGranted || order.paymentStatus === "pending_manual_access" || !!order.failSafeReason;
+    const isPurchased = order.purchased === true || order.accessGranted === true;
+    const isPendingManual = order.purchased === false || !isPurchased || order.paymentStatus === "pending_manual_access" || !!order.failSafeReason;
 
     // Date formatting
     let dateStr = "Recent";
@@ -2258,48 +2369,53 @@ function renderOrdersTable(filter = "all") {
       dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
     }
 
+    const studentName = order.name || order.studentName || order.fullName || "Student";
+    const studentEmail = order.email || order.studentEmail || "—";
+    const studentPhone = order.phone || order.studentPhone || "—";
+    const utrNumber = order.utr || order.transactionId || order.referenceNo || "—";
+
     tr.innerHTML = `
       <td>
         <span class="font-mono" style="font-size:11px; color:var(--indigo-light);">${escapeHtml(order.id)}</span>
         <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${dateStr}</div>
       </td>
       <td>
-        <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(order.fullName || "Student")}</strong>
-        <div style="font-size:11.5px; color:var(--indigo-light);">${escapeHtml(order.email || "")}</div>
-        <div style="font-size:11px; color:var(--text-muted);">${escapeHtml(order.phone || "")}</div>
+        <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(studentName)}</strong>
+        <div style="font-size:11.5px; color:var(--indigo-light);">${escapeHtml(studentEmail)}</div>
+        <div style="font-size:11px; color:var(--text-muted);">📱 ${escapeHtml(studentPhone)}</div>
       </td>
       <td>
-        <span class="font-mono" style="font-size:11px; color:#6ee7b7; background:rgba(110,231,183,0.1); padding:2px 6px; border-radius:4px;">
-          ${escapeHtml(order.accountId || "ID-" + (order.id || "").slice(-6))}
+        <div style="font-size:11px; color:var(--text-muted); margin-bottom: 2px;">UTR / Ref:</div>
+        <span class="font-mono" style="font-size:11px; color:#fbbf24; background:rgba(251,191,36,0.1); padding:2px 6px; border-radius:4px; border: 1px solid rgba(251,191,36,0.25);">
+          ${escapeHtml(utrNumber)}
         </span>
       </td>
       <td>
         <div style="font-weight:600; color:var(--text-white); font-size:13px;">${escapeHtml(order.courseTitle || "Premium Course")}</div>
-        <span style="color:#F2C94C; font-weight:700; font-size:12px;">${escapeHtml(order.coursePrice || "")}</span>
+        <span style="color:#F2C94C; font-weight:700; font-size:12px;">${escapeHtml(order.amount || order.coursePrice || "")}</span>
       </td>
       <td>
-        ${isPendingManual
-          ? `<span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); font-size:10px;">
-              ⚠️ Fail-Safe: Pending Manual Access
+        ${isPurchased
+          ? `<span class="badge badge-published" style="font-size:10.5px;">UPI (+91 9315671951)</span>`
+          : `<span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); font-size:10px;">
+              ⚠️ Verification Needed
             </span>`
-          : `<span class="badge badge-published" style="font-size:10.5px;">Completed</span>`
         }
-        ${order.failSafeReason ? `<div style="font-size:10.5px; color:#f87171; margin-top:3px; max-width:200px;">Reason: ${escapeHtml(order.failSafeReason)}</div>` : ''}
       </td>
       <td>
-        ${isGranted
-          ? `<span class="badge badge-published" style="font-size:11px;">✓ Access Granted</span>`
-          : `<span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:11px;">✕ Access Locked</span>`
+        ${isPurchased
+          ? `<span class="badge badge-published" style="font-size:11px; font-weight:700;">purchased: true</span>`
+          : `<span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:11px; font-weight:700;">purchased: false</span>`
         }
       </td>
       <td>
         <div style="display:flex; gap:6px; align-items:center;">
-          ${!isGranted
+          ${!isPurchased
             ? `<button class="btn btn-success btn-sm btn-grant-order" data-id="${order.id}" style="font-size:11.5px; padding:6px 12px; font-weight:600;">
-                ✓ Grant Access
+                ✓ Set purchased = true
               </button>`
-            : `<button class="btn btn-secondary btn-sm btn-revoke-order" data-id="${order.id}" style="font-size:11px;">
-                Revoke
+            : `<button class="btn btn-secondary btn-sm btn-revoke-order" data-id="${order.id}" style="font-size:11px; color:#f87171;">
+                Set purchased = false
               </button>`
           }
         </div>
@@ -2324,21 +2440,27 @@ async function handleGrantOrderAccess(orderId) {
   if (!order) return;
 
   const updateData = {
+    purchased: true, // EXACT field set to true
     accessGranted: true,
     paymentStatus: "completed",
+    status: "completed",
     manualGrantBy: currentUser ? currentUser.email : "admin@shortstudy.com",
     grantedAt: serverTimestamp()
   };
 
   try {
     await updateDoc(doc(db, "course_orders", orderId), updateData);
-    // Also record under course_access collection
-    const accessKey = `${order.email || "user"}_${order.courseId || "course"}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    
+    const studentEmail = order.email || order.studentEmail || "user";
+    const courseId = order.courseId || "course";
+    const accessKey = `${studentEmail}_${courseId}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    
     await setDoc(doc(db, "course_access", accessKey), {
-      email: order.email,
-      accountId: order.accountId,
-      courseId: order.courseId,
+      email: studentEmail,
+      studentName: order.name || order.studentName || order.fullName,
+      courseId: courseId,
       courseTitle: order.courseTitle,
+      purchased: true,
       accessGranted: true,
       grantedBy: currentUser ? currentUser.email : "admin",
       updatedAt: serverTimestamp()
@@ -2351,24 +2473,16 @@ async function handleGrantOrderAccess(orderId) {
     const idx = ordersData.findIndex(o => o.id === orderId);
     if (idx !== -1) ordersData[idx] = { ...ordersData[idx], ...updateData };
 
-    // Update localStorage for immediate local preview
-    if (order.courseId) {
-      localStorage.setItem(`shortstudy_enrolled_${order.courseId}`, "true");
-    }
-
     renderOrdersTable(currentOrderFilter);
     updateMetrics();
-    showToast(`Access manually granted to ${order.fullName || order.email}!`, "success");
+    showToast(`Purchased access set to TRUE for ${order.name || order.studentName || order.email}!`, "success");
   } catch (err) {
     console.warn("Firestore order update fallback:", err);
     const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], accessGranted: true, paymentStatus: "completed" };
-    if (order.courseId) {
-      localStorage.setItem(`shortstudy_enrolled_${order.courseId}`, "true");
-    }
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], purchased: true, accessGranted: true, paymentStatus: "completed" };
     renderOrdersTable(currentOrderFilter);
     updateMetrics();
-    showToast(`Access granted locally for ${order.fullName || order.email}!`, "info");
+    showToast(`Purchased access set to true locally!`, "info");
   }
 }
 
@@ -2377,19 +2491,23 @@ async function handleRevokeOrderAccess(orderId) {
   if (!order) return;
 
   const updateData = {
+    purchased: false, // EXACT field set to false
     accessGranted: false,
     paymentStatus: "revoked",
+    status: "revoked",
     updatedAt: serverTimestamp()
   };
 
   try {
     await updateDoc(doc(db, "course_orders", orderId), updateData);
-    const accessKey = `${order.email || "user"}_${order.courseId || "course"}`.replace(/[^a-zA-Z0-9_]/g, "_");
-    await setDoc(doc(db, "course_access", accessKey), { accessGranted: false }, { merge: true }).catch(() => {});
-
-    if (order.courseId) {
-      localStorage.removeItem(`shortstudy_enrolled_${order.courseId}`);
-    }
+    const studentEmail = order.email || order.studentEmail || "user";
+    const courseId = order.courseId || "course";
+    const accessKey = `${studentEmail}_${courseId}`.replace(/[^a-zA-Z0-9_]/g, "_");
+    
+    await setDoc(doc(db, "course_access", accessKey), { 
+      purchased: false, 
+      accessGranted: false 
+    }, { merge: true }).catch(() => {});
 
     if (firestoreOrdersMap.has(orderId)) {
       firestoreOrdersMap.set(orderId, { ...firestoreOrdersMap.get(orderId), ...updateData });
@@ -2399,17 +2517,14 @@ async function handleRevokeOrderAccess(orderId) {
 
     renderOrdersTable(currentOrderFilter);
     updateMetrics();
-    showToast(`Access revoked for ${order.fullName || order.email}.`, "info");
+    showToast(`Purchased status set to FALSE for ${order.name || order.studentName || order.email}.`, "info");
   } catch (err) {
     console.warn("Firestore revoke fallback:", err);
     const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], accessGranted: false, paymentStatus: "revoked" };
-    if (order.courseId) {
-      localStorage.removeItem(`shortstudy_enrolled_${order.courseId}`);
-    }
+    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], purchased: false, accessGranted: false, paymentStatus: "revoked" };
     renderOrdersTable(currentOrderFilter);
     updateMetrics();
-    showToast(`Access revoked locally.`, "info");
+    showToast(`Purchased status updated locally.`, "info");
   }
 }
 
@@ -2450,11 +2565,46 @@ el.navLinks.forEach((link) => {
   });
 });
 
+// Mobile drawer & backdrop management
+let adminSidebarBackdrop = document.querySelector(".admin-sidebar-backdrop");
+if (!adminSidebarBackdrop) {
+  adminSidebarBackdrop = document.createElement("div");
+  adminSidebarBackdrop.className = "admin-sidebar-backdrop";
+  document.body.appendChild(adminSidebarBackdrop);
+}
+
+function openMobileAdminSidebar() {
+  if (el.sidebar) el.sidebar.classList.add("open");
+  if (adminSidebarBackdrop) adminSidebarBackdrop.classList.add("active");
+}
+
+function closeMobileAdminSidebar() {
+  if (el.sidebar) el.sidebar.classList.remove("open");
+  if (adminSidebarBackdrop) adminSidebarBackdrop.classList.remove("active");
+}
+
+if (adminSidebarBackdrop) {
+  adminSidebarBackdrop.addEventListener("click", closeMobileAdminSidebar);
+}
+
 if (el.menuBurger) {
   el.menuBurger.addEventListener("click", () => {
-    if (el.sidebar) el.sidebar.classList.toggle("open");
+    if (el.sidebar && el.sidebar.classList.contains("open")) {
+      closeMobileAdminSidebar();
+    } else {
+      openMobileAdminSidebar();
+    }
   });
 }
+
+// Close sidebar on navigation item click on mobile
+el.navLinks.forEach((link) => {
+  link.addEventListener("click", () => {
+    if (window.innerWidth <= 1024) {
+      closeMobileAdminSidebar();
+    }
+  });
+});
 
 // API Key Custom Configuration
 const quickApiKeyInput = document.getElementById("quick-api-key-input");
