@@ -499,8 +499,8 @@
 
 <script src="script.js"></script>
 <script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, doc, setDoc, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  import { collection, doc, setDoc, getDocs, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+  import { db } from "./assets/js/firebase-config.js";
   import { PRE_EXISTING_PAID_COURSES } from "./assets/js/catalog-data.js";
 
   let initialCourses = [...PRE_EXISTING_PAID_COURSES];
@@ -520,7 +520,6 @@
   let currentActiveCourse = null;
   let currentEnrollTargetCourse = null;
   let studentEnrollData = { name: "", email: "", phone: "" };
-  let db = null;
 
   // Local storage cache for purchased courses on this device: Map of courseId -> { purchased: true, orderId: "..." }
   let userPurchasedMap = {};
@@ -1133,70 +1132,64 @@
   renderCourses();
 
   // Connect to Firebase Firestore for real-time course & order syncing
-  fetch("./firebase-applet-config.json")
-    .then(res => res.json())
-    .then(config => {
-      const app = initializeApp(config);
-      db = getFirestore(app);
-
-      // Real-time courses syncing
-      onSnapshot(collection(db, "paid_courses"), (snapshot) => {
-        const firestoreCourses = [];
-        snapshot.forEach(docSnap => {
-          const d = docSnap.data();
-          if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
-            firestoreCourses.push({ id: docSnap.id, ...d });
-          }
-        });
-
-        // Merge with pre-existing catalog so built-in and admin-created courses are both live!
-        const map = new Map();
-        PRE_EXISTING_PAID_COURSES.forEach(c => map.set(c.id, { ...c }));
-        firestoreCourses.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
-
-        allCourses = Array.from(map.values());
-        allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-        try {
-          localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(allCourses));
-        } catch (e) {}
-
-        renderCourses();
-      }, (err) => {
-        console.warn("Firestore paid_courses listener notice:", err);
-      });
-
-      // Real-time order status listener for active user
-      onSnapshot(collection(db, "course_orders"), (snapshot) => {
-        let updated = false;
-        snapshot.forEach(docSnap => {
-          const data = docSnap.data();
-          // If this doc corresponds to a purchased course stored locally
-          if (userPurchasedMap[data.courseId] || (studentEnrollData.email && (data.email === studentEnrollData.email.toLowerCase() || data.studentEmail === studentEnrollData.email.toLowerCase()))) {
-            if (data.purchased === true && (!userPurchasedMap[data.courseId] || !userPurchasedMap[data.courseId].purchased)) {
-              userPurchasedMap[data.courseId] = {
-                purchased: true,
-                orderId: docSnap.id,
-                studentEmail: data.email || data.studentEmail
-              };
-              updated = true;
-            } else if (data.purchased === false && userPurchasedMap[data.courseId]?.purchased) {
-              userPurchasedMap[data.courseId].purchased = false;
-              updated = true;
-            }
-          }
-        });
-        if (updated) {
-          localStorage.setItem("shortstudy_user_purchased_courses", JSON.stringify(userPurchasedMap));
-          renderCourses();
+  try {
+    // Real-time courses syncing
+    onSnapshot(collection(db, "paid_courses"), (snapshot) => {
+      const firestoreCourses = [];
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
+          firestoreCourses.push({ id: docSnap.id, ...d });
         }
-      }, (err) => {
-        console.warn("Firestore course_orders listener notice:", err);
       });
-    })
-    .catch(err => {
-      console.warn("Firebase config load notice:", err);
+
+      // Merge with pre-existing catalog so built-in and admin-created courses are both live!
+      const map = new Map();
+      PRE_EXISTING_PAID_COURSES.forEach(c => map.set(c.id, { ...c }));
+      firestoreCourses.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
+
+      allCourses = Array.from(map.values());
+      allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+      try {
+        localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(allCourses));
+      } catch (e) {}
+
+      renderCourses();
+    }, (err) => {
+      console.warn("Firestore paid_courses listener notice:", err);
     });
+
+    // Real-time order status listener for active user
+    onSnapshot(collection(db, "course_orders"), (snapshot) => {
+      let updated = false;
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        // If this doc corresponds to a purchased course stored locally
+        if (userPurchasedMap[data.courseId] || (studentEnrollData.email && (data.email === studentEnrollData.email.toLowerCase() || data.studentEmail === studentEnrollData.email.toLowerCase()))) {
+          if (data.purchased === true && (!userPurchasedMap[data.courseId] || !userPurchasedMap[data.courseId].purchased)) {
+            userPurchasedMap[data.courseId] = {
+              purchased: true,
+              orderId: docSnap.id,
+              studentEmail: data.email || data.studentEmail
+            };
+            updated = true;
+          } else if (data.purchased === false && userPurchasedMap[data.courseId]?.purchased) {
+            userPurchasedMap[data.courseId].purchased = false;
+            updated = true;
+          }
+        }
+      });
+      if (updated) {
+        localStorage.setItem("shortstudy_user_purchased_courses", JSON.stringify(userPurchasedMap));
+        renderCourses();
+      }
+    }, (err) => {
+      console.warn("Firestore course_orders listener notice:", err);
+    });
+  } catch (err) {
+    console.warn("Firebase listener init notice:", err);
+  }
 </script>
 
 

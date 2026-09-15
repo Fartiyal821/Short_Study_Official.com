@@ -157,7 +157,7 @@
 
   <!-- Core Lessons Grid (CodeWithHarry Card Grid) -->
   <section id="core-lessons" style="margin-bottom: 56px;">
-    <div class="cwh-courses-grid">
+    <div id="curriculum-courses-grid" class="cwh-courses-grid">
 
       <!-- Lesson 1: Python Basics -->
       <div class="cwh-card" data-category="programming all">
@@ -371,5 +371,98 @@
 </footer>
 
 <script src="script.js"></script>
+<script type="module">
+  import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+  import { db } from "./assets/js/firebase-config.js";
+  import { PRE_EXISTING_COURSES } from "./assets/js/catalog-data.js";
+
+  const grid = document.getElementById("curriculum-courses-grid");
+  const filterBtns = document.querySelectorAll(".cwh-filter-btn");
+  let activeFilter = "all";
+  let liveCourses = [...PRE_EXISTING_COURSES];
+
+  const staticMap = {
+    "python-basics": "python-basics.html",
+    "python-operators-conditionals": "python-operators-conditionals.html",
+    "c-basics": "c-basics.html",
+    "data-structures-arrays": "data-structures-arrays.html",
+    "java-oop-concepts": "java-oop-basics.html",
+    "java-oop-basics": "java-oop-basics.html",
+    "html-css-basics": "html-css-basics.html",
+    "sql-basics": "sql-basics.html"
+  };
+
+  function render() {
+    if (!grid) return;
+    const filtered = liveCourses.filter(c => {
+      if (c.status === "inactive" || c.status === "draft") return false;
+      if (activeFilter === "all") return true;
+      const cat = (c.category || "").toLowerCase();
+      const slug = (c.slug || "").toLowerCase();
+      const title = (c.title || "").toLowerCase();
+      if (activeFilter === "programming" && (cat.includes("prog") || slug.includes("python") || slug.includes("c-") || slug.includes("java") || title.includes("python") || title.includes("c ") || title.includes("java"))) return true;
+      if (activeFilter === "dsa" && (cat.includes("dsa") || slug.includes("data") || slug.includes("array") || title.includes("data") || title.includes("array"))) return true;
+      if (activeFilter === "web" && (cat.includes("web") || slug.includes("html") || slug.includes("sql") || title.includes("html") || title.includes("sql") || title.includes("css"))) return true;
+      return cat.includes(activeFilter);
+    });
+
+    grid.innerHTML = filtered.map(course => {
+      const link = staticMap[course.slug] || staticMap[course.id] || `course.html?id=${encodeURIComponent(course.id || course.slug)}`;
+      const icon = course.icon || "📘";
+      const level = course.level || (course.status === "in_development" ? "In Development" : "Published");
+      const categoryAttr = `${course.category || "programming"} all`;
+
+      return `
+        <div class="cwh-card" data-category="${categoryAttr}">
+          <div class="cwh-card-banner">
+            <span class="cwh-card-icon">${icon}</span>
+            <span class="cwh-card-level">${level}</span>
+          </div>
+          <div class="cwh-card-body">
+            <h3 class="cwh-card-title">${course.title}</h3>
+            <p class="cwh-card-desc">${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
+            <div class="cwh-card-footer">
+              <span class="cwh-card-time">⏱ ${course.duration || "15 min read"}</span>
+              <a href="${link}" class="cwh-card-btn">Start Learning →</a>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      filterBtns.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeFilter = btn.getAttribute("data-filter") || "all";
+      render();
+    });
+  });
+
+  try {
+    onSnapshot(collection(db, "courses"), (snapshot) => {
+      const firestoreCourses = [];
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
+          firestoreCourses.push({ id: docSnap.id, ...d });
+        }
+      });
+
+      const map = new Map();
+      PRE_EXISTING_COURSES.forEach(c => map.set(c.id, { ...c }));
+      firestoreCourses.forEach(c => map.set(c.id, { ...(map.get(c.id) || {}), ...c }));
+
+      liveCourses = Array.from(map.values());
+      liveCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      render();
+    }, (err) => {
+      console.warn("Firestore courses listener notice:", err);
+    });
+  } catch (err) {
+    console.warn("Realtime sync notice:", err);
+  }
+</script>
 </body>
 </html>
