@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /admin.html
-Disallow: /lesson.html
-Sitemap: https://shortstudy.in/sitemap.xml
+
+Sitemap: https://short-study-official-com-qsk8.onrender.com/sitemap.xml

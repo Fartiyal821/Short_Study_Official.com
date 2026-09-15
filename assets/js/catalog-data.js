@@ -9,6 +9,7 @@ export const PRE_EXISTING_COURSES = [
     id: "python-basics",
     title: "Python Basics",
     slug: "python-basics",
+    staticUrl: "python-basics.html",
     description: "Variables, data types, and control flow — the essential starting point for beginners.",
     icon: "🐍",
     status: "published",
@@ -18,45 +19,50 @@ export const PRE_EXISTING_COURSES = [
     id: "c-basics",
     title: "C Programming Basics",
     slug: "c-basics",
+    staticUrl: "c-basics.html",
     description: "How memory, pointers, and compilation logic operate under the hood in systems programming.",
     icon: "⚡",
-    status: "in_development",
+    status: "published",
     order: 2
   },
   {
     id: "data-structures-arrays",
     title: "Data Structures: Arrays",
     slug: "data-structures-arrays",
+    staticUrl: "data-structures-arrays.html",
     description: "The core foundation of technical coding interviews — contiguous memory & indexing from first principles.",
     icon: "📊",
-    status: "in_development",
+    status: "published",
     order: 3
   },
   {
     id: "java-oop-concepts",
     title: "Java & OOP Concepts",
     slug: "java-oop-basics",
+    staticUrl: "java-oop-basics.html",
     description: "Classes, objects, inheritance, polymorphism, and abstraction for interview prep.",
     icon: "☕",
-    status: "in_development",
+    status: "published",
     order: 4
   },
   {
     id: "html-css-basics",
     title: "HTML & CSS Basics",
     slug: "html-css-basics",
+    staticUrl: "html-css-basics.html",
     description: "Structuring and styling modern webpages with responsive layouts and box model fundamentals.",
     icon: "🌐",
-    status: "in_development",
+    status: "published",
     order: 5
   },
   {
     id: "sql-basics",
     title: "SQL Basics",
     slug: "sql-basics",
+    staticUrl: "sql-basics.html",
     description: "Relational database queries, joins, groupings, and constraints every fresher must master.",
     icon: "🗄️",
-    status: "in_development",
+    status: "published",
     order: 6
   }
 ];

@@ -87,11 +87,20 @@ function renderDynamicPathway() {
   pathwayGrid.innerHTML = "";
 
   liveCourses.forEach((course, index) => {
-    const isInDevelopment = course.status === "in_development";
+    // Map directly to verified static html lessons
+    const staticMap = {
+      "python-basics": "python-basics.html",
+      "c-basics": "c-basics.html",
+      "data-structures-arrays": "data-structures-arrays.html",
+      "java-oop-concepts": "java-oop-basics.html",
+      "java-oop-basics": "java-oop-basics.html",
+      "html-css-basics": "html-css-basics.html",
+      "sql-basics": "sql-basics.html"
+    };
+
     const courseLessons = livePosts.filter(p => p.courseId === course.id || p.courseId === course.slug);
-    const firstLesson = courseLessons[0];
-    const targetUrl = firstLesson ? `lesson.html?id=${firstLesson.id}` : `lesson.html?course=${course.id}`;
-    const lessonCount = courseLessons.length;
+    const targetUrl = course.staticUrl || staticMap[course.id] || staticMap[course.slug] || `${course.slug || course.id}.html`;
+    const lessonCount = Math.max(courseLessons.length, 1);
     const hasVideo = courseLessons.some(p => p.youtubeEmbed && p.youtubeEmbed.trim() !== "");
 
     const card = document.createElement("div");
@@ -101,8 +110,7 @@ function renderDynamicPathway() {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
         <span class="num">COURSE 0${index + 1}</span>
         <div style="display:flex; gap:6px; align-items:center;">
-          ${hasVideo ? '<span style="font-family:\'JetBrains Mono\',monospace; font-size:11px; color:#e11d48; background:rgba(225,29,72,0.1); padding:2px 8px; border-radius:12px;">▶ Video</span>' : ''}
-          ${isInDevelopment ? '<span class="badge-in-dev-live" style="font-family:\'JetBrains Mono\',monospace; font-size:11px; font-weight:600; color:#b45309; background:#fef3c7; border:1px solid #fcd34d; padding:2px 8px; border-radius:12px;">🚧 In Development</span>' : ''}
+          ${hasVideo ? '<span style="font-family:\'JetBrains Mono\',monospace; font-size:12px; color:#e11d48; background:rgba(225,29,72,0.1); padding:2px 8px; border-radius:12px;">▶ Video</span>' : ''}
         </div>
       </div>
       <h3>
@@ -112,12 +120,10 @@ function renderDynamicPathway() {
       <p>${escapeHtml(course.description || "Structured written lesson pathway for beginners.")}</p>
       
       <div style="display:flex; justify-content:space-between; align-items:center; margin-top:auto; padding-top:12px; border-top:1px dashed var(--paper-line);">
-        <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--ink-soft);">
+        <span style="font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--ink-soft);">
           ${lessonCount} ${lessonCount === 1 ? "lesson" : "lessons"}
         </span>
-        ${isInDevelopment 
-          ? '<span class="go" style="color:var(--ink-soft); cursor:default; background:rgba(0,0,0,0.04); border:1px solid rgba(0,0,0,0.1); padding:4px 10px; border-radius:6px; font-size:12px;">In development</span>'
-          : `<a href="${targetUrl}" class="go">Start course</a>`}
+        <a href="${targetUrl}" class="go">Start course →</a>
       </div>
     `;
     pathwayGrid.appendChild(card);

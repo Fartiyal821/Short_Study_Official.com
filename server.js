@@ -28,12 +28,11 @@ app.get('/index.html', (req, res) => {
   res.redirect(301, '/');
 });
 
-// 301 Redirect from legacy /programming.html to /programming-videos.html
+// Explicit route aliases (mounted before static to prevent directory redirect delays)
 app.get(['/programming', '/programming.html'], (req, res) => {
-  res.redirect(301, '/programming-videos.html');
+  res.sendFile(path.join(__dirname, 'programming.html'));
 });
 
-// Explicit route aliases (mounted before static to prevent directory redirect delays)
 app.get(['/admin', '/admin/'], (req, res) => {
   res.sendFile(path.join(__dirname, 'admin.html'));
 });
