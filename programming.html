@@ -273,7 +273,7 @@
 
 <script src="script.js"></script>
 <script type="module">
-  import { db, collection, onSnapshot } from "./assets/js/firebase-init.js";
+  import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
 
   const grid = document.getElementById("courses-grid");
   const filterBtns = document.querySelectorAll("#courses .cwh-filter-btn");
@@ -370,5 +370,6 @@
     console.error("Firebase init error:", err);
   }
 </script>
+<script type="module" src="assets/js/ai-widget.js"></script>
 </body>
 </html>

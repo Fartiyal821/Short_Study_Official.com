@@ -231,7 +231,7 @@
   <section id="courses" style="margin-bottom: 56px;">
     <div class="section-head" style="margin-bottom: 28px;">
       <span class="kicker">Core Curriculum Tracks</span>
-      <h2 style="font-size: clamp(28px, 4vw, 38px); color: #0f172a;">Recommended Programming Courses &amp; Notes</h2>
+      <h2 style="font-size: clamp(28px, 4vw, 38px); color: #f2c94c; font-family: 'Kalam', cursive; margin-bottom: 8px;">Recommended Programming Courses &amp; Notes</h2>
       <p>Master programming from fundamentals to interview readiness with structured, chapter-by-chapter written tutorials.</p>
     </div>
 
@@ -366,7 +366,7 @@
 
 <script src="script.js"></script>
 <script type="module">
-  import { db, collection, onSnapshot } from "./assets/js/firebase-init.js";
+  import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
 
   const grid = document.getElementById("homepage-courses-grid");
   const filterBtns = document.querySelectorAll("#courses .cwh-filter-btn");
@@ -417,17 +417,19 @@
       const level = course.level || (isPaid ? `Masterclass — ${course.price}` : "Beginner");
 
       return `
-        <div class="class-card">
-          <div class="tape"></div>
+        
+        <div class="class-card" style="background: #2b3a32; color: #f2c94c; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 4px 4px 0px rgba(242, 201, 76, 0.2); border-radius: 12px; transition: transform 0.2s;">
+          <div class="tape" style="background: rgba(242, 201, 76, 0.8); border: 1px solid #b98f1f;"></div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <span class="num">${isPaid ? course.price : '01'}</span>
-            <span class="num" style="font-size: 12px; font-weight:700; color:var(--pink-dark); text-transform:uppercase;">${course.category || "programming"}</span>
+            <span class="num" style="color: #f2c94c; font-weight: bold; opacity: 0.8;">${isPaid ? course.price : '01'}</span>
+            <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "programming"}</span>
           </div>
-          <h3>${course.title}</h3>
-          <p>${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
-          <a href="${link}" class="go">${isPaid ? `Enroll →` : "Start Learning"}</a>
+          <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 28px; margin-top: 0;">${course.title}</h3>
+          <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9;">${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
+          <a href="${link}" class="go" style="color: #f2c94c; border-top: 1px dashed rgba(242, 201, 76, 0.3); padding-top: 12px; margin-top: auto;">${isPaid ? `Enroll →` : "Start Learning →"}</a>
         </div>
       `;
+
     }).join("");
   }
 
@@ -463,5 +465,6 @@
     console.error("Firebase init error:", err);
   }
 </script>
+<script type="module" src="assets/js/ai-widget.js"></script>
 </body>
 </html>

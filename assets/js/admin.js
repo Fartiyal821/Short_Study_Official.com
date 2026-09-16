@@ -42,18 +42,7 @@ const deletedCourseIds = new Set(DEFAULT_COURSE_IDS);
 const deletedPostIds = new Set(DEFAULT_POST_IDS);
 const deletedPaidCourseIds = new Set(DEFAULT_COURSE_IDS);
 
-try {
-  const cachedCourses = JSON.parse(localStorage.getItem("shortstudy_cached_courses") || "[]");
-  if (Array.isArray(cachedCourses)) {
-    const cleaned = cachedCourses.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    
-  }
-  const cachedPaid = JSON.parse(localStorage.getItem("shortstudy_cached_paid_courses") || "[]");
-  if (Array.isArray(cachedPaid)) {
-    const cleaned = cachedPaid.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    
-  }
-} catch (e) {}
+
 
 let currentUser = null;
 let currentAdminProfile = null;
@@ -2210,10 +2199,7 @@ window.deletePaidCourse = function(courseId, title) {
 
 function rebuildAndRenderOrders() {
   const ordersMap = new Map();
-  try {
-    const localUserOrders = JSON.parse(localStorage.getItem("shortstudy_user_orders") || "[]");
-    localUserOrders.forEach(o => { if (o && o.id) ordersMap.set(o.id, o); });
-  } catch (e) {}
+  
 
   firestoreOrdersMap.forEach((val, key) => {
     ordersMap.set(key, { ...val, id: key });

@@ -35,24 +35,24 @@
     </section>
 
     <!-- PAGE ABOUT CONTENT -->
-    <section style="margin-bottom: 48px; padding: 0 12px;">
-      <h2 style="font-family: 'Kalam', cursive; font-size: 32px; color: var(--ink); margin-bottom: 16px;">Welcome to Your Engineering Bridge</h2>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
+    <section style="margin-bottom: 48px; padding: 32px; background: #2b3a32; border-radius: 12px; box-shadow: 4px 4px 0px rgba(242, 201, 76, 0.2); border: 1px solid rgba(242, 201, 76, 0.4);">
+      <h2 style="font-family: 'Kalam', cursive; font-size: 32px; color: #f2c94c; margin-bottom: 16px;">Welcome to Your Engineering Bridge</h2>
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
         Welcome to the ShortStudy Premium Masterclasses—a carefully curated space designed for those who are ready to bridge the gap between knowing how to write code and knowing how to build production-ready, scalable software. If you have been relying on scattered tutorials, piecing together disconnected YouTube videos, or feeling stuck in what developers often call "tutorial hell," you are exactly where you need to be. 
       </p>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
         Our core philosophy here is simple: we believe that real software engineering cannot be taught through passive watching. It demands deep architectural understanding, structured hands-on building, and exposure to the complex edge cases that only arise when you deploy real applications to real users. That is precisely why this premium section of our platform exists. We created these masterclasses to serve as a direct, no-nonsense bridge to senior-level engineering. 
       </p>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
         When you enroll in any of the masterclasses featured on this page, you are not just buying a standard set of video lectures. You are investing in a comprehensive technical roadmap. Every single course listed below has been meticulously designed from the ground up by industry veterans who have spent years building and maintaining software in the real world. We focus heavily on the underlying "why" behind technical decisions. Instead of just teaching you how to use a specific framework or how to write a particular loop, our curriculum emphasizes design patterns, system architecture, database optimization, and performance scaling. 
       </p>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
         What makes these premium tracks truly different is their rigorous project-driven approach. As you progress through a masterclass, you will be building a fully functional, enterprise-grade application from scratch. You will handle complex authentication flows, set up secure databases, manage real-time data synchronization, and write clean, maintainable code that adheres to strict industry standards. By the time you complete a track, you will not just have a meaningless certificate of completion—you will have a robust, portfolio-ready project that you can confidently present to top-tier technical recruiters and engineering managers. 
       </p>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 16px;">
         Furthermore, we completely understand that learning advanced computer science concepts can occasionally feel overwhelming and isolating. That is why our masterclasses come with exclusive access to our private community channels. Whenever you encounter a frustrating bug, struggle with a difficult concept, or simply need advice on how to structure your resume, our dedicated mentors and your fellow ambitious peers are right there to support you. You get direct code reviews, career guidance, and invaluable architectural feedback. 
       </p>
-      <p style="color: var(--ink-soft); font-size: 16px; line-height: 1.8; margin-bottom: 0;">
+      <p style="color: #e2e8f0; font-size: 16px; line-height: 1.8; margin-bottom: 0;">
         Take your time to deeply explore and browse the catalog below. Whether your ultimate goal is to master modern full-stack web development, dive deep into backend system design, or conquer advanced data structures and algorithms, we have a specialized track crafted specifically for you. These courses are challenging, they are highly intensive, and they are unapologetically designed to push you far out of your comfort zone. But if you are willing to put in the focused effort and time, these masterclasses will fundamentally transform the way you approach software engineering forever. Choose your path, enroll today, and let us start building the future together.
       </p>
     </section>
@@ -62,13 +62,13 @@
       <div class="section-head" style="text-align: left; margin-bottom: 32px; border-bottom: 1px dashed var(--paper-line); padding-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
         <div>
           <span class="kicker" style="color: var(--pink-dark); font-family: 'JetBrains Mono', monospace; font-size: 13px; text-transform: uppercase;">Curated For Excellence</span>
-          <h2 style="font-family: 'Kalam', cursive; font-size: 32px; color: var(--ink); margin-top: 8px;">Browse Masterclasses</h2>
+          <h2 style="font-family: 'Kalam', cursive; font-size: 32px; color: #f2c94c; margin-top: 8px;">Browse Masterclasses</h2>
         </div>
       </div>
 
       <div class="class-grid" id="paid-courses-grid">
         <!-- Populated by JS -->
-        <div style="text-align: center; width: 100%; color: var(--ink-soft); grid-column: 1 / -1; padding: 40px;">
+        <div style="text-align: center; width: 100%; color: #e2e8f0; grid-column: 1 / -1; padding: 40px;">
           Loading Premium Catalog...
         </div>
       </div>
@@ -107,7 +107,7 @@
 
   <script src="script.js"></script>
   <script type="module">
-    import { db, collection, onSnapshot } from "./assets/js/firebase-init.js";
+    import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
 
     const grid = document.getElementById("paid-courses-grid");
 
@@ -122,29 +122,25 @@
         });
 
         if (items.length === 0) {
-          grid.innerHTML = `<div style="text-align:center; width:100%; grid-column:1/-1; padding: 40px; border: 1px dashed var(--paper-line); border-radius: var(--radius);"><span style="font-size: 32px; display:block; margin-bottom:12px;">🎓</span><h3 style="font-family: 'Kalam', cursive; font-size: 22px; color: var(--ink);">No Masterclasses Currently Available</h3><p style="color: var(--ink-soft); font-size: 14.5px;">Please check back later for new premium masterclasses.</p></div>`;
+          grid.innerHTML = `<div style="text-align:center; width:100%; grid-column:1/-1; padding: 40px; border: 1px dashed var(--paper-line); border-radius: var(--radius);"><span style="font-size: 32px; display:block; margin-bottom:12px;">🎓</span><h3 style="font-family: 'Kalam', cursive; font-size: 22px; color: #f2c94c;">No Masterclasses Currently Available</h3><p style="color: #e2e8f0; font-size: 14.5px;">Please check back later for new premium masterclasses.</p></div>`;
           return;
         }
 
         grid.innerHTML = items.map(course => {
           return `
-            <div class="class-card">
-              <div class="tape"></div>
+            
+            <div class="class-card" style="background: #2b3a32; color: #f2c94c; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 4px 4px 0px rgba(242, 201, 76, 0.2); border-radius: 12px; transition: transform 0.2s;">
+              <div class="tape" style="background: rgba(242, 201, 76, 0.8); border: 1px solid #b98f1f;"></div>
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span class="num" style="background:var(--board); color:var(--yellow); padding:4px 10px; border-radius:6px; font-weight:700;">${course.price || "₹2599"}</span>
-                <span class="num" style="font-size: 12px; font-weight:700; color:var(--pink-dark); text-transform:uppercase;">${course.category || "Masterclass"}</span>
+                <span class="num" style="background:rgba(242, 201, 76, 0.2); color:#f2c94c; padding:4px 10px; border-radius:6px; font-weight:700;">${course.price || "₹2599"}</span>
+                <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "Masterclass"}</span>
               </div>
-              <h3 style="font-family: 'Kalam', cursive; font-size: 24px; color: var(--ink); line-height: 1.3;">${course.title || "Premium Course"}</h3>
-              <p style="color: var(--ink-soft); font-size: 14px; margin-bottom: 24px;">${course.description || "Take your skills to the next level."}</p>
-              
-              <div style="display: flex; gap: 14px; font-size: 13px; color: var(--ink-soft); font-family: 'JetBrains Mono', monospace; margin-bottom: 24px; border-top: 1px solid var(--paper-line); padding-top: 14px;">
-                 <span>⏱ ${course.duration || "24 Hours"}</span>
-                 <span>📺 ${course.lessons || "100+ Lessons"}</span>
-              </div>
-              
-              <a href="course.html?id=${course.id}&type=paid" class="go" style="margin-top:auto;">View Curriculum</a>
+              <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 28px; margin-top: 0;">${course.title}</h3>
+              <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9;">${course.description || "Comprehensive masterclass with premium materials."}</p>
+              <a href="programming-videos.html?id=${course.id}" class="go" style="color: #f2c94c; border-top: 1px dashed rgba(242, 201, 76, 0.3); padding-top: 12px; margin-top: auto;">Explore Course →</a>
             </div>
           `;
+
         }).join('');
       }, (err) => {
         console.error("Courses page Firestore notice:", err);
@@ -154,5 +150,6 @@
       console.warn("Real-time notice:", err);
     }
   </script>
+<script type="module" src="assets/js/ai-widget.js"></script>
 </body>
 </html>
