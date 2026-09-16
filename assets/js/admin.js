@@ -38,29 +38,20 @@ import {
 // State Management
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 
-const deletedCourseIds = new Set([
-  ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
-  ...Array.from(DEFAULT_COURSE_IDS)
-]);
-const deletedPostIds = new Set([
-  ...JSON.parse(localStorage.getItem("deletedPostIds") || "[]"),
-  ...Array.from(DEFAULT_POST_IDS)
-]);
-const deletedPaidCourseIds = new Set([
-  ...JSON.parse(localStorage.getItem("deletedPaidCourseIds") || "[]"),
-  ...Array.from(DEFAULT_COURSE_IDS)
-]);
+const deletedCourseIds = new Set(DEFAULT_COURSE_IDS);
+const deletedPostIds = new Set(DEFAULT_POST_IDS);
+const deletedPaidCourseIds = new Set(DEFAULT_COURSE_IDS);
 
 try {
   const cachedCourses = JSON.parse(localStorage.getItem("shortstudy_cached_courses") || "[]");
   if (Array.isArray(cachedCourses)) {
     const cleaned = cachedCourses.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    localStorage.setItem("shortstudy_cached_courses", JSON.stringify(cleaned));
+    
   }
   const cachedPaid = JSON.parse(localStorage.getItem("shortstudy_cached_paid_courses") || "[]");
   if (Array.isArray(cachedPaid)) {
     const cleaned = cachedPaid.filter(c => c && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(cleaned));
+    
   }
 } catch (e) {}
 
@@ -464,17 +455,7 @@ if (el.btnDeniedSignout) {
 
 async function fetchServerCourses() {
   try {
-    const res = await fetch('/api/courses');
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.courses)) {
-        json.courses.forEach(c => {
-          if (!deletedCourseIds.has(c.id)) {
-            firestoreCoursesMap.set(c.id, c);
-          }
-        });
-        rebuildAndRenderContent();
-      }
+    rebuildAndRenderContent();
     }
   } catch (e) {
     console.warn("Server courses sync note:", e);
@@ -483,195 +464,7 @@ async function fetchServerCourses() {
 
 async function fetchServerPaidCourses() {
   try {
-    const res = await fetch('/api/paid-courses');
-    if (res.ok) {
-      const json = await res.json();
-      if (json.success && Array.isArray(json.courses)) {
-        serverPaidCoursesMap.clear();
-        json.courses.forEach(c => {
-          if (!deletedPaidCourseIds.has(c.id)) serverPaidCoursesMap.set(c.id, c);
-        });
-        rebuildAndRenderPaidCourses();
-      }
-    }
-  } catch (e) {
-    console.warn("Server paid courses sync note:", e);
-  }
-}
-
-function loadDashboardData() {
-  // Database CRUD operations run here securely via onSnapshot
-  console.log("Admin Dashboard Loaded Successfully");
-  if (currentUser) {
-    const displayName = currentUser.displayName || currentUser.email.split("@")[0];
-    if (el.userDisplayName) el.userDisplayName.textContent = displayName;
-    if (el.userAvatarInitial) el.userAvatarInitial.textContent = displayName.charAt(0).toUpperCase();
-  }
-  fetchServerCourses();
-  fetchServerPaidCourses();
-  startRealtimeListeners();
-}
-
-// -------------------------------------------------------------
-// 2. REAL-TIME DATA SYNCHRONIZATION (Multi-Collection broad listeners)
-// -------------------------------------------------------------
-
-/**
- * Synthesizes courses and lessons from base catalog and Firestore maps.
- * Ensures ALL pre-existing courses and lessons appear immediately upon load.
- */
-function rebuildAndRenderContent() {
-  // 1. Synthesize Courses: start with PRE_EXISTING_COURSES as base
-  const courseMap = new Map();
-  PRE_EXISTING_COURSES.forEach(c => {
-    if (!deletedCourseIds.has(c.id)) courseMap.set(c.id, { ...c });
-  });
-
-  firestoreCoursesMap.forEach((cData, docId) => {
-    if (deletedCourseIds.has(docId) || cData.isDeleted) return;
-    const existing = courseMap.get(docId) || Array.from(courseMap.values()).find(item => item.slug === cData.slug);
-    if (existing) {
-      courseMap.set(existing.id, { ...existing, ...cData, id: existing.id });
-    } else {
-      courseMap.set(docId, { id: docId, ...cData });
-    }
-  });
-
-  coursesData = Array.from(courseMap.values()).filter(c => !deletedCourseIds.has(c.id));
-  coursesData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  // 2. Synthesize Posts & Lessons: start with PRE_EXISTING_LESSONS as base
-  const postMap = new Map();
-  PRE_EXISTING_LESSONS.forEach(l => {
-    if (!deletedPostIds.has(l.id)) postMap.set(l.id, { ...l });
-  });
-
-  const normalizeAndMerge = (docId, data) => {
-    if (deletedPostIds.has(docId) || data.isDeleted) return;
-    const rawContent = data.content || data.body || data.text || "";
-    const titleVal = data.title || data.name || data.topic || "Untitled Lesson";
-    const courseIdVal = data.courseId || data.parentCourse || data.course || "";
-
-    const normalized = {
-      id: docId,
-      title: titleVal,
-      courseId: courseIdVal,
-      courseTitle: data.courseTitle || "",
-      content: rawContent,
-      formattedHtml: data.formattedHtml || parseAndFormatLessonContent(rawContent),
-      order: parseInt(data.order ?? data.sequence ?? data.orderNumber ?? data.seq ?? 1, 10),
-      status: data.status || "published",
-      slug: data.slug || slugify(titleVal),
-      readingTime: data.readingTime || calculateReadingTime(rawContent),
-      excerpt: data.excerpt || generateExcerpt(rawContent),
-      youtubeEmbed: data.youtubeEmbed || data.youtube || data.video || "",
-      videos: Array.isArray(data.videos) ? data.videos : [],
-      author: data.author || "ShortStudy Editorial",
-      updatedAt: data.updatedAt || null
-    };
-
-    // Auto-resolve parent course title if empty
-    if (!normalized.courseTitle && normalized.courseId) {
-      const parent = coursesData.find(c => c.id === normalized.courseId || c.slug === normalized.courseId);
-      if (parent) normalized.courseTitle = parent.title;
-    }
-
-    const existing = postMap.get(docId) || Array.from(postMap.values()).find(item => item.slug === normalized.slug && item.courseId === normalized.courseId);
-    if (existing) {
-      postMap.set(existing.id, { ...existing, ...normalized, id: existing.id });
-    } else {
-      postMap.set(docId, normalized);
-    }
-  };
-
-  // Merge both posts and lessons collections without restrictive filters
-  firestorePostsMap.forEach((val, key) => normalizeAndMerge(key, val));
-  firestoreLessonsMap.forEach((val, key) => normalizeAndMerge(key, val));
-
-  postsData = Array.from(postMap.values()).filter(p => !deletedPostIds.has(p.id));
-  postsData.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-
-  // Render UI
-  renderCoursesTable();
-  populateCourseSelects();
-  renderPostsTable();
-  rebuildAndRenderPaidCourses();
-  rebuildAndRenderOrders();
-  updateMetrics();
-
-  // Background sync: write missing catalog items to Firestore
-  syncCatalogToFirestore();
-}
-
-let isSyncingCatalog = false;
-async function syncCatalogToFirestore() {
-  if (isSyncingCatalog || !currentUser) return;
-  isSyncingCatalog = true;
-
-  try {
-    // Purge any default courses and posts that might exist in Firestore
-    for (const id of DEFAULT_COURSE_IDS) {
-      if (firestoreCoursesMap.has(id)) {
-        await deleteDoc(doc(db, "courses", id)).catch(() => {});
-        firestoreCoursesMap.delete(id);
-      }
-      if (firestorePaidCoursesMap.has(id)) {
-        await deleteDoc(doc(db, "paid_courses", id)).catch(() => {});
-        firestorePaidCoursesMap.delete(id);
-      }
-    }
-    for (const id of DEFAULT_POST_IDS) {
-      if (firestorePostsMap.has(id)) {
-        await deleteDoc(doc(db, "posts", id)).catch(() => {});
-        firestorePostsMap.delete(id);
-      }
-      if (firestoreLessonsMap.has(id)) {
-        await deleteDoc(doc(db, "lessons", id)).catch(() => {});
-        firestoreLessonsMap.delete(id);
-      }
-    }
-  } catch (e) {
-    console.debug("Catalog purge note:", e);
-  } finally {
-    isSyncingCatalog = false;
-  }
-}
-
-function startRealtimeListeners() {
-  stopRealtimeListeners(); // avoid duplicate listeners
-
-  // Immediately render from memory / base catalog
-  rebuildAndRenderContent();
-  el.livePulseStatus.textContent = "Connecting real-time sync...";
-
-  // 1. Broad Courses Listener (fetches ALL courses including in_development)
-  try {
-    const coursesQuery = collection(db, "courses");
-    unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
-      firestoreCoursesMap.clear();
-      snapshot.forEach((docSnap) => {
-        firestoreCoursesMap.set(docSnap.id, docSnap.data());
-      });
-      rebuildAndRenderContent();
-      el.livePulseStatus.textContent = "Real-time sync active";
-    }, (error) => {
-      console.warn("Firestore Courses listener note:", error);
-      el.livePulseStatus.textContent = "Local offline sync active";
-    });
-  } catch (err) {
-    console.error("Failed to start courses snapshot listener:", err);
-  }
-
-  // 2. Broad Posts Listener (fetches ALL posts without restrictive where filters)
-  try {
-    const postsQuery = collection(db, "posts");
-    unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
-      firestorePostsMap.clear();
-      snapshot.forEach((docSnap) => {
-        firestorePostsMap.set(docSnap.id, docSnap.data());
-      });
-      rebuildAndRenderContent();
-    }, (error) => {
+    rebuildAndRenderContent();, (error) => {
       console.warn("Firestore Posts listener note:", error);
     });
   } catch (err) {
@@ -1122,7 +915,7 @@ if (el.courseForm) {
 
     // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      localStorage.setItem("shortstudy_cached_courses", JSON.stringify(coursesData));
+      
     } catch (e) {}
 
     try {
@@ -1139,13 +932,7 @@ if (el.courseForm) {
 
     // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
     (async () => {
-      try {
-        await fetch('/api/courses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(coursePayload)
-        });
-      } catch (e) {}
+      
 
       try {
         if (editingCourseId) {
@@ -1169,9 +956,7 @@ function confirmDeleteCourse(courseId) {
   el.deleteConfirmBtn.onclick = () => {
     // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
     deletedCourseIds.add(courseId);
-    try {
-      localStorage.setItem("deletedCourseIds", JSON.stringify(Array.from(deletedCourseIds)));
-    } catch (e) {}
+    
     firestoreCoursesMap.delete(courseId);
 
     coursesData = coursesData.filter(c => c.id !== courseId);
@@ -1183,7 +968,7 @@ function confirmDeleteCourse(courseId) {
 
     // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      localStorage.setItem("shortstudy_cached_courses", JSON.stringify(coursesData));
+      
     } catch (e) {}
 
     try {
@@ -1199,9 +984,7 @@ function confirmDeleteCourse(courseId) {
 
     // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
     (async () => {
-      try {
-        await fetch(`/api/courses/${courseId}`, { method: 'DELETE' });
-      } catch (e) {}
+      
 
       try {
         await deleteDoc(doc(db, "courses", courseId));
@@ -1775,9 +1558,7 @@ function confirmDeletePost(postId) {
   el.deleteConfirmBtn.onclick = () => {
     // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
     deletedPostIds.add(postId);
-    try {
-      localStorage.setItem("deletedPostIds", JSON.stringify(Array.from(deletedPostIds)));
-    } catch (e) {}
+    
     firestorePostsMap.delete(postId);
     firestoreLessonsMap.delete(postId);
 
@@ -2350,7 +2131,7 @@ if (el.paidCourseForm) {
 
     // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(paidCoursesData));
+      
     } catch (e) {}
 
     try {
@@ -2367,37 +2148,7 @@ if (el.paidCourseForm) {
 
     // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
     (async () => {
-      try {
-        await fetch('/api/paid-courses', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      } catch (e) {
-        console.warn("Background API paid course save notice:", e);
-      }
-
-      try {
-        await setDoc(doc(db, "paid_courses", targetId), { ...payload, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (err) {
-        console.warn("Background Firestore write notice for paid course:", err);
-      }
-    })();
-  });
-}
-
-function confirmDeletePaidCourse(courseId) {
-  const course = paidCoursesData.find(c => c.id === courseId);
-  const title = course ? course.title : "this paid course";
-  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? Students will no longer see it on the website.`;
-  if (el.deleteModal) el.deleteModal.classList.add("open");
-
-  el.deleteConfirmBtn.onclick = () => {
-    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
-    deletedPaidCourseIds.add(courseId);
-    try {
-      localStorage.setItem("deletedPaidCourseIds", JSON.stringify(Array.from(deletedPaidCourseIds)));
-    } catch (e) {}
+      
     serverPaidCoursesMap.delete(courseId);
     firestorePaidCoursesMap.delete(courseId);
 
@@ -2410,7 +2161,7 @@ function confirmDeletePaidCourse(courseId) {
 
     // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      localStorage.setItem("shortstudy_cached_paid_courses", JSON.stringify(paidCoursesData));
+      
     } catch (e) {}
 
     try {
@@ -2426,32 +2177,7 @@ function confirmDeletePaidCourse(courseId) {
 
     // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
     (async () => {
-      try {
-        await fetch(`/api/paid-courses/${courseId}`, { method: 'DELETE' });
-      } catch (e) {
-        console.warn("Background server API delete notice:", e);
-      }
-
-      try {
-        await deleteDoc(doc(db, "paid_courses", courseId));
-      } catch (err) {
-        console.warn("Background Firestore delete paid course notice:", err);
-      }
-    })();
-  };
-}
-
-// -------------------------------------------------------------
-// 6. ORDERS & FAIL-SAFE DATABASE SYSTEM (Real-Time Student Ledger)
-// -------------------------------------------------------------
-function rebuildAndRenderOrders() {
-  const ordersMap = new Map();
-
-  // Read local fail-safe logs if any
-  try {
-    const localPending = JSON.parse(localStorage.getItem("shortstudy_pending_orders") || "[]");
-    localPending.forEach(o => { if (o && o.id) ordersMap.set(o.id, o); });
-  } catch (e) {}
+      
 
   try {
     const localUserOrders = JSON.parse(localStorage.getItem("shortstudy_user_orders") || "[]");

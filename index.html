@@ -366,46 +366,12 @@
 
 <script src="script.js"></script>
 <script type="module">
-  import { collection, onSnapshot } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
-  import { db } from "./assets/js/firebase-config.js";
-  import { PRE_EXISTING_COURSES, DEFAULT_COURSE_IDS } from "./assets/js/catalog-data.js";
+  import { db, collection, onSnapshot } from "./assets/js/firebase-init.js";
 
   const grid = document.getElementById("homepage-courses-grid");
   const filterBtns = document.querySelectorAll("#courses .cwh-filter-btn");
   let activeFilter = "all";
-
-
-  let deletedCourseIds = new Set([
-    ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
-    ...Array.from(DEFAULT_COURSE_IDS)
-  ]);
-
   let allCourses = [];
-
-  function loadInitialCourses() {
-    const map = new Map();
-    // Default core courses (if any non-default exist)
-    PRE_EXISTING_COURSES.forEach(c => {
-      if (!deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id)) map.set(c.id, { ...c });
-    });
-
-    // Cached curriculum
-    try {
-      const cached = JSON.parse(localStorage.getItem("shortstudy_cached_courses") || "null");
-      if (Array.isArray(cached)) {
-        cached.forEach(c => {
-          if (c && c.id && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) map.set(c.id, { ...c });
-        });
-      }
-    } catch (e) {}
-
-    
-
-    allCourses = Array.from(map.values()).filter(c => !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-  }
-
-  loadInitialCourses();
 
   const staticMap = {
     "python-basics": "python-basics.html",
@@ -418,44 +384,20 @@
     "sql-basics": "sql-basics.html"
   };
 
-  function mergeCourses(newCourses) {
-    if (!Array.isArray(newCourses)) return;
-    try {
-      deletedCourseIds = new Set([
-        ...JSON.parse(localStorage.getItem("deletedCourseIds") || "[]"),
-        ...Array.from(DEFAULT_COURSE_IDS)
-      ]);
-    } catch (e) {}
-
-    const map = new Map();
-    allCourses.forEach(c => {
-      if (c && c.id && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) {
-        map.set(c.id, { ...c });
-      }
-    });
-
-    newCourses.forEach(c => {
-      if (c && c.id && !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug)) {
-        const existing = map.get(c.id) || {};
-        map.set(c.id, { ...existing, ...c });
-      }
-    });
-
-    allCourses = Array.from(map.values()).filter(c => !c.isDeleted && !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id) && !DEFAULT_COURSE_IDS.has(c.slug));
-    allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-    render();
-  }
-
   function render() {
     if (!grid) return;
-    
     const filtered = allCourses.filter(c => {
-      if (c.status === "inactive" || c.status === "draft" || c.isDeleted || deletedCourseIds.has(c.id) || DEFAULT_COURSE_IDS.has(c.id) || DEFAULT_COURSE_IDS.has(c.slug)) return false;
-      return true;
+      if (activeFilter === "all") return true;
+      const cat = (c.category || "").toLowerCase();
+      const slug = (c.slug || "").toLowerCase();
+      const title = (c.title || "").toLowerCase();
+      if (activeFilter === "programming" && (cat.includes("prog") || slug.includes("python") || slug.includes("c-") || slug.includes("java") || title.includes("python") || title.includes("c ") || title.includes("java"))) return true;
+      if (activeFilter === "dsa" && (cat.includes("dsa") || slug.includes("data") || slug.includes("array") || title.includes("data") || title.includes("array"))) return true;
+      if (activeFilter === "web" && (cat.includes("web") || slug.includes("html") || slug.includes("sql") || title.includes("html") || title.includes("sql") || title.includes("css"))) return true;
+      return cat.includes(activeFilter);
     });
 
     if (filtered.length === 0) {
-
       grid.innerHTML = `
         <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--paper-line);">
           <span style="font-size: 36px; display: block; margin-bottom: 10px;">📚</span>
@@ -463,13 +405,11 @@
           <p style="color: #64748b; font-size: 14px; max-width: 440px; margin: 0 auto 16px;">
             Courses added and published in the Admin Panel will appear here automatically.
           </p>
-          
         </div>
       `;
       return;
     }
 
-    
     grid.innerHTML = filtered.map(course => {
       const isPaid = Boolean(course.price && course.price !== "0" && !course.price.toLowerCase().includes("free"));
       const link = isPaid ? `courses.html` : (staticMap[course.slug] || staticMap[course.id] || course.staticUrl || `course.html?id=${encodeURIComponent(course.id || course.slug)}`);
@@ -489,85 +429,38 @@
         </div>
       `;
     }).join("");
-
   }
 
-  filterBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      filterBtns.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      activeFilter = btn.getAttribute("data-filter") || "all";
-      render();
+  if (filterBtns) {
+    filterBtns.forEach(btn => {
+      btn.addEventListener("click", () => {
+        filterBtns.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        activeFilter = btn.getAttribute("data-filter") || "all";
+        render();
+      });
     });
-  });
-
-  render();
-
-  // Instant API Fetch
-  async function fetchServerAll() {
-    try {
-      const res1 = await fetch('/api/courses');
-      if (res1.ok) {
-        const j1 = await res1.json();
-        if (j1.success && Array.isArray(j1.courses)) mergeCourses(j1.courses);
-      }
-      
-    } catch (e) {
-      console.warn("Homepage courses fetch notice:", e);
-    }
   }
 
-  fetchServerAll();
-
-  // Instant Cross-tab Broadcast Channels
-  try {
-    const courseSyncChannel = new BroadcastChannel("shortstudy_courses_sync");
-    courseSyncChannel.onmessage = (event) => {
-      if (event.data && event.data.type === "COURSES_UPDATED") {
-        if (Array.isArray(event.data.courses)) {
-          mergeCourses(event.data.courses);
-        } else if (event.data.course) {
-          if (event.data.action === "delete") {
-            allCourses = allCourses.filter(c => c.id !== (event.data.courseId || event.data.course.id));
-            render();
-          } else {
-            mergeCourses([event.data.course]);
-          }
-        }
-        fetchServerAll();
-      }
-    };
-  } catch (e) {}
-
-  
-
-  window.addEventListener("storage", (e) => {
-    if (e.key === "shortstudy_cached_courses" && e.newValue) {
-      try {
-        const parsed = JSON.parse(e.newValue);
-        if (Array.isArray(parsed)) mergeCourses(parsed);
-      } catch (err) {}
-    }
-  });
-
-  // Firestore Snapshot Listeners
+  // 100% Realtime Firebase Sync
   try {
     onSnapshot(collection(db, "courses"), (snapshot) => {
       const items = [];
       snapshot.forEach(docSnap => {
         const d = docSnap.data();
-        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft" && !deletedCourseIds.has(docSnap.id)) {
+        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
           items.push({ id: docSnap.id, ...d });
         }
       });
-      mergeCourses(items);
+      // Sort by order
+      items.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      allCourses = items;
+      render();
     }, (err) => {
-      console.warn("Homepage Firestore courses notice:", err);
+      console.warn("Real-time sync error:", err);
     });
-
-    
   } catch (err) {
-    console.warn("Homepage real-time notice:", err);
+    console.error("Firebase init error:", err);
   }
 </script>
 </body>
