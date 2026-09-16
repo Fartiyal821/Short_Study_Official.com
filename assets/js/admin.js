@@ -453,18 +453,41 @@ if (el.btnDeniedSignout) {
   });
 }
 
-async function fetchServerCourses() {
-  try {
-    rebuildAndRenderContent();
-    }
-  } catch (e) {
-    console.warn("Server courses sync note:", e);
-  }
+function loadDashboardData() {
+  startRealtimeListeners();
 }
 
-async function fetchServerPaidCourses() {
+function startRealtimeListeners() {
+  if (el.livePulseStatus) el.livePulseStatus.textContent = "Connecting to Firestore...";
+
+  // 1. Courses Listener
   try {
-    rebuildAndRenderContent();, (error) => {
+    const coursesQuery = collection(db, "courses");
+    unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
+      firestoreCoursesMap.clear();
+      snapshot.forEach((docSnap) => {
+        firestoreCoursesMap.set(docSnap.id, docSnap.data());
+      });
+      rebuildAndRenderContent();
+      if (el.livePulseStatus) el.livePulseStatus.textContent = "Real-time sync active";
+    }, (error) => {
+      console.warn("Firestore Courses listener note:", error);
+      if (el.livePulseStatus) el.livePulseStatus.textContent = "Local offline sync active";
+    });
+  } catch (err) {
+    console.error("Failed to start courses snapshot listener:", err);
+  }
+
+  // 2. Posts Listener
+  try {
+    const postsQuery = collection(db, "posts");
+    unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
+      firestorePostsMap.clear();
+      snapshot.forEach((docSnap) => {
+        firestorePostsMap.set(docSnap.id, docSnap.data());
+      });
+      rebuildAndRenderContent();
+    }, (error) => {
       console.warn("Firestore Posts listener note:", error);
     });
   } catch (err) {
@@ -1546,7 +1569,7 @@ if (el.postForm) {
       console.warn("Background post save notice:", err);
     }
   })();
-});
+  });
 }
 
 function confirmDeletePost(postId) {
@@ -2146,12 +2169,28 @@ if (el.paidCourseForm) {
       syncChannel.close();
     } catch (e) {}
 
-    // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
+// 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
     (async () => {
-      
-    serverPaidCoursesMap.delete(courseId);
-    firestorePaidCoursesMap.delete(courseId);
+      try {
+        if (editingPaidCourseId) {
+          await updateDoc(doc(db, "paid_courses", targetId), payload);
+        } else {
+          await setDoc(doc(db, "paid_courses", targetId), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        }
+      } catch (err) {
+        console.warn("Background Paid Course Note:", err);
+      }
+    })();
+  });
+}
 
+// Ensure deletePaidCourse is global so onclick works
+window.deletePaidCourse = function(courseId, title) {
+  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete paid course "${title}"? This cannot be undone.`;
+  if (el.deleteModal) el.deleteModal.classList.add("open");
+
+  el.deleteConfirmBtn.onclick = () => {
+    firestorePaidCoursesMap.delete(courseId);
     paidCoursesData = paidCoursesData.filter(c => c.id !== courseId);
     rebuildAndRenderPaidCourses();
     updateMetrics();
@@ -2159,38 +2198,28 @@ if (el.paidCourseForm) {
     if (el.deleteModal) el.deleteModal.classList.remove("open");
     showToast(`Paid course "${title}" deleted instantly.`, "success");
 
-    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
-    try {
-      
-    } catch (e) {}
-
-    try {
-      const syncChannel = new BroadcastChannel("shortstudy_paid_courses_sync");
-      syncChannel.postMessage({
-        type: "PAID_COURSES_UPDATED",
-        action: "delete",
-        courseId,
-        courses: paidCoursesData
-      });
-      syncChannel.close();
-    } catch (e) {}
-
-    // 3. ASYNC BACKGROUND NETWORK PERSISTENCE (Non-blocking)
     (async () => {
-      
+      try {
+        await deleteDoc(doc(db, "paid_courses", courseId));
+      } catch (err) {
+        console.warn("Background Firestore delete paid course notice:", err);
+      }
+    })();
+  };
+}
 
+function rebuildAndRenderOrders() {
+  const ordersMap = new Map();
   try {
     const localUserOrders = JSON.parse(localStorage.getItem("shortstudy_user_orders") || "[]");
     localUserOrders.forEach(o => { if (o && o.id) ordersMap.set(o.id, o); });
   } catch (e) {}
 
-  // Sync with Firestore orders
   firestoreOrdersMap.forEach((val, key) => {
     ordersMap.set(key, { ...val, id: key });
   });
 
   ordersData = Array.from(ordersMap.values());
-  // Sort descending by creation date
   ordersData.sort((a, b) => {
     const timeA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0)).getTime();
     const timeB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0)).getTime();
@@ -2200,7 +2229,6 @@ if (el.paidCourseForm) {
   renderOrdersTable(currentOrderFilter);
   updateMetrics();
 }
-
 function renderOrdersTable(filter = "all") {
   if (!el.ordersTableBody) return;
   el.ordersTableBody.innerHTML = "";
