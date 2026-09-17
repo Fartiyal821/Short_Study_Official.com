@@ -9,7 +9,10 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "image": { "type": "string" },
+        "type": { "type": "string" },
+        "paymentLink": { "type": "string" }
       }
     },
     "Post": {

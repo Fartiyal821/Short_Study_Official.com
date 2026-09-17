@@ -1,6 +1,22 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-import { initializeFirestore, setLogLevel, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, serverTimestamp, getDoc, runTransaction } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+import {
+  initializeFirestore,
+  getFirestore,
+  setLogLevel,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  collection,
+  query,
+  orderBy,
+  serverTimestamp,
+  getDoc,
+  runTransaction
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 
 // Silence internal SDK offline fallback notices
 try {
@@ -16,10 +32,19 @@ const firebaseConfig = {
   appId: "1:766812137638:web:c6fdff7b473170cd116c67"
 };
 
-export const app = initializeApp(firebaseConfig);
+export const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
-export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
-  ignoreUndefinedProperties: true
-});
+
+let firestoreInstance;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+    ignoreUndefinedProperties: true
+  });
+} catch (e) {
+  firestoreInstance = getFirestore(app);
+}
+
+export const db = firestoreInstance;
 export { firebaseConfig, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, serverTimestamp, getDoc, runTransaction };
+

@@ -1,8 +1,110 @@
 /* =========================================================
    SHORT STUDY — SHARED CORE SCRIPT
+   - Tiny top page loading progress bar (showing loading state across page transitions)
    - Mobile navigation toggle & e-book dropdown
    - Google AdSense / GDPR & CCPA Consent Management Platform (CMP)
    ========================================================= */
+
+/* ---- Top Page Loading Progress Bar (Tiny line across top of page) ---- */
+(function initPageProgressBar() {
+  function getOrCreateBar() {
+    var bar = document.getElementById('page-progress-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'page-progress-bar';
+      if (document.body) {
+        document.body.appendChild(bar);
+      } else if (document.documentElement) {
+        document.documentElement.appendChild(bar);
+      }
+    }
+    return bar;
+  }
+
+  var progressBar = getOrCreateBar();
+  var progressTimer = null;
+
+  function startLoadingProgress() {
+    var bar = getOrCreateBar();
+    if (!bar) return;
+    bar.classList.add('is-loading');
+    bar.style.width = '20%';
+    clearTimeout(progressTimer);
+    progressTimer = setTimeout(function () {
+      if (bar) bar.style.width = '70%';
+    }, 120);
+  }
+
+  function finishLoadingProgress() {
+    var bar = getOrCreateBar();
+    if (!bar) return;
+    clearTimeout(progressTimer);
+    bar.style.width = '100%';
+    setTimeout(function () {
+      if (bar) bar.classList.remove('is-loading');
+      setTimeout(function () {
+        if (bar && !bar.classList.contains('is-loading')) bar.style.width = '0%';
+      }, 300);
+    }, 220);
+  }
+
+  // Animate on initial document load
+  startLoadingProgress();
+  if (document.readyState === 'complete') {
+    finishLoadingProgress();
+  } else {
+    window.addEventListener('load', finishLoadingProgress);
+    document.addEventListener('DOMContentLoaded', function () {
+      var bar = getOrCreateBar();
+      if (bar && bar.style.width === '20%') bar.style.width = '85%';
+    });
+  }
+
+  // Handle bfcache / back-forward navigation
+  window.addEventListener('pageshow', function (e) {
+    finishLoadingProgress();
+  });
+
+  // Track page transitions on internal link clicks
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest('a');
+    if (!a) return;
+    var href = a.getAttribute('href');
+    var target = a.getAttribute('target');
+
+    // Skip in-page hashes, javascript protocols, external protocols, or new-window tabs
+    if (!href || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:') || target === '_blank') {
+      return;
+    }
+
+    try {
+      var nextUrl = new URL(a.href, window.location.href);
+      if (nextUrl.origin === window.location.origin) {
+        var bar = getOrCreateBar();
+        if (bar) {
+          bar.classList.add('is-loading');
+          bar.style.width = '15%';
+          setTimeout(function () { if (bar) bar.style.width = '55%'; }, 80);
+          setTimeout(function () { if (bar) bar.style.width = '85%'; }, 240);
+        }
+      }
+    } catch (err) {
+      var bar = getOrCreateBar();
+      if (bar) {
+        bar.classList.add('is-loading');
+        bar.style.width = '65%';
+      }
+    }
+  });
+
+  window.addEventListener('beforeunload', function () {
+    var bar = getOrCreateBar();
+    if (bar) {
+      bar.classList.add('is-loading');
+      bar.style.width = '96%';
+    }
+  });
+})();
 
 document.addEventListener('DOMContentLoaded', function () {
 

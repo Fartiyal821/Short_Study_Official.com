@@ -230,17 +230,14 @@
   <!-- ============ RECOMMENDED COURSES & MASTER GUIDES (CODEWITHHARRY CARD GRID) ============ -->
   <section id="courses" style="margin-bottom: 56px;">
     <div class="section-head" style="margin-bottom: 28px;">
-      <span class="kicker">Core Curriculum Tracks</span>
-      <h2 style="font-size: clamp(28px, 4vw, 38px); color: #f2c94c; font-family: 'Kalam', cursive; margin-bottom: 8px;">Recommended Programming Courses &amp; Notes</h2>
-      <p>Master programming from fundamentals to interview readiness with structured, chapter-by-chapter written tutorials.</p>
+      <span class="kicker">Premium Learning Tracks</span>
+      <h2 style="font-size: clamp(28px, 4vw, 38px); color: #f2c94c; font-family: 'Kalam', cursive; margin-bottom: 8px;">Featured Masterclasses &amp; Premium Courses</h2>
+      <p>Master industry-standard software engineering with deep architectural masterclasses and guided projects.</p>
     </div>
 
-    <!-- Category Filter Tabs (CodeWithHarry Style) -->
-    
-
-    <!-- Course Cards Grid -->
+    <!-- Course Cards Grid (Only Paid Courses Displayed) -->
     <div class="class-grid" id="homepage-courses-grid">
-      <!-- Dynamic courses will render here -->
+      <!-- Dynamic paid courses will render here -->
     </div>
   </section>
 
@@ -333,7 +330,7 @@
 </main>
 
 
-  <footer style="background:var(--board); color:var(--chalk); padding:56px 24px 24px;">
+  <footer style="background:var(--board); color:var(--chalk); padding:56px 24px 24px; border-top:4px solid #F2C94C; box-shadow: 0 -3px 14px rgba(242, 201, 76, 0.35);">
     <div class="wrap">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:40px; margin-bottom:40px;">
         <div>
@@ -365,106 +362,6 @@
 
 
 <script src="script.js"></script>
-<script type="module">
-  import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
-
-  const grid = document.getElementById("homepage-courses-grid");
-  const filterBtns = document.querySelectorAll("#courses .cwh-filter-btn");
-  let activeFilter = "all";
-  let allCourses = [];
-
-  const staticMap = {
-    "python-basics": "python-basics.html",
-    "python-operators-conditionals": "python-operators-conditionals.html",
-    "c-basics": "c-basics.html",
-    "data-structures-arrays": "data-structures-arrays.html",
-    "java-oop-concepts": "java-oop-basics.html",
-    "java-oop-basics": "java-oop-basics.html",
-    "html-css-basics": "html-css-basics.html",
-    "sql-basics": "sql-basics.html"
-  };
-
-  function render() {
-    if (!grid) return;
-    const filtered = allCourses.filter(c => {
-      if (activeFilter === "all") return true;
-      const cat = (c.category || "").toLowerCase();
-      const slug = (c.slug || "").toLowerCase();
-      const title = (c.title || "").toLowerCase();
-      if (activeFilter === "programming" && (cat.includes("prog") || slug.includes("python") || slug.includes("c-") || slug.includes("java") || title.includes("python") || title.includes("c ") || title.includes("java"))) return true;
-      if (activeFilter === "dsa" && (cat.includes("dsa") || slug.includes("data") || slug.includes("array") || title.includes("data") || title.includes("array"))) return true;
-      if (activeFilter === "web" && (cat.includes("web") || slug.includes("html") || slug.includes("sql") || title.includes("html") || title.includes("sql") || title.includes("css"))) return true;
-      return cat.includes(activeFilter);
-    });
-
-    if (filtered.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--paper-line);">
-          <span style="font-size: 36px; display: block; margin-bottom: 10px;">📚</span>
-          <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">No Courses Published Yet</h3>
-          <p style="color: #64748b; font-size: 14px; max-width: 440px; margin: 0 auto 16px;">
-            Courses added and published in the Admin Panel will appear here automatically.
-          </p>
-        </div>
-      `;
-      return;
-    }
-
-    grid.innerHTML = filtered.map(course => {
-      const isPaid = Boolean(course.price && course.price !== "0" && !course.price.toLowerCase().includes("free"));
-      const link = isPaid ? `courses.html` : (staticMap[course.slug] || staticMap[course.id] || course.staticUrl || `course.html?id=${encodeURIComponent(course.id || course.slug)}`);
-      const icon = course.icon || (isPaid ? "🎓" : "📘");
-      const level = course.level || (isPaid ? `Masterclass — ${course.price}` : "Beginner");
-
-      return `
-        
-        <div class="class-card" style="background: #2b3a32; color: #f2c94c; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 4px 4px 0px rgba(242, 201, 76, 0.2); border-radius: 12px; transition: transform 0.2s;">
-          <div class="tape" style="background: rgba(242, 201, 76, 0.8); border: 1px solid #b98f1f;"></div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <span class="num" style="color: #f2c94c; font-weight: bold; opacity: 0.8;">${isPaid ? course.price : '01'}</span>
-            <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "programming"}</span>
-          </div>
-          <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 28px; margin-top: 0;">${course.title}</h3>
-          <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9;">${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
-          <a href="${link}" class="go" style="color: #f2c94c; border-top: 1px dashed rgba(242, 201, 76, 0.3); padding-top: 12px; margin-top: auto;">${isPaid ? `Enroll →` : "Start Learning →"}</a>
-        </div>
-      `;
-
-    }).join("");
-  }
-
-  if (filterBtns) {
-    filterBtns.forEach(btn => {
-      btn.addEventListener("click", () => {
-        filterBtns.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        activeFilter = btn.getAttribute("data-filter") || "all";
-        render();
-      });
-    });
-  }
-
-  // 100% Realtime Firebase Sync
-  try {
-    onSnapshot(collection(db, "courses"), (snapshot) => {
-      const items = [];
-      snapshot.forEach(docSnap => {
-        const d = docSnap.data();
-        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
-          items.push({ id: docSnap.id, ...d });
-        }
-      });
-      // Sort by order
-      items.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      allCourses = items;
-      render();
-    }, (err) => {
-      console.warn("Real-time sync error:", err);
-    });
-  } catch (err) {
-    console.error("Firebase init error:", err);
-  }
-</script>
-<script type="module" src="assets/js/ai-widget.js"></script>
+<script type="module" src="assets/js/app.js"></script>
 </body>
 </html>

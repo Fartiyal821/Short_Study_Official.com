@@ -75,7 +75,7 @@
     </div>
   </main>
 
-  <footer style="background:var(--board); color:var(--chalk); padding:56px 24px 24px;">
+  <footer style="background:var(--board); color:var(--chalk); padding:56px 24px 24px; border-top:4px solid #F2C94C; box-shadow: 0 -3px 14px rgba(242, 201, 76, 0.35);">
     <div class="wrap">
       <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:40px; margin-bottom:40px;">
         <div>
@@ -106,50 +106,6 @@
   </footer>
 
   <script src="script.js"></script>
-  <script type="module">
-    import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
-
-    const grid = document.getElementById("paid-courses-grid");
-
-    try {
-      onSnapshot(collection(db, "paid_courses"), (snapshot) => {
-        const items = [];
-        snapshot.forEach(docSnap => {
-          const d = docSnap.data();
-          if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
-            items.push({ id: docSnap.id, ...d });
-          }
-        });
-
-        if (items.length === 0) {
-          grid.innerHTML = `<div style="text-align:center; width:100%; grid-column:1/-1; padding: 40px; border: 1px dashed var(--paper-line); border-radius: var(--radius);"><span style="font-size: 32px; display:block; margin-bottom:12px;">🎓</span><h3 style="font-family: 'Kalam', cursive; font-size: 22px; color: #f2c94c;">No Masterclasses Currently Available</h3><p style="color: #e2e8f0; font-size: 14.5px;">Please check back later for new premium masterclasses.</p></div>`;
-          return;
-        }
-
-        grid.innerHTML = items.map(course => {
-          return `
-            
-            <div class="class-card" style="background: #2b3a32; color: #f2c94c; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 4px 4px 0px rgba(242, 201, 76, 0.2); border-radius: 12px; transition: transform 0.2s;">
-              <div class="tape" style="background: rgba(242, 201, 76, 0.8); border: 1px solid #b98f1f;"></div>
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span class="num" style="background:rgba(242, 201, 76, 0.2); color:#f2c94c; padding:4px 10px; border-radius:6px; font-weight:700;">${course.price || "₹2599"}</span>
-                <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "Masterclass"}</span>
-              </div>
-              <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 28px; margin-top: 0;">${course.title}</h3>
-              <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9;">${course.description || "Comprehensive masterclass with premium materials."}</p>
-              <a href="programming-videos.html?id=${course.id}" class="go" style="color: #f2c94c; border-top: 1px dashed rgba(242, 201, 76, 0.3); padding-top: 12px; margin-top: auto;">Explore Course →</a>
-            </div>
-          `;
-
-        }).join('');
-      }, (err) => {
-        console.error("Courses page Firestore notice:", err);
-        grid.innerHTML = `<div style="text-align:center; width:100%; grid-column:1/-1;">Error loading courses.</div>`;
-      });
-    } catch (err) {
-      console.warn("Real-time notice:", err);
-    }
-  </script>
-<script type="module" src="assets/js/ai-widget.js"></script>
+  <script type="module" src="assets/js/app.js"></script>
 </body>
 </html>

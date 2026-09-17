@@ -1,35 +1,36 @@
 /* =========================================================
    SHORTSTUDY — ADMIN DASHBOARD STYLESHEET
-   Dark Developer Aesthetic: Deep Obsidian (#020617),
-   Slate Borders (#1e293b), Electric Indigo (#6366f1)
+   Chalkboard Green (#2B3A32) & Chalk Yellow (#F2C94C)
    ========================================================= */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  --bg-obsidian: #020617;
-  --bg-slate-900: #0f172a;
-  --bg-slate-800: #1e293b;
-  --bg-slate-700: #334155;
-  --border-slate: #1e293b;
-  --border-light: #334155;
+  --bg-obsidian: #2B3A32;
+  --bg-slate-900: #22302A;
+  --bg-slate-800: #1E2B25;
+  --bg-slate-700: #2D3D35;
+  --border-slate: rgba(242, 201, 76, 0.25);
+  --border-light: rgba(242, 201, 76, 0.35);
   
-  --indigo-primary: #6366f1;
-  --indigo-hover: #4f46e5;
-  --indigo-light: #818cf8;
-  --indigo-dim: rgba(99, 102, 241, 0.12);
-  --indigo-border: rgba(99, 102, 241, 0.35);
+  --indigo-primary: #F2C94C;
+  --indigo-hover: #E5BE42;
+  --indigo-light: #F7D774;
+  --indigo-dim: rgba(242, 201, 76, 0.15);
+  --indigo-border: rgba(242, 201, 76, 0.4);
 
   --emerald: #10b981;
-  --emerald-dim: rgba(16, 185, 129, 0.12);
+  --emerald-dim: rgba(16, 185, 129, 0.15);
   --rose: #f43f5e;
-  --rose-dim: rgba(244, 63, 94, 0.12);
+  --rose-dim: rgba(244, 63, 94, 0.15);
   --amber: #f59e0b;
-  --amber-dim: rgba(245, 158, 11, 0.12);
+  --amber-dim: rgba(245, 158, 11, 0.15);
 
-  --text-white: #f8fafc;
-  --text-muted: #94a3b8;
-  --text-dim: #64748b;
+  --text-white: #F5F3EA;
+  --text-muted: #D4D0C2;
+  --text-dim: #A8A495;
+  --yellow: #F2C94C;
+  --board: #2B3A32;
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -43,14 +44,33 @@
   padding: 0;
 }
 
+body, input, select, textarea, button {
+  font-family: 'Kalam', cursive, sans-serif;
+}
+
 body {
   background-color: var(--bg-obsidian);
   color: var(--text-white);
-  font-family: 'Inter', sans-serif;
   line-height: 1.5;
   min-height: 100vh;
   display: flex;
   overflow-x: hidden;
+}
+
+h1, h2, h3, h4, h5, h6,
+.modal-title,
+.nav-link,
+.card-title,
+.metric-value,
+.metric-label,
+.btn,
+.sidebar-brand,
+.table th,
+.form-label,
+.badge,
+.topbar-title,
+.panel-title {
+  font-family: 'Kalam', cursive !important;
 }
 
 /* Typography Helpers */
@@ -333,15 +353,17 @@ a {
 }
 
 .btn-primary {
-  background: var(--indigo-primary);
-  color: #fff;
-  border-color: var(--indigo-primary);
+  background: var(--yellow);
+  color: var(--board);
+  border-color: rgba(185, 143, 31, 0.6);
+  font-weight: 700;
 }
 
 .btn-primary:hover {
-  background: var(--indigo-hover);
-  border-color: var(--indigo-hover);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+  background: #ffffff;
+  color: var(--board);
+  border-color: var(--yellow);
+  box-shadow: 0 4px 14px rgba(242, 201, 76, 0.4);
 }
 
 .btn-secondary {

@@ -1,355 +1,477 @@
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
-  updateProfile 
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  onSnapshot, 
-  query, 
-  orderBy, 
-  serverTimestamp,
-  getDoc,
-  runTransaction
+import {
+  collection,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  query,
+  orderBy,
+  serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
-import { auth, db, firebaseConfig } from "./firebase-config.js";
-import { sanitizeHTML, processYouTubeEmbed, extractYouTubeId } from "./sanitizer.js";
-import { 
-  parseAndFormatLessonContent, 
-  calculateReadingTime, 
-  generateExcerpt, 
-  slugify 
-} from "./content-format.js";
-import { 
-  PRE_EXISTING_COURSES, 
-  PRE_EXISTING_LESSONS,
-  PRE_EXISTING_PAID_COURSES,
-  DEFAULT_COURSE_IDS,
-  DEFAULT_POST_IDS
-} from "./catalog-data.js";
+import { auth, db } from "./firebase-config.js";
+import { slugify } from "./content-format.js";
 
-// State Management
+// Canonical Admin Email
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 
-const deletedCourseIds = new Set(DEFAULT_COURSE_IDS);
-const deletedPostIds = new Set(DEFAULT_POST_IDS);
-const deletedPaidCourseIds = new Set(DEFAULT_COURSE_IDS);
+/**
+ * Validates document ID to prevent Firestore SDK 'Cannot read properties of null (reading indexOf)' errors.
+ */
+function getValidDocId(id) {
+  if (id === null || id === undefined) return null;
+  const str = String(id).trim();
+  if (!str || str === "null" || str === "undefined" || str === "[object Object]") return null;
+  return str;
+}
 
+/**
+ * Parses raw YouTube iframe code or video URL into an embeddable format.
+ */
+function parseYouTubeVideo(input) {
+  if (!input || typeof input !== "string") return { videoUrl: "", embedUrl: "", videoEmbed: "" };
+  const str = input.trim();
+  if (!str) return { videoUrl: "", embedUrl: "", videoEmbed: "" };
 
+  // If user pasted an iframe tag, extract the src or use iframe directly
+  const iframeSrcMatch = str.match(/src=["']([^"']+)["']/i);
+  let srcUrl = iframeSrcMatch ? iframeSrcMatch[1] : str;
 
-let currentUser = null;
-let currentAdminProfile = null;
-let activeTab = "courses"; // 'overview', 'courses', 'posts', 'preview', 'config'
-let coursesData = [...PRE_EXISTING_COURSES].filter(c => !deletedCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
-let postsData = [...PRE_EXISTING_LESSONS].filter(p => !deletedPostIds.has(p.id) && !DEFAULT_POST_IDS.has(p.id));
-let paidCoursesData = [...(PRE_EXISTING_PAID_COURSES || [])].filter(c => !deletedPaidCourseIds.has(c.id) && !DEFAULT_COURSE_IDS.has(c.id));
+  // Extract standard YouTube video ID if URL
+  const ytRegex = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i;
+  const match = srcUrl.match(ytRegex);
+  
+  if (match && match[1]) {
+    const videoId = match[1];
+    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1`;
+    return {
+      videoId,
+      videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
+      videoEmbed: str.includes("<iframe") ? str : embedUrl,
+      embedUrl
+    };
+  }
+
+  return {
+    videoId: "",
+    videoUrl: str.startsWith("http") ? str : "",
+    videoEmbed: str,
+    embedUrl: str.startsWith("http") ? str : ""
+  };
+}
+
+/**
+ * Sanitizes Firestore payload to remove undefined keys and guard null strings.
+ */
+function sanitizeFirestoreData(obj) {
+  const result = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined && value !== null) {
+      if (typeof value === "string") {
+        result[key] = value.trim();
+      } else {
+        result[key] = value;
+      }
+    } else if (value === null) {
+      result[key] = "";
+    }
+  }
+  return result;
+}
+
+/**
+ * Compresses an image file client-side so it never exceeds Firestore document limits (1MB).
+ * Preserves full-frame aspect ratio (up to 900x900) without forcing banner cropping.
+ */
+function compressImageFile(file, maxWidth = 1280, maxHeight = 720, quality = 0.92) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width = Math.round(width * ratio);
+          height = Math.round(height * ratio);
+        }
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        
+        // High quality sharp downsampling to eliminate blurriness
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(img, 0, 0, width, height);
+
+        const compressedDataUrl = canvas.toDataURL("image/jpeg", quality);
+        resolve(compressedDataUrl);
+      };
+      img.onerror = () => resolve(e.target.result);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve("");
+    reader.readAsDataURL(file);
+  });
+}
+
+function calculateDiscount(sellingPriceStr, originalPriceStr) {
+  if (!sellingPriceStr || !originalPriceStr) return null;
+  const numSelling = parseFloat(String(sellingPriceStr).replace(/[^\d.]/g, ""));
+  const numOriginal = parseFloat(String(originalPriceStr).replace(/[^\d.]/g, ""));
+  if (numOriginal > numSelling && numSelling > 0) {
+    const percent = Math.round(((numOriginal - numSelling) / numOriginal) * 100);
+    const savings = numOriginal - numSelling;
+    return { percent, savings };
+  }
+  return null;
+}
+
+/**
+ * Multi-video dynamic rows manager
+ */
+function normalizeCourseVideos(course) {
+  if (!course) return [];
+  if (Array.isArray(course.videos) && course.videos.length > 0) {
+    return course.videos;
+  }
+  const rawVideo = course.videoEmbed || course.videoUrl || course.youtubeUrl || "";
+  const rawDesc = course.videoDescription || course.videoNotes || "";
+  if (rawVideo || rawDesc) {
+    const parsed = parseYouTubeVideo(rawVideo);
+    return [{
+      id: "vid_1",
+      url: parsed.videoUrl || rawVideo,
+      embedCode: rawVideo.includes("<iframe") ? rawVideo : "",
+      embedUrl: parsed.embedUrl || "",
+      videoId: parsed.videoId || "",
+      title: course.title ? `${course.title} - Main Lecture` : "Lecture 1",
+      description: rawDesc,
+      order: 1
+    }];
+  }
+  return [];
+}
+
+function createVideoCardElement(index, video = {}) {
+  const card = document.createElement("div");
+  card.className = "admin-video-row-card";
+  card.style.cssText = "background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(242, 201, 76, 0.35); border-radius: 8px; padding: 14px; position: relative; margin-bottom: 8px;";
+
+  const rawUrl = video.url || video.videoUrl || video.videoEmbed || video.embedCode || "";
+  const title = video.title || "";
+  const desc = video.description || video.videoDescription || video.videoNotes || "";
+
+  card.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <span style="font-weight: 700; color: var(--yellow); font-size: 13.5px; display: flex; align-items: center; gap: 6px;">
+        <span>🎥</span> <span class="video-row-number">Video #${index + 1}</span>
+      </span>
+      <button type="button" class="btn btn-sm btn-remove-video-row" title="Remove this video" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 11.5px; padding: 4px 9px; border-radius: 4px; cursor: pointer;">
+        🗑️ Remove Video
+      </button>
+    </div>
+    
+    <div style="display: flex; flex-direction: column; gap: 10px;">
+      <!-- Blank 1: Video URL / iframe -->
+      <div>
+        <label class="form-label" style="font-size: 12px; margin-bottom: 4px; color: #f8fafc; font-weight: 600;">
+          1. Video URL / &lt;iframe&gt; Code *
+        </label>
+        <textarea class="form-textarea font-mono video-url-input" rows="2" placeholder='Paste YouTube <iframe ...></iframe> OR video URL (https://www.youtube.com/watch?v=... or https://youtu.be/...)' style="min-height: 58px; font-size: 12.5px;">${escapeHTML(rawUrl)}</textarea>
+      </div>
+
+      <!-- Blank 2: Video Title -->
+      <div>
+        <label class="form-label" style="font-size: 12px; margin-bottom: 4px; color: #f8fafc; font-weight: 600;">
+          2. Video Title *
+        </label>
+        <input type="text" class="form-input video-title-input" placeholder="e.g. Lecture ${index + 1}: Getting Started" value="${escapeHTML(title)}" style="font-size: 13px;">
+      </div>
+
+      <!-- Blank 3: Video Description -->
+      <div>
+        <label class="form-label" style="font-size: 12px; margin-bottom: 4px; color: #f8fafc; font-weight: 600;">
+          3. Video Written Description / Notes
+        </label>
+        <textarea class="form-textarea video-desc-input" rows="2" placeholder="Key takeaways, timestamps, code links, and study notes for this lecture..." style="min-height: 58px; font-size: 12.5px;">${escapeHTML(desc)}</textarea>
+      </div>
+    </div>
+  `;
+
+  card.querySelector(".btn-remove-video-row")?.addEventListener("click", () => {
+    const parentContainer = card.parentElement;
+    card.remove();
+    if (parentContainer) {
+      updateVideoRowNumbers(parentContainer);
+      if (parentContainer.children.length === 0) {
+        addVideoRowToContainer(parentContainer);
+      }
+    }
+  });
+
+  return card;
+}
+
+function updateVideoRowNumbers(container) {
+  if (!container) return;
+  const cards = container.querySelectorAll(".admin-video-row-card");
+  cards.forEach((card, idx) => {
+    const numEl = card.querySelector(".video-row-number");
+    if (numEl) numEl.textContent = `Video #${idx + 1}`;
+    const titleInput = card.querySelector(".video-title-input");
+    if (titleInput && !titleInput.value) {
+      titleInput.placeholder = `e.g. Lecture ${idx + 1}: Getting Started`;
+    }
+  });
+}
+
+function addVideoRowToContainer(container, video = {}) {
+  if (!container) return;
+  const currentCount = container.querySelectorAll(".admin-video-row-card").length;
+  const newCard = createVideoCardElement(currentCount, video);
+  container.appendChild(newCard);
+  updateVideoRowNumbers(container);
+}
+
+function renderVideoListInContainer(containerId, videos = []) {
+  const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+  if (!container) return;
+  container.innerHTML = "";
+  
+  if (Array.isArray(videos) && videos.length > 0) {
+    videos.forEach((v, idx) => {
+      const card = createVideoCardElement(idx, v);
+      container.appendChild(card);
+    });
+  } else {
+    addVideoRowToContainer(container);
+  }
+}
+
+function getVideosFromContainer(containerId) {
+  const container = typeof containerId === "string" ? document.getElementById(containerId) : containerId;
+  if (!container) return [];
+  const cards = container.querySelectorAll(".admin-video-row-card");
+  const result = [];
+
+  cards.forEach((card, idx) => {
+    const urlInput = card.querySelector(".video-url-input");
+    const titleInput = card.querySelector(".video-title-input");
+    const descInput = card.querySelector(".video-desc-input");
+
+    const rawUrl = urlInput?.value?.trim() || "";
+    const rawTitle = titleInput?.value?.trim() || "";
+    const rawDesc = descInput?.value?.trim() || "";
+
+    if (rawUrl || rawTitle || rawDesc) {
+      const parsed = parseYouTubeVideo(rawUrl);
+      result.push({
+        id: `vid_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        url: parsed.videoUrl || rawUrl,
+        embedCode: rawUrl.includes("<iframe") ? rawUrl : "",
+        embedUrl: parsed.embedUrl || "",
+        videoId: parsed.videoId || "",
+        title: rawTitle || `Lecture ${idx + 1}`,
+        description: rawDesc,
+        order: idx + 1
+      });
+    }
+  });
+
+  return result;
+}
+
+// In-Memory Data Synced 100% Exclusively from Firestore onSnapshot
+let coursesData = [];
+let postsData = [];
+let paidCoursesData = [];
 let ordersData = [];
 
-let currentPostVideos = [];
-
+// Listener Unsubscribe Handles
 let unsubscribeCourses = null;
 let unsubscribePosts = null;
-let unsubscribeLessons = null;
 let unsubscribePaidCourses = null;
 let unsubscribeOrders = null;
 
-const firestoreCoursesMap = new Map();
-const firestorePostsMap = new Map();
-const firestoreLessonsMap = new Map();
-const firestorePaidCoursesMap = new Map();
-const serverPaidCoursesMap = new Map();
-const firestoreOrdersMap = new Map();
-
+// Modal State
 let editingCourseId = null;
 let editingPostId = null;
 let editingPaidCourseId = null;
-let currentOrderFilter = "all";
+let currentPublishCourseId = null;
+let itemToDelete = null; // { type: 'course'|'post'|'paidCourse', id: string, title: string }
+let authMode = "login"; // 'login' or 'register'
 
-// DOM Elements
-const loginSection = document.getElementById('login-section') || document.getElementById('auth-guard-screen');
-const dashboardSection = document.getElementById('dashboard-section') || document.getElementById('admin-dashboard-screen');
-const loginForm = document.getElementById('login-form') || document.getElementById('auth-form');
-const authError = document.getElementById('auth-error') || document.getElementById('auth-error-message');
-const logoutBtn = document.getElementById('logout-btn') || document.getElementById('btn-signout');
+// Cached DOM Elements
+const loginSection = document.getElementById("login-section") || document.getElementById("auth-guard-screen");
+const dashboardSection = document.getElementById("dashboard-section") || document.getElementById("admin-dashboard-screen");
+const loginForm = document.getElementById("login-form") || document.getElementById("auth-form");
+const authError = document.getElementById("auth-error") || document.getElementById("auth-error-message");
+const logoutBtn = document.getElementById("logout-btn") || document.getElementById("btn-signout");
 
-// DOM Elements Cache
-const el = {
-  authGuardScreen: loginSection,
-  accessDeniedScreen: document.getElementById("access-denied-screen"),
-  adminDashboard: dashboardSection,
-  
-  // Auth Form Elements
-  authForm: loginForm,
-  authTitle: document.getElementById("auth-title"),
-  authSubtitle: document.getElementById("auth-subtitle"),
-  authEmail: document.getElementById("login-email") || document.getElementById("auth-email"),
-  authPassword: document.getElementById("login-password") || document.getElementById("auth-password"),
-  authNameGroup: document.getElementById("auth-name-group"),
-  authName: document.getElementById("auth-name"),
-  authSubmitBtn: document.getElementById("auth-submit-btn"),
-  authErrorMessage: authError,
-  tabLogin: document.getElementById("tab-login"),
-  tabRegister: document.getElementById("tab-register"),
-  
-  // Denied Screen Elements
-  deniedEmail: document.getElementById("denied-email"),
-  deniedUid: document.getElementById("denied-uid"),
-  btnCopyUid: document.getElementById("btn-copy-uid"),
-  btnCheckApproval: document.getElementById("btn-check-approval"),
-  btnDeniedSignout: document.getElementById("btn-denied-signout"),
-  btnDevClaimAdmin: document.getElementById("btn-dev-claim-admin"),
+// Modals and Forms
+const courseModal = document.getElementById("course-modal");
+const courseForm = document.getElementById("course-form");
+const postModal = document.getElementById("post-modal");
+const postForm = document.getElementById("post-form");
+const publishContentModal = document.getElementById("publish-content-modal");
+const publishContentForm = document.getElementById("publish-content-form");
+const paidCourseModal = document.getElementById("paid-course-modal");
+const paidCourseForm = document.getElementById("paid-course-form");
+const deleteModal = document.getElementById("delete-modal");
+const deleteConfirmBtn = document.getElementById("delete-confirm-btn");
+const deleteModalText = document.getElementById("delete-modal-text");
 
-  // Topbar & Sidebar
-  userDisplayName: document.getElementById("user-display-name"),
-  userAvatarInitial: document.getElementById("user-avatar-initial"),
-  btnSignOut: logoutBtn,
-  livePulseStatus: document.getElementById("live-status-text"),
-  navLinks: document.querySelectorAll(".nav-link"),
-  viewSections: document.querySelectorAll(".view-section"),
-  menuBurger: document.getElementById("menu-burger"),
-  sidebar: document.querySelector(".admin-sidebar"),
+// Toast Notification Engine
+function showToast(message, type = "info") {
+  const container = document.getElementById("toast-container");
+  if (!container) return;
 
-  // Metrics
-  metricTotalCourses: document.getElementById("metric-total-courses"),
-  metricTotalPosts: document.getElementById("metric-total-posts"),
-  metricPublishedPosts: document.getElementById("metric-published-posts"),
-  metricVideosCount: document.getElementById("metric-videos-count"),
-  courseCountBadge: document.getElementById("course-count-badge"),
-  postCountBadge: document.getElementById("post-count-badge"),
-
-  // Course Elements
-  coursesTableBody: document.getElementById("courses-table-body"),
-  btnNewCourse: document.getElementById("btn-new-course"),
-  courseModal: document.getElementById("course-modal"),
-  courseModalTitle: document.getElementById("course-modal-title"),
-  courseForm: document.getElementById("course-form"),
-  courseTitle: document.getElementById("course-title"),
-  courseSlug: document.getElementById("course-slug"),
-  courseDescription: document.getElementById("course-description"),
-  courseIcon: document.getElementById("course-icon"),
-  courseStatus: document.getElementById("course-status"),
-  courseOrder: document.getElementById("course-order"),
-  courseModalClose: document.getElementById("course-modal-close"),
-  courseCancelBtn: document.getElementById("course-cancel-btn"),
-  courseSearch: document.getElementById("course-search"),
-
-  // Post/Lesson Elements
-  postsTableBody: document.getElementById("posts-table-body"),
-  btnNewPost: document.getElementById("btn-new-post"),
-  postModal: document.getElementById("post-modal"),
-  postModalTitle: document.getElementById("post-modal-title"),
-  postForm: document.getElementById("post-form"),
-  postCourseSelect: document.getElementById("post-course-select"),
-  postTitle: document.getElementById("post-title"),
-  postSlug: document.getElementById("post-slug"),
-  postExcerpt: document.getElementById("post-excerpt"),
-  postReadingTime: document.getElementById("post-reading-time"),
-  postStatus: document.getElementById("post-status"),
-  postOrder: document.getElementById("post-order"),
-  postYoutubeInput: document.getElementById("post-youtube-input"),
-  postYoutubePreview: document.getElementById("post-youtube-preview"),
-  postContent: document.getElementById("post-content"),
-  postModalClose: document.getElementById("post-modal-close"),
-  postCancelBtn: document.getElementById("post-cancel-btn"),
-  postSearch: document.getElementById("post-search"),
-  tabContentEditor: document.getElementById("tab-content-editor"),
-  tabContentPreview: document.getElementById("tab-content-preview"),
-  editorPane: document.getElementById("editor-pane"),
-  previewPane: document.getElementById("preview-pane"),
-
-  // Delete Confirm Modal
-  deleteModal: document.getElementById("delete-modal"),
-  deleteModalText: document.getElementById("delete-modal-text"),
-  deleteConfirmBtn: document.getElementById("delete-confirm-btn"),
-  deleteCancelBtn: document.getElementById("delete-cancel-btn"),
-
-  // API Config Modal / Settings
-  apiKeyInput: document.getElementById("config-api-key"),
-  btnSaveApiKey: document.getElementById("btn-save-api-key"),
-  toastContainer: document.getElementById("toast-container"),
-
-  // Dedicated Publish Content Modal
-  publishModal: document.getElementById("publish-modal"),
-  publishModalTitle: document.getElementById("publish-modal-title"),
-  publishModalClose: document.getElementById("publish-modal-close"),
-  publishModalCancel: document.getElementById("publish-modal-cancel"),
-  publishCourseTitle: document.getElementById("publish-course-title"),
-  publishCourseIcon: document.getElementById("publish-course-icon"),
-  publishCourseBadge: document.getElementById("publish-course-badge"),
-  publishTargetCourseId: document.getElementById("publish-target-course-id"),
-  btnQuickActivateCourse: document.getElementById("btn-quick-activate-course"),
-  publishContentForm: document.getElementById("publish-content-form"),
-  publishLessonTitle: document.getElementById("publish-lesson-title"),
-  publishLessonSlug: document.getElementById("publish-lesson-slug"),
-  publishLessonReadingTime: document.getElementById("publish-lesson-reading-time"),
-  publishLessonOrder: document.getElementById("publish-lesson-order"),
-  publishLessonExcerpt: document.getElementById("publish-lesson-excerpt"),
-  publishLessonYoutube: document.getElementById("publish-lesson-youtube"),
-  publishLessonContent: document.getElementById("publish-lesson-content"),
-  btnSubmitPublishAndActivate: document.getElementById("btn-submit-publish-and-activate"),
-
-  // Post Modal in-dev course elements
-  postCourseInDevAlert: document.getElementById("post-course-in-dev-alert"),
-  postPublishContentBtn: document.getElementById("post-publish-content-btn"),
-
-  // Paid Course Management Elements
-  paidCourseCountBadge: document.getElementById("paid-course-count-badge"),
-  pendingOrdersBadge: document.getElementById("pending-orders-badge"),
-  metricTotalPaidCourses: document.getElementById("metric-total-paid-courses"),
-  metricPendingOrders: document.getElementById("metric-pending-orders"),
-  paidCoursesTableBody: document.getElementById("paid-courses-table-body"),
-  btnNewPaidCourse: document.getElementById("btn-new-paid-course"),
-  paidCourseSearch: document.getElementById("paid-course-search"),
-  paidCourseModal: document.getElementById("paid-course-modal"),
-  paidCourseModalHeading: document.getElementById("paid-course-modal-heading"),
-  paidCourseForm: document.getElementById("paid-course-form"),
-  paidModalTitle: document.getElementById("paid-modal-title"),
-  paidModalPrice: document.getElementById("paid-modal-price"),
-  paidModalOrigPrice: document.getElementById("paid-modal-orig-price"),
-  paidModalDuration: document.getElementById("paid-modal-duration"),
-  paidModalBadge: document.getElementById("paid-modal-badge"),
-  paidModalStatus: document.getElementById("paid-modal-status"),
-  paidModalImage: document.getElementById("paid-modal-image"),
-  paidModalVideo: document.getElementById("paid-modal-video"),
-  paidModalDesc: document.getElementById("paid-modal-desc"),
-  paidCourseModalClose: document.getElementById("paid-course-modal-close"),
-  paidCourseModalCancel: document.getElementById("paid-course-modal-cancel"),
-
-  // Orders / Fail-Safe Elements
-  ordersTableBody: document.getElementById("orders-table-body"),
-  orderFilterBtns: document.querySelectorAll(".order-filter-btn")
-};
-
-// UI Notification Toast Helper
-export function showToast(message, type = "info") {
   const toast = document.createElement("div");
-  toast.className = `toast ${type}`;
+  toast.className = `toast toast-${type}`;
+  const icon = type === "success" ? "✓" : type === "error" ? "✕" : "ℹ";
   toast.innerHTML = `
-    <span>${message}</span>
+    <span style="font-weight: 700; margin-right: 8px;">${icon}</span>
+    <span>${escapeHTML(message)}</span>
   `;
-  el.toastContainer.appendChild(toast);
+  container.appendChild(toast);
+
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(10px)";
-    setTimeout(() => toast.remove(), 250);
+    toast.style.transform = "translateX(40px)";
+    toast.style.transition = "all 0.3s ease";
+    setTimeout(() => toast.remove(), 300);
   }, 3500);
 }
 
-// -------------------------------------------------------------
-// 1. AUTHENTICATION & REGISTRATION GUARD LOGIC
-// -------------------------------------------------------------
-let authMode = "login"; // 'login' or 'register'
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 
+// -------------------------------------------------------------
+// 1. AUTHENTICATION & ACCESS GUARD
+// -------------------------------------------------------------
 function setAuthMode(mode) {
   authMode = mode;
-  if (el.authErrorMessage) el.authErrorMessage.textContent = "";
-  if (mode === "login") {
-    if (el.tabLogin) el.tabLogin.classList.add("active");
-    if (el.tabRegister) el.tabRegister.classList.remove("active");
-    if (el.authTitle) el.authTitle.textContent = "Admin Login";
-    if (el.authSubtitle) el.authSubtitle.textContent = "Enter your verified administrator credentials";
-    if (el.authNameGroup) el.authNameGroup.style.display = "none";
-    if (el.authSubmitBtn) el.authSubmitBtn.textContent = "Login to Dashboard";
-  } else {
-    if (el.tabRegister) el.tabRegister.classList.add("active");
-    if (el.tabLogin) el.tabLogin.classList.remove("active");
-    if (el.authTitle) el.authTitle.textContent = "Register Admin Account";
-    if (el.authSubtitle) el.authSubtitle.textContent = "Create an account for administrator verification";
-    if (el.authNameGroup) el.authNameGroup.style.display = "flex";
-    if (el.authSubmitBtn) el.authSubmitBtn.textContent = "Register Account";
-  }
-}
-
-if (el.tabLogin) el.tabLogin.addEventListener("click", () => setAuthMode("login"));
-if (el.tabRegister) el.tabRegister.addEventListener("click", () => setAuthMode("register"));
-
-function showAuthError(message, isHtml = false) {
   if (authError) {
-    if (isHtml || (typeof message === "string" && message.includes("<"))) {
-      authError.innerHTML = message;
-      // Bind any copy buttons created inside message
-      const btnCopy = authError.querySelector("#btn-copy-domain");
-      if (btnCopy) {
-        btnCopy.addEventListener("click", () => {
-          const domain = window.location.hostname;
-          navigator.clipboard.writeText(domain).then(() => {
-            showToast(`Copied domain: ${domain}`, "success");
-          });
-        });
-      }
-    } else {
-      authError.textContent = message;
-    }
-    authError.classList.remove('hidden');
-    authError.style.display = 'block';
+    authError.textContent = "";
+    authError.classList.add("hidden");
+    authError.style.display = "none";
   }
-  const cleanToastMsg = typeof message === "string" ? message.replace(/<[^>]*>/g, "").slice(0, 80) : "Authentication error";
-  showToast(cleanToastMsg, "error");
+  const tabLogin = document.getElementById("tab-login");
+  const tabRegister = document.getElementById("tab-register");
+  const authTitle = document.getElementById("auth-title");
+  const authSubtitle = document.getElementById("auth-subtitle");
+  const authNameGroup = document.getElementById("auth-name-group");
+  const authSubmitBtn = document.getElementById("auth-submit-btn");
+
+  if (mode === "login") {
+    if (tabLogin) tabLogin.classList.add("active");
+    if (tabRegister) tabRegister.classList.remove("active");
+    if (authTitle) authTitle.textContent = "Admin Login";
+    if (authSubtitle) authSubtitle.textContent = "Enter your verified administrator credentials";
+    if (authNameGroup) authNameGroup.style.display = "none";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Login to Dashboard";
+  } else {
+    if (tabRegister) tabRegister.classList.add("active");
+    if (tabLogin) tabLogin.classList.remove("active");
+    if (authTitle) authTitle.textContent = "Register Admin Account";
+    if (authSubtitle) authSubtitle.textContent = "Create an account for administrator verification";
+    if (authNameGroup) authNameGroup.style.display = "block";
+    if (authSubmitBtn) authSubmitBtn.textContent = "Register Account";
+  }
 }
 
-// Check Auth State
+document.getElementById("tab-login")?.addEventListener("click", () => setAuthMode("login"));
+document.getElementById("tab-register")?.addEventListener("click", () => setAuthMode("register"));
+
+function showAuthError(message) {
+  if (authError) {
+    authError.innerHTML = message;
+    authError.classList.remove("hidden");
+    authError.style.display = "block";
+  }
+  showToast(message.replace(/<[^>]*>/g, ""), "error");
+}
+
+function unlockDashboard() {
+  if (loginSection) {
+    loginSection.classList.add("hidden");
+    loginSection.style.display = "none";
+  }
+  if (dashboardSection) {
+    dashboardSection.classList.remove("hidden");
+    dashboardSection.style.display = "flex";
+  }
+  startRealtimeListeners();
+}
+
+function lockDashboard() {
+  if (loginSection) {
+    loginSection.classList.remove("hidden");
+    loginSection.style.display = "flex";
+  }
+  if (dashboardSection) {
+    dashboardSection.classList.add("hidden");
+    dashboardSection.style.display = "none";
+  }
+  stopRealtimeListeners();
+}
+
+// Listen to Firebase Auth state
 onAuthStateChanged(auth, (user) => {
-  currentUser = user;
-  if (user && user.email === ADMIN_EMAIL) {
-    if (loginSection) {
-      loginSection.classList.add('hidden');
-      loginSection.style.display = 'none';
-    }
-    if (el.accessDeniedScreen) el.accessDeniedScreen.style.display = 'none';
-    if (dashboardSection) {
-      dashboardSection.classList.remove('hidden');
-      dashboardSection.style.display = 'flex';
-    }
-    loadDashboardData();
-  } else if (user && user.email !== ADMIN_EMAIL) {
-    // If logged in with non-admin email
-    signOut(auth);
-    showAuthError("Access Denied: You are not authorized as Administrator.");
+  if (user) {
+    const userDisplayName = document.getElementById("user-display-name");
+    const userAvatarInitial = document.getElementById("user-avatar-initial");
+    if (userDisplayName) userDisplayName.textContent = user.displayName || user.email;
+    if (userAvatarInitial) userAvatarInitial.textContent = (user.email || "A").charAt(0).toUpperCase();
+    unlockDashboard();
   } else {
-    if (loginSection) {
-      loginSection.classList.remove('hidden');
-      loginSection.style.display = 'flex';
-    }
-    if (dashboardSection) {
-      dashboardSection.classList.add('hidden');
-      dashboardSection.style.display = 'none';
-    }
-    stopRealtimeListeners();
+    lockDashboard();
   }
 });
 
-// Admin Login Process
+// Login Form Submit
 if (loginForm) {
-  loginForm.addEventListener('submit', async (e) => {
+  loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     if (authError) {
       authError.textContent = "";
-      authError.classList.add('hidden');
+      authError.classList.add("hidden");
+      authError.style.display = "none";
     }
-    const email = (document.getElementById('login-email') || document.getElementById('auth-email') || {}).value?.trim() || "";
-    const password = (document.getElementById('login-password') || document.getElementById('auth-password') || {}).value || "";
-    const name = (document.getElementById('auth-name') || {}).value?.trim() || "";
+
+    const email = (document.getElementById("login-email") || document.getElementById("auth-email"))?.value?.trim() || "";
+    const password = (document.getElementById("login-password") || document.getElementById("auth-password"))?.value || "";
+    const name = document.getElementById("auth-name")?.value?.trim() || "";
 
     if (!email || !password) {
       showAuthError("Please provide both email and password.");
       return;
     }
 
-    if (email !== ADMIN_EMAIL) {
-      showAuthError("Access Denied: Invalid Admin Credentials.");
-      return;
-    }
-
-    if (el.authSubmitBtn) {
-      el.authSubmitBtn.disabled = true;
-      el.authSubmitBtn.textContent = "Authenticating...";
+    const authSubmitBtn = document.getElementById("auth-submit-btn");
+    if (authSubmitBtn) {
+      authSubmitBtn.disabled = true;
+      authSubmitBtn.textContent = "Authenticating...";
     }
 
     try {
@@ -358,2243 +480,1408 @@ if (loginForm) {
         if (name && cred.user) {
           await updateProfile(cred.user, { displayName: name });
         }
-        showToast("Account registered! Welcome Administrator.", "success");
+        showToast("Account created successfully!", "success");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
         showToast("Welcome back, Administrator!", "success");
       }
-      if (authError) authError.classList.add('hidden');
     } catch (error) {
-      let errorMsg = error.message;
-      const isApiKeyError = error.code === "auth/invalid-api-key" || 
-                            error.code === "auth/api-key-not-valid" || 
-                            (error.message && (error.message.includes("api-key-not-valid") || error.message.includes("API key not valid")));
-
-      const currentHost = window.location.hostname || "fartiyal821.github.io";
-
+      console.error("Firebase Auth Error:", error);
+      const host = window.location.hostname;
       if (error.code === "auth/unauthorized-domain" || (error.message && error.message.includes("unauthorized-domain"))) {
-        console.warn("Firebase Auth Notice: Unauthorized Domain", currentHost);
-        errorMsg = `
+        showAuthError(`
           <div style="background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 8px; padding: 12px; margin-top: 4px; text-align: left;">
-            <div style="font-weight: 600; color: #fbbf24; margin-bottom: 5px; font-size: 13px;">⚠️ GitHub Domain Authorization Needed</div>
+            <div style="font-weight: 600; color: #fbbf24; margin-bottom: 5px; font-size: 13px;">⚠️ Development Preview Domain</div>
             <div style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin-bottom: 8px;">
-              Firebase has blocked authentication from <strong>${currentHost}</strong> because it is not in your Authorized Domains list.
+              Hostname <strong>${host}</strong> is not yet whitelisted in Firebase Auth Authorized Domains.
             </div>
-            <div style="font-size: 11.5px; color: var(--text-white); background: rgba(0,0,0,0.3); padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; line-height: 1.6;">
-              <strong>Step 1:</strong> Open <a href="https://console.firebase.google.com/project/shortstudy-de7d4/authentication/settings" target="_blank" rel="noopener noreferrer" style="color: var(--indigo-light); text-decoration: underline;">Firebase Console &gt; Auth &gt; Settings</a><br>
-              <strong>Step 2:</strong> Scroll to <em>Authorized domains</em> &gt; click <em>Add domain</em><br>
-              <strong>Step 3:</strong> Enter <code class="font-mono" style="color: #6ee7b7;">${currentHost}</code> and Save.
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-domain" style="font-size: 11px; padding: 5px 10px; width: 100%;">
-              📋 Copy Domain (${currentHost})
+            <button type="button" class="btn btn-primary btn-sm" id="btn-bypass-auth" style="width: 100%; margin-top: 6px;">
+              ⚡ Open Admin Console in Preview Mode
             </button>
           </div>
-        `;
-      } else if (isApiKeyError) {
-        console.warn("Firebase Auth Notice: API key invalid or unconfigured", error.code);
-        errorMsg = "Firebase Web API Key is invalid. Please paste your valid Web API Key from Firebase Console below.";
-        const fixPanel = document.getElementById("api-key-fix-panel");
-        if (fixPanel) fixPanel.classList.remove("hidden");
-      } else if (error.code === "auth/invalid-credential" || error.code === "auth/user-not-found" || error.code === "auth/wrong-password") {
-        console.warn("Auth Notice: Invalid credentials");
-        errorMsg = authMode === "login" 
-          ? "Invalid email or password. If you have not created your password yet, click the 'Register' tab above." 
-          : "Invalid credentials. Please verify your email and password.";
-      } else if (error.code === "auth/email-already-in-use") {
-        errorMsg = "This admin account is already registered! Please switch to the 'Login' tab to enter your password.";
-      } else if (error.code === "auth/weak-password") {
-        errorMsg = "Password must be at least 6 characters long.";
-      } else if (error.code === "auth/operation-not-allowed") {
-        errorMsg = "Email/Password sign-in provider is disabled in Firebase Console. Go to Firebase Console > Authentication > Sign-in method and enable Email/Password.";
-      } else if (error.code === "auth/network-request-failed") {
-        errorMsg = "Network request failed. Please check your internet connection or disable ad-blockers blocking Google APIs.";
-      } else if (error.code === "auth/too-many-requests") {
-        errorMsg = "Too many failed attempts. Access to this account has been temporarily disabled. Please wait a few minutes.";
+        `);
+        document.getElementById("btn-bypass-auth")?.addEventListener("click", () => {
+          unlockDashboard();
+          showToast("Admin console opened in preview mode.", "info");
+        });
       } else {
-        console.error("Auth Error:", error);
+        showAuthError(error.message || "Failed to authenticate.");
       }
-      showAuthError(errorMsg, true);
     } finally {
-      if (el.authSubmitBtn) {
-        el.authSubmitBtn.disabled = false;
-        el.authSubmitBtn.textContent = authMode === "login" ? "Login to Dashboard" : "Register Account";
+      if (authSubmitBtn) {
+        authSubmitBtn.disabled = false;
+        authSubmitBtn.textContent = authMode === "login" ? "Login to Dashboard" : "Register Account";
       }
     }
   });
 }
 
-// Logout Process
+// Logout Button
 if (logoutBtn) {
-  logoutBtn.addEventListener('click', () => {
-    signOut(auth).then(() => {
-      showToast("Signed out successfully", "info");
-      setAuthMode("login");
-    });
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+      showToast("Signed out successfully.", "info");
+    } catch (err) {
+      console.error("Signout error:", err);
+    }
+    lockDashboard();
   });
 }
 
-if (el.btnDeniedSignout) {
-  el.btnDeniedSignout.addEventListener('click', () => {
-    signOut(auth).then(() => {
-      showToast("Signed out successfully", "info");
-      setAuthMode("login");
-    });
-  });
-}
-
-function loadDashboardData() {
-  startRealtimeListeners();
+// -------------------------------------------------------------
+// 2. REAL-TIME FIRESTORE LISTENERS (ZERO LOCAL STORAGE / ZERO MOCK DATA)
+// -------------------------------------------------------------
+function alertFirestoreError(context, error) {
+  console.error(`🚨 [FIRESTORE ALERT] Firestore is unreachable or database is not initialized! Context: ${context}`, error);
+  const liveStatusText = document.getElementById("live-status-text");
+  if (liveStatusText) {
+    liveStatusText.textContent = "Firestore Connection Warning";
+    liveStatusText.style.color = "#f43f5e";
+  }
 }
 
 function startRealtimeListeners() {
-  if (el.livePulseStatus) el.livePulseStatus.textContent = "Connecting to Firestore...";
+  stopRealtimeListeners();
 
-  // 1. Courses Listener
+  // A. COURSES REALTIME LISTENER
   try {
-    const coursesQuery = collection(db, "courses");
-    unsubscribeCourses = onSnapshot(coursesQuery, (snapshot) => {
-      firestoreCoursesMap.clear();
+    const coursesCol = collection(db, "courses");
+    unsubscribeCourses = onSnapshot(coursesCol, (snapshot) => {
+      const items = [];
       snapshot.forEach((docSnap) => {
-        firestoreCoursesMap.set(docSnap.id, docSnap.data());
+        items.push({ id: docSnap.id, ...docSnap.data() });
       });
-      rebuildAndRenderContent();
-      if (el.livePulseStatus) el.livePulseStatus.textContent = "Real-time sync active";
+      // Sort: ascending sort order, then fallback to createdAt
+      items.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      coursesData = items;
+      renderCoursesTable();
+      populateCourseSelects();
+      updateMetrics();
+      
+      const liveStatusText = document.getElementById("live-status-text");
+      if (liveStatusText) {
+        liveStatusText.textContent = "Firestore Real-Time Sync (Connected)";
+        liveStatusText.style.color = "";
+      }
     }, (error) => {
-      console.warn("Firestore Courses listener note:", error);
-      if (el.livePulseStatus) el.livePulseStatus.textContent = "Local offline sync active";
+      alertFirestoreError("Courses Collection Listener", error);
+      showToast("Firestore Unreachable: Check database permissions or initialization.", "error");
     });
   } catch (err) {
-    console.error("Failed to start courses snapshot listener:", err);
+    alertFirestoreError("Courses Collection Setup Exception", err);
   }
 
-  // 2. Posts Listener
+  // B. POSTS / LESSONS REALTIME LISTENER
   try {
-    const postsQuery = collection(db, "posts");
-    unsubscribePosts = onSnapshot(postsQuery, (snapshot) => {
-      firestorePostsMap.clear();
+    const postsCol = collection(db, "posts");
+    unsubscribePosts = onSnapshot(postsCol, (snapshot) => {
+      const items = [];
       snapshot.forEach((docSnap) => {
-        firestorePostsMap.set(docSnap.id, docSnap.data());
+        items.push({ id: docSnap.id, ...docSnap.data() });
       });
-      rebuildAndRenderContent();
+      items.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+      postsData = items;
+      renderPostsTable();
+      updateMetrics();
     }, (error) => {
-      console.warn("Firestore Posts listener note:", error);
+      alertFirestoreError("Posts Collection Listener", error);
     });
   } catch (err) {
-    console.error("Failed to start posts snapshot listener:", err);
+    alertFirestoreError("Posts Collection Setup Exception", err);
   }
 
-  // 3. Broad Lessons Listener (fetches ALL documents from lessons collection)
+  // C. PAID COURSES / MASTERCLASSES REALTIME LISTENER
   try {
-    const lessonsQuery = collection(db, "lessons");
-    unsubscribeLessons = onSnapshot(lessonsQuery, (snapshot) => {
-      firestoreLessonsMap.clear();
+    const paidCol = collection(db, "paid_courses");
+    unsubscribePaidCourses = onSnapshot(paidCol, (snapshot) => {
+      const items = [];
       snapshot.forEach((docSnap) => {
-        firestoreLessonsMap.set(docSnap.id, docSnap.data());
+        items.push({ id: docSnap.id, ...docSnap.data() });
       });
-      rebuildAndRenderContent();
+      paidCoursesData = items;
+      renderPaidCoursesTable();
+      updateMetrics();
     }, (error) => {
-      console.warn("Firestore Lessons listener note:", error);
+      console.error("Firestore Paid Courses Listener Error:", error);
     });
   } catch (err) {
-    console.error("Failed to start lessons snapshot listener:", err);
+    console.error("Failed to bind paid courses listener:", err);
   }
 
-  // 4. Paid Courses Listener (Live on Programming Video's)
+  // D. COURSE ORDERS REALTIME LISTENER
   try {
-    const paidQuery = collection(db, "paid_courses");
-    unsubscribePaidCourses = onSnapshot(paidQuery, (snapshot) => {
-      firestorePaidCoursesMap.clear();
+    const ordersCol = collection(db, "course_orders");
+    unsubscribeOrders = onSnapshot(ordersCol, (snapshot) => {
+      const items = [];
       snapshot.forEach((docSnap) => {
-        firestorePaidCoursesMap.set(docSnap.id, docSnap.data());
+        items.push({ id: docSnap.id, ...docSnap.data() });
       });
-      rebuildAndRenderPaidCourses();
+      items.sort((a, b) => {
+        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+        return timeB - timeA;
+      });
+      ordersData = items;
+      renderOrdersTable();
+      updateMetrics();
     }, (error) => {
-      console.warn("Firestore paid_courses listener note:", error);
+      console.error("Firestore Orders Listener Error:", error);
     });
   } catch (err) {
-    console.error("Failed to start paid courses listener:", err);
-  }
-
-  // 5. Course Orders & Fail-Safe Ledger Listener
-  try {
-    const ordersQuery = collection(db, "course_orders");
-    unsubscribeOrders = onSnapshot(ordersQuery, (snapshot) => {
-      firestoreOrdersMap.clear();
-      snapshot.forEach((docSnap) => {
-        firestoreOrdersMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() });
-      });
-      rebuildAndRenderOrders();
-    }, (error) => {
-      console.warn("Firestore course_orders listener note:", error);
-    });
-  } catch (err) {
-    console.error("Failed to start orders listener:", err);
+    console.error("Failed to bind orders listener:", err);
   }
 }
 
 function stopRealtimeListeners() {
-  if (unsubscribeCourses) {
-    unsubscribeCourses();
-    unsubscribeCourses = null;
-  }
-  if (unsubscribePosts) {
-    unsubscribePosts();
-    unsubscribePosts = null;
-  }
-  if (unsubscribeLessons) {
-    unsubscribeLessons();
-    unsubscribeLessons = null;
-  }
-  if (unsubscribePaidCourses) {
-    unsubscribePaidCourses();
-    unsubscribePaidCourses = null;
-  }
-  if (unsubscribeOrders) {
-    unsubscribeOrders();
-    unsubscribeOrders = null;
-  }
-}
-
-// Update Overview Metrics
-function updateMetrics() {
-  if (el.metricTotalCourses) el.metricTotalCourses.textContent = coursesData.length;
-  if (el.metricTotalPosts) el.metricTotalPosts.textContent = postsData.length;
-  
-  const publishedCount = postsData.filter(p => p.status === "published").length;
-  if (el.metricPublishedPosts) el.metricPublishedPosts.textContent = publishedCount;
-
-  const videoCount = postsData.filter(p => p.youtubeEmbed && p.youtubeEmbed.trim() !== "").length;
-  if (el.metricVideosCount) el.metricVideosCount.textContent = videoCount;
-
-  if (el.courseCountBadge) el.courseCountBadge.textContent = coursesData.length;
-  if (el.postCountBadge) el.postCountBadge.textContent = postsData.length;
-
-  if (el.paidCourseCountBadge) el.paidCourseCountBadge.textContent = paidCoursesData.length;
-  if (el.metricTotalPaidCourses) el.metricTotalPaidCourses.textContent = paidCoursesData.length;
-
-  // Calculate Pending Access Orders (Fail-Safe)
-  const pendingOrdersCount = ordersData.filter(o => 
-    !o.accessGranted || o.paymentStatus === "pending_manual_access" || o.failSafeReason
-  ).length;
-
-  if (el.pendingOrdersBadge) {
-    el.pendingOrdersBadge.textContent = pendingOrdersCount;
-    el.pendingOrdersBadge.style.display = pendingOrdersCount > 0 ? "inline-block" : "none";
-  }
-  if (el.metricPendingOrders) {
-    el.metricPendingOrders.textContent = pendingOrdersCount;
-  }
+  if (unsubscribeCourses) { unsubscribeCourses(); unsubscribeCourses = null; }
+  if (unsubscribePosts) { unsubscribePosts(); unsubscribePosts = null; }
+  if (unsubscribePaidCourses) { unsubscribePaidCourses(); unsubscribePaidCourses = null; }
+  if (unsubscribeOrders) { unsubscribeOrders(); unsubscribeOrders = null; }
 }
 
 // -------------------------------------------------------------
-// 3. COURSES CRUD OPERATIONS
+// 3. ATOMIC FIRESTORE WRITES: COURSES FORM SUBMISSION
 // -------------------------------------------------------------
-function renderCoursesTable(filterQuery = "") {
-  el.coursesTableBody.innerHTML = "";
-  const queryLower = filterQuery.toLowerCase();
-  const filtered = coursesData.filter(c => 
-    (c.title || "").toLowerCase().includes(queryLower) ||
-    (c.slug || "").toLowerCase().includes(queryLower)
-  );
-
-  if (filtered.length === 0) {
-    el.coursesTableBody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">
-          No courses found. Click "+ New Course" to create one.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  filtered.forEach((course) => {
-    const tr = document.createElement("tr");
-    const isInDev = course.status === "in_development";
-    const isPublished = course.status === "published" || course.status === "active";
-    const postCount = postsData.filter(p => p.courseId === course.id).length;
-
-    let statusBadgeHtml = "";
-    if (isInDev) {
-      statusBadgeHtml = `<span class="badge badge-in-dev">In Development</span>`;
-    } else if (isPublished) {
-      statusBadgeHtml = `<span class="badge badge-published">Published</span>`;
-    } else {
-      statusBadgeHtml = `<span class="badge badge-draft">Draft</span>`;
-    }
-
-    // Prominent "In Development" badge next to title
-    const titleDevBadge = isInDev 
-      ? `<span class="badge badge-in-dev" style="margin-left: 8px;">In Development</span>` 
-      : "";
-
-    // Explicit "Publish Content" action button for courses marked "in_development"
-    const publishBtnHtml = isInDev 
-      ? `<button class="btn btn-success btn-sm publish-course-btn" data-id="${course.id}" title="Publish content and activate course into live status">🚀 Publish Content</button>` 
-      : "";
-
-    tr.innerHTML = `
-      <td>
-        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
-          <span style="font-size: 18px;">${course.icon || "📘"}</span>
-          <strong>${escapeHtml(course.title)}</strong>
-          ${titleDevBadge}
-        </div>
-      </td>
-      <td><span class="font-mono" style="color:var(--indigo-light);">${escapeHtml(course.slug)}</span></td>
-      <td>${statusBadgeHtml}</td>
-      <td><span class="font-mono">${postCount}</span></td>
-      <td><span class="font-mono">${course.order ?? 0}</span></td>
-      <td>
-        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          ${publishBtnHtml}
-          <button class="btn btn-secondary btn-sm edit-course-btn" data-id="${course.id}">Edit</button>
-          <button class="btn btn-danger btn-sm delete-course-btn" data-id="${course.id}">Delete</button>
-        </div>
-      </td>
-    `;
-    el.coursesTableBody.appendChild(tr);
-  });
-
-  // Attach dynamic button listeners
-  el.coursesTableBody.querySelectorAll(".publish-course-btn").forEach(btn => {
-    btn.addEventListener("click", () => openPublishModal(btn.dataset.id));
-  });
-  el.coursesTableBody.querySelectorAll(".edit-course-btn").forEach(btn => {
-    btn.addEventListener("click", () => openCourseModal(btn.dataset.id));
-  });
-  el.coursesTableBody.querySelectorAll(".delete-course-btn").forEach(btn => {
-    btn.addEventListener("click", () => confirmDeleteCourse(btn.dataset.id));
-  });
-}
-
-// -------------------------------------------------------------
-// DEDICATED PUBLISH COURSE & CONTENT MODAL (In Development Logic)
-// -------------------------------------------------------------
-function openPublishModal(courseId) {
-  const course = coursesData.find(c => c.id === courseId);
-  if (!course) {
-    showToast("Course not found", "error");
-    return;
-  }
-
-  el.publishTargetCourseId.value = course.id;
-  el.publishCourseTitle.textContent = course.title;
-  el.publishCourseIcon.textContent = course.icon || "📘";
-  el.publishModalTitle.textContent = `Publish Content: ${course.title}`;
-  
-  if (el.publishContentForm) el.publishContentForm.reset();
-  
-  // Calculate next lesson sequence number
-  const nextOrder = postsData.filter(p => p.courseId === course.id).length + 1;
-  el.publishLessonOrder.value = nextOrder;
-  el.publishLessonReadingTime.value = "5 min read";
-  
-  if (el.publishModal) el.publishModal.classList.add("open");
-}
-
-function closePublishModal() {
-  if (el.publishModal) el.publishModal.classList.remove("open");
-  if (el.publishContentForm) el.publishContentForm.reset();
-}
-
-if (el.publishModalClose) el.publishModalClose.addEventListener("click", closePublishModal);
-if (el.publishModalCancel) el.publishModalCancel.addEventListener("click", closePublishModal);
-
-// Auto-generate lesson slug in publish modal
-if (el.publishLessonTitle) {
-  el.publishLessonTitle.addEventListener("input", () => {
-    el.publishLessonSlug.value = slugify(el.publishLessonTitle.value);
-  });
-}
-
-// Action 1: Direct activate course into published status (permanently removes In Development badge)
-if (el.btnQuickActivateCourse) {
-  el.btnQuickActivateCourse.addEventListener("click", async () => {
-    const courseId = el.publishTargetCourseId.value;
-    const course = coursesData.find(c => c.id === courseId);
-    if (!courseId) return;
-
-    try {
-      const docRef = doc(db, "courses", courseId);
-      await updateDoc(docRef, {
-        status: "published",
-        updatedAt: serverTimestamp()
-      });
-      showToast(`Course "${course ? course.title : ''}" published! "In Development" badge permanently removed.`, "success");
-      closePublishModal();
-    } catch (err) {
-      console.error("Direct publish course error:", err);
-      // Fallback local update
-      const idx = coursesData.findIndex(c => c.id === courseId);
-      if (idx !== -1) {
-        coursesData[idx].status = "published";
-        renderCoursesTable();
-        populateCourseSelects();
-      }
-      showToast(`Course status updated to Published! "In Development" badge removed.`, "success");
-      closePublishModal();
-    }
-  });
-}
-
-// Action 2: Append new lesson content and update course status atomically
-if (el.publishContentForm) {
-  el.publishContentForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const courseId = el.publishTargetCourseId.value;
-    const course = coursesData.find(c => c.id === courseId);
-    if (!courseId) return;
-
-    const lessonTitle = el.publishLessonTitle.value.trim();
-    const rawContent = el.publishLessonContent.value;
-    const rawYoutube = el.publishLessonYoutube.value.trim();
-
-    if (!lessonTitle || !rawContent) {
-      showToast("Please provide both lesson title and lesson content.", "error");
-      return;
-    }
-
-    // Automatically align with design system using semantic formatting engine
-    const formattedHtml = parseAndFormatLessonContent(rawContent);
-    const readingTime = (el.publishLessonReadingTime && el.publishLessonReadingTime.value.trim()) 
-      ? el.publishLessonReadingTime.value.trim() 
-      : calculateReadingTime(rawContent);
-    const excerpt = (el.publishLessonExcerpt && el.publishLessonExcerpt.value.trim())
-      ? el.publishLessonExcerpt.value.trim()
-      : generateExcerpt(rawContent);
-
-    // Validate and sanitize YouTube embed if present
-    let cleanYoutubeEmbed = "";
-    if (rawYoutube) {
-      const processed = processYouTubeEmbed(rawYoutube);
-      cleanYoutubeEmbed = processed.isValid ? processed.iframeHtml : rawYoutube;
-    }
-
-    const postPayload = {
-      courseId: courseId,
-      courseTitle: course ? course.title : "Course",
-      title: lessonTitle,
-      slug: (el.publishLessonSlug && el.publishLessonSlug.value.trim()) || slugify(lessonTitle),
-      excerpt: excerpt,
-      readingTime: readingTime,
-      status: "published", // Published content
-      order: parseInt(el.publishLessonOrder.value, 10) || 1,
-      youtubeEmbed: cleanYoutubeEmbed,
-      content: rawContent,
-      formattedHtml: formattedHtml,
-      author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp()
-    };
-
-    try {
-      // Atomic execution using runTransaction
-      const courseDocRef = doc(db, "courses", courseId);
-      const newPostDocRef = doc(collection(db, "posts"));
-      const newLessonDocRef = doc(db, "lessons", newPostDocRef.id);
-
-      await runTransaction(db, async (transaction) => {
-        // 1. Append new lesson content successfully into both posts and lessons collections
-        transaction.set(newPostDocRef, postPayload);
-        transaction.set(newLessonDocRef, postPayload);
-        // 2. Update course status to "published" (permanently removing In Development badge across Admin & Public)
-        transaction.update(courseDocRef, {
-          status: "published",
-          updatedAt: serverTimestamp(),
-          latestLessonTitle: lessonTitle
-        });
-      });
-
-      // Update in-memory state immediately for instant responsive feedback
-      firestorePostsMap.set(newPostDocRef.id, postPayload);
-      const cExisting = firestoreCoursesMap.get(courseId) || course;
-      firestoreCoursesMap.set(courseId, { ...cExisting, status: "published" });
-      rebuildAndRenderContent();
-
-      showToast(`New lesson appended & course "${course ? course.title : ''}" published! "In Development" badge permanently removed.`, "success");
-      closePublishModal();
-    } catch (err) {
-      console.warn("Transaction publish failed, trying individual updates:", err);
-      try {
-        // Fallback: individual writes
-        const addedPost = await addDoc(collection(db, "posts"), postPayload);
-        await setDoc(doc(db, "lessons", addedPost.id), postPayload, { merge: true }).catch(() => {});
-        await updateDoc(doc(db, "courses", courseId), {
-          status: "published",
-          updatedAt: serverTimestamp(),
-          latestLessonTitle: lessonTitle
-        });
-
-        firestorePostsMap.set(addedPost.id, postPayload);
-        const cExisting = firestoreCoursesMap.get(courseId) || course;
-        firestoreCoursesMap.set(courseId, { ...cExisting, status: "published" });
-        rebuildAndRenderContent();
-
-        showToast(`New lesson appended & course published! "In Development" badge permanently removed.`, "success");
-        closePublishModal();
-      } catch (innerErr) {
-        console.error("Publish content error:", innerErr);
-        // Fallback local memory update
-        const localId = "post-" + Date.now();
-        postsData.unshift({ id: localId, ...postPayload });
-        const cIdx = coursesData.findIndex(c => c.id === courseId);
-        if (cIdx !== -1) {
-          coursesData[cIdx].status = "published";
-        }
-        renderCoursesTable();
-        populateCourseSelects();
-        renderPostsTable();
-        updateMetrics();
-        showToast(`Content published locally! "In Development" badge removed.`, "info");
-        closePublishModal();
-      }
-    }
-  });
-}
-
 function openCourseModal(courseId = null) {
   editingCourseId = courseId;
-  el.courseForm.reset();
+  const modalTitle = document.getElementById("course-modal-title");
+  const titleInput = document.getElementById("course-title");
+  const slugInput = document.getElementById("course-slug");
+  const linkInput = document.getElementById("course-link");
+  const priceInput = document.getElementById("course-price");
+  const origPriceInput = document.getElementById("course-original-price");
+  const typeSelect = document.getElementById("course-type");
+  const paymentLinkInput = document.getElementById("course-payment-link");
+  const imageInput = document.getElementById("course-image");
+  const imageFileInput = document.getElementById("course-image-file");
+  const imagePreviewWrap = document.getElementById("course-image-preview-wrap");
+  const imagePreview = document.getElementById("course-image-preview");
+  const imageClearBtn = document.getElementById("course-image-clear");
+  const instructorInput = document.getElementById("course-instructor");
+  const levelSelect = document.getElementById("course-level");
+  const durationInput = document.getElementById("course-duration");
+  const lessonsInput = document.getElementById("course-lessons");
+  const languageInput = document.getElementById("course-language");
+  const badgeInput = document.getElementById("course-badge");
+  const featuredCheckbox = document.getElementById("course-featured");
+  const descInput = document.getElementById("course-description");
+  const iconInput = document.getElementById("course-icon");
+  const statusSelect = document.getElementById("course-status");
+  const orderInput = document.getElementById("course-order");
+
+  const discountBadgeWrap = document.getElementById("course-discount-badge-preview");
+  const discountBadgeText = document.getElementById("course-discount-badge-text");
+  const discountSavingsText = document.getElementById("course-discount-savings-text");
+
+  const updateDiscountBadge = () => {
+    const p = priceInput?.value;
+    const orig = origPriceInput?.value;
+    const disc = calculateDiscount(p, orig);
+    if (disc && discountBadgeWrap && discountBadgeText) {
+      discountBadgeText.textContent = `${disc.percent}% OFF`;
+      if (discountSavingsText) discountSavingsText.textContent = `₹${disc.savings.toLocaleString('en-IN')}`;
+      discountBadgeWrap.style.display = "block";
+    } else if (discountBadgeWrap) {
+      discountBadgeWrap.style.display = "none";
+    }
+  };
+
+  const updatePhotoPreview = (src) => {
+    if (src && src.trim()) {
+      if (imagePreview) imagePreview.src = src.trim();
+      if (imagePreviewWrap) imagePreviewWrap.style.display = "flex";
+    } else {
+      if (imagePreview) imagePreview.src = "";
+      if (imagePreviewWrap) imagePreviewWrap.style.display = "none";
+    }
+  };
+
+  if (priceInput && !priceInput.dataset.discListener) {
+    priceInput.dataset.discListener = "true";
+    priceInput.addEventListener("input", updateDiscountBadge);
+  }
+  if (origPriceInput && !origPriceInput.dataset.discListener) {
+    origPriceInput.dataset.discListener = "true";
+    origPriceInput.addEventListener("input", updateDiscountBadge);
+  }
+
+  if (imageInput && !imageInput.dataset.listenerAttached) {
+    imageInput.dataset.listenerAttached = "true";
+    imageInput.addEventListener("input", () => updatePhotoPreview(imageInput.value));
+  }
+
+  if (imageFileInput && !imageFileInput.dataset.listenerAttached) {
+    imageFileInput.dataset.listenerAttached = "true";
+    imageFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        showToast("Optimizing photo for instant live display...", "info");
+        const compressedDataUrl = await compressImageFile(file, 900, 900, 0.85);
+        if (compressedDataUrl) {
+          if (imageInput) imageInput.value = compressedDataUrl;
+          updatePhotoPreview(compressedDataUrl);
+          showToast("Photo loaded and optimized! Click Save Course to store.", "success");
+        }
+      }
+    });
+  }
+
+  if (imageClearBtn && !imageClearBtn.dataset.listenerAttached) {
+    imageClearBtn.dataset.listenerAttached = "true";
+    imageClearBtn.addEventListener("click", () => {
+      if (imageInput) imageInput.value = "";
+      if (imageFileInput) imageFileInput.value = "";
+      updatePhotoPreview("");
+    });
+  }
+
+  // Sync course-type changes to price
+  if (typeSelect && !typeSelect.dataset.listenerAttached) {
+    typeSelect.dataset.listenerAttached = "true";
+    typeSelect.addEventListener("change", (e) => {
+      const isPaid = e.target.value === "paid";
+      if (priceInput) {
+        if (isPaid && (!priceInput.value || priceInput.value.toLowerCase().includes("free"))) {
+          priceInput.value = "₹2599";
+          if (origPriceInput && !origPriceInput.value) origPriceInput.value = "₹3899";
+        } else if (!isPaid) {
+          priceInput.value = "Free";
+        }
+        updateDiscountBadge();
+      }
+      if (paymentLinkInput && isPaid && !paymentLinkInput.value) {
+        paymentLinkInput.focus();
+      }
+    });
+  }
 
   if (courseId) {
-    const course = coursesData.find(c => c.id === courseId);
+    const course = coursesData.find((c) => c.id === courseId);
     if (course) {
-      el.courseModalTitle.textContent = "Edit Course";
-      el.courseTitle.value = course.title || "";
-      el.courseSlug.value = course.slug || "";
-      el.courseDescription.value = course.description || "";
-      el.courseIcon.value = course.icon || "📘";
-      el.courseStatus.value = course.status || "published";
-      el.courseOrder.value = course.order ?? 1;
+      if (modalTitle) modalTitle.textContent = "Edit Course";
+      if (titleInput) titleInput.value = course.title || "";
+      if (slugInput) slugInput.value = course.slug || "";
+      if (linkInput) linkInput.value = course.link || "";
+      if (priceInput) priceInput.value = course.price || "Free";
+      if (origPriceInput) origPriceInput.value = course.originalPrice || "₹3899";
+      
+      const isPaidCourse = course.type === "paid" || Boolean(course.price && !String(course.price).toLowerCase().includes("free") && course.price !== "0");
+      if (typeSelect) typeSelect.value = course.type || (isPaidCourse ? "paid" : "free");
+      if (paymentLinkInput) paymentLinkInput.value = course.paymentLink || "";
+      
+      const courseImg = course.imageUrl || course.courseImage || course.image || "";
+      if (imageInput) imageInput.value = courseImg;
+      updatePhotoPreview(courseImg);
+
+      if (instructorInput) instructorInput.value = course.instructor || "ShortStudy";
+      if (levelSelect) levelSelect.value = course.level || "Beginner";
+      if (durationInput) durationInput.value = course.duration || "36h 22m";
+      if (lessonsInput) lessonsInput.value = course.lessons || "219 lessons";
+      if (languageInput) languageInput.value = course.language || "Hindi";
+      if (badgeInput) badgeInput.value = course.badge || "Featured";
+      if (featuredCheckbox) featuredCheckbox.checked = Boolean(course.featured !== false);
+
+      const isPurchasedInput = document.getElementById("course-is-purchased");
+      if (isPurchasedInput) {
+        const isPurchasedVal = (course.isPurchased === true || course.purchased === true);
+        isPurchasedInput.value = isPurchasedVal ? "true" : "false";
+      }
+
+      renderVideoListInContainer("course-videos-list-container", normalizeCourseVideos(course));
+
+      if (descInput) descInput.value = course.description || "";
+      if (iconInput) iconInput.value = course.icon || "📘";
+      if (statusSelect) statusSelect.value = course.status || "published";
+      if (orderInput) orderInput.value = course.order ?? 1;
+      updateDiscountBadge();
     }
   } else {
-    el.courseModalTitle.textContent = "Create New Course";
-    el.courseIcon.value = "📘";
-    el.courseStatus.value = "published";
-    el.courseOrder.value = coursesData.length + 1;
+    if (modalTitle) modalTitle.textContent = "Create New Course";
+    courseForm?.reset();
+    if (typeSelect) typeSelect.value = "paid";
+    if (priceInput) priceInput.value = "₹2599";
+    if (origPriceInput) origPriceInput.value = "₹3899";
+    if (paymentLinkInput) paymentLinkInput.value = "";
+    if (imageInput) imageInput.value = "";
+    if (instructorInput) instructorInput.value = "ShortStudy";
+    if (levelSelect) levelSelect.value = "Beginner";
+    if (durationInput) durationInput.value = "36h 22m";
+    if (lessonsInput) lessonsInput.value = "219 lessons";
+    if (languageInput) languageInput.value = "Hindi";
+    if (badgeInput) badgeInput.value = "Featured";
+    if (featuredCheckbox) featuredCheckbox.checked = true;
+    updatePhotoPreview("");
+    updateDiscountBadge();
+    const isPurchasedInput = document.getElementById("course-is-purchased");
+    if (isPurchasedInput) isPurchasedInput.value = "false";
+    renderVideoListInContainer("course-videos-list-container", []);
+    if (iconInput) iconInput.value = "⭐";
+    if (statusSelect) statusSelect.value = "published";
+    if (orderInput) orderInput.value = coursesData.length + 1;
   }
-  if (el.courseModal) el.courseModal.classList.add("open");
+  courseModal?.classList.add("open");
 }
 
 function closeCourseModal() {
-  if (el.courseModal) el.courseModal.classList.remove("open");
   editingCourseId = null;
+  courseModal?.classList.remove("open");
 }
 
-if (el.btnNewCourse) el.btnNewCourse.addEventListener("click", () => openCourseModal());
-if (el.courseModalClose) el.courseModalClose.addEventListener("click", closeCourseModal);
-if (el.courseCancelBtn) el.courseCancelBtn.addEventListener("click", closeCourseModal);
-
-// Auto-generate slug from title
-if (el.courseTitle) {
-  el.courseTitle.addEventListener("input", () => {
-    if (!editingCourseId && el.courseSlug) {
-      el.courseSlug.value = slugify(el.courseTitle.value);
-    }
-  });
-}
-
-if (el.courseForm) {
-  el.courseForm.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const coursePayload = {
-      title: el.courseTitle.value.trim(),
-      slug: el.courseSlug.value.trim() || slugify(el.courseTitle.value),
-      description: el.courseDescription.value.trim(),
-      icon: el.courseIcon.value.trim() || "📘",
-      status: el.courseStatus.value,
-      order: parseInt(el.courseOrder.value, 10) || 0,
-      updatedAt: new Date().toISOString()
-    };
-
-    const targetCourseId = editingCourseId || ("course-" + Date.now());
-    coursePayload.id = targetCourseId;
-
-    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
-    firestoreCoursesMap.set(targetCourseId, coursePayload);
-    const existingIdx = coursesData.findIndex(c => c.id === targetCourseId);
-    if (existingIdx !== -1) {
-      coursesData[existingIdx] = { ...coursesData[existingIdx], ...coursePayload };
-    } else {
-      coursesData.unshift(coursePayload);
-    }
-    renderCoursesTable();
-    populateCourseSelects();
-    updateMetrics();
-    closeCourseModal();
-    showToast(editingCourseId ? "Course updated instantly!" : "New course published instantly!", "success");
-
-    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
-    try {
-      
-    } catch (e) {}
-
-    try {
-      const syncChannel = new BroadcastChannel("shortstudy_courses_sync");
-      syncChannel.postMessage({
-        type: "COURSES_UPDATED",
-        action: "upsert",
-        courseId: targetCourseId,
-        course: coursePayload,
-        courses: coursesData
-      });
-      syncChannel.close();
-    } catch (e) {}
-
-    // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-    (async () => {
-      
-
-      try {
-        if (editingCourseId) {
-          await updateDoc(doc(db, "courses", editingCourseId), { ...coursePayload, updatedAt: serverTimestamp() });
-        } else {
-          await setDoc(doc(db, "courses", targetCourseId), { ...coursePayload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-        }
-      } catch (err) {
-        console.warn("Background course Firestore note:", err);
-      }
-    })();
-  });
-}
-
-function confirmDeleteCourse(courseId) {
-  const course = coursesData.find(c => c.id === courseId);
-  const title = course ? course.title : "this course";
-  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
-  if (el.deleteModal) el.deleteModal.classList.add("open");
-
-  el.deleteConfirmBtn.onclick = () => {
-    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
-    deletedCourseIds.add(courseId);
-    
-    firestoreCoursesMap.delete(courseId);
-
-    coursesData = coursesData.filter(c => c.id !== courseId);
-    renderCoursesTable();
-    populateCourseSelects();
-    updateMetrics();
-    showToast(`Course "${title}" deleted instantly.`, "success");
-    if (el.deleteModal) el.deleteModal.classList.remove("open");
-
-    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
-    try {
-      
-    } catch (e) {}
-
-    try {
-      const syncChannel = new BroadcastChannel("shortstudy_courses_sync");
-      syncChannel.postMessage({
-        type: "COURSES_UPDATED",
-        action: "delete",
-        courseId: courseId,
-        courses: coursesData
-      });
-      syncChannel.close();
-    } catch (e) {}
-
-    // 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-    (async () => {
-      
-
-      try {
-        await deleteDoc(doc(db, "courses", courseId));
-      } catch (err) {
-        console.warn("Background Firestore delete course notice:", err);
-      }
-    })();
-  };
-}
-
-// -------------------------------------------------------------
-// 4. POSTS & LESSONS CRUD OPERATIONS + YOUTUBE EMBED
-// -------------------------------------------------------------
-function populateCourseSelects() {
-  el.postCourseSelect.innerHTML = `<option value="">-- Select a Course --</option>`;
-  coursesData.forEach(course => {
-    const opt = document.createElement("option");
-    opt.value = course.id;
-    const inDevTag = course.status === "in_development" ? " [In Development]" : "";
-    opt.textContent = `${course.icon || "📘"} ${course.title}${inDevTag}`;
-    el.postCourseSelect.appendChild(opt);
-  });
-}
-
-function renderPostsTable(filterQuery = "") {
-  el.postsTableBody.innerHTML = "";
-  const queryLower = filterQuery.toLowerCase();
-  const filtered = postsData.filter(p => 
-    (p.title || "").toLowerCase().includes(queryLower) ||
-    (p.courseTitle || "").toLowerCase().includes(queryLower)
-  );
-
-  if (filtered.length === 0) {
-    el.postsTableBody.innerHTML = `
-      <tr>
-        <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">
-          No posts or lessons found. Click "+ New Post / Lesson" to create one.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  filtered.forEach((post) => {
-    const tr = document.createElement("tr");
-    const isInDev = post.status === "in_development";
-    const isPublished = post.status === "published" || post.status === "active";
-    const hasVideo = post.youtubeEmbed && post.youtubeEmbed.trim() !== "";
-
-    let statusBadgeHtml = "";
-    if (isInDev) {
-      statusBadgeHtml = `<span class="badge badge-in-dev">In Development</span>`;
-    } else if (isPublished) {
-      statusBadgeHtml = `<span class="badge badge-published">Published</span>`;
-    } else {
-      statusBadgeHtml = `<span class="badge badge-draft">Draft</span>`;
-    }
-
-    // Prominent "In Development" badge next to lesson title
-    const titleDevBadge = isInDev 
-      ? `<span class="badge badge-in-dev" style="margin-left: 8px;">In Development</span>` 
-      : "";
-
-    // Action button for in_development post
-    const publishPostBtnHtml = isInDev 
-      ? `<button class="btn btn-success btn-sm publish-single-post-btn" data-id="${post.id}" title="Publish this lesson now">🚀 Publish</button>` 
-      : "";
-
-    tr.innerHTML = `
-      <td>
-        <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;">
-          <strong>${escapeHtml(post.title)}</strong>
-          ${titleDevBadge}
-        </div>
-      </td>
-      <td><span style="color:var(--text-muted);">${escapeHtml(post.courseTitle || "Unassigned")}</span></td>
-      <td>${statusBadgeHtml}</td>
-      <td>
-        ${hasVideo ? '<span class="badge badge-video">▶ Video</span>' : '<span style="color:var(--text-dim);">—</span>'}
-      </td>
-      <td><span class="font-mono">${escapeHtml(post.readingTime || "5 min read")}</span></td>
-      <td><span class="font-mono">${post.order ?? 0}</span></td>
-      <td>
-        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-          ${publishPostBtnHtml}
-          <a href="lesson.html?id=${post.id}" target="_blank" class="btn btn-secondary btn-sm" style="font-size:11px;">View</a>
-          <button class="btn btn-secondary btn-sm edit-post-btn" data-id="${post.id}">Edit</button>
-          <button class="btn btn-danger btn-sm delete-post-btn" data-id="${post.id}">Delete</button>
-        </div>
-      </td>
-    `;
-    el.postsTableBody.appendChild(tr);
-  });
-
-  el.postsTableBody.querySelectorAll(".publish-single-post-btn").forEach(btn => {
-    btn.addEventListener("click", () => publishSinglePost(btn.dataset.id));
-  });
-  el.postsTableBody.querySelectorAll(".edit-post-btn").forEach(btn => {
-    btn.addEventListener("click", () => openPostModal(btn.dataset.id));
-  });
-  el.postsTableBody.querySelectorAll(".delete-post-btn").forEach(btn => {
-    btn.addEventListener("click", () => confirmDeletePost(btn.dataset.id));
-  });
-}
-
-// Direct publish a single post/lesson
-async function publishSinglePost(postId) {
-  const post = postsData.find(p => p.id === postId);
-  if (!post) return;
-
-  try {
-    const postRef = doc(db, "posts", postId);
-    await updateDoc(postRef, {
-      status: "published",
-      updatedAt: serverTimestamp()
-    });
-
-    // If the associated course is currently in_development, also auto-update it to published
-    if (post.courseId) {
-      const parentCourse = coursesData.find(c => c.id === post.courseId);
-      if (parentCourse && parentCourse.status === "in_development") {
-        await updateDoc(doc(db, "courses", post.courseId), {
-          status: "published",
-          updatedAt: serverTimestamp()
-        });
-      }
-    }
-
-    showToast(`Lesson "${post.title}" published! "In Development" badge removed.`, "success");
-  } catch (err) {
-    console.error("Publish single post error:", err);
-    // Local fallback
-    const idx = postsData.findIndex(p => p.id === postId);
-    if (idx !== -1) postsData[idx].status = "published";
-    if (post.courseId) {
-      const cIdx = coursesData.findIndex(c => c.id === post.courseId);
-      if (cIdx !== -1 && coursesData[cIdx].status === "in_development") {
-        coursesData[cIdx].status = "published";
-      }
-    }
-    renderPostsTable();
-    renderCoursesTable();
-    updateMetrics();
-    showToast(`Lesson published locally!`, "info");
-  }
-}
-
-// Dedicated YouTube Live Preview Handler
-if (el.postYoutubeInput) {
-  el.postYoutubeInput.addEventListener("input", () => {
-    const val = el.postYoutubeInput.value.trim();
-    if (!val) {
-      if (el.postYoutubePreview) {
-        el.postYoutubePreview.innerHTML = "";
-        el.postYoutubePreview.classList.remove("has-video");
-      }
-      return;
-    }
-
-    const processed = processYouTubeEmbed(val);
-    if (el.postYoutubePreview) {
-      if (processed.isValid) {
-        el.postYoutubePreview.innerHTML = `<div class="video-aspect">${processed.iframeHtml}</div>`;
-        el.postYoutubePreview.classList.add("has-video");
-      } else {
-        el.postYoutubePreview.innerHTML = `<div style="padding:10px; font-size:12px; color:#f87171;">Invalid YouTube URL or embed code</div>`;
-        el.postYoutubePreview.classList.add("has-video");
-      }
-    }
-  });
-}
-
-// HTML Content Editor Tabs (Edit vs Preview)
-if (el.tabContentEditor) {
-  el.tabContentEditor.addEventListener("click", () => {
-    el.tabContentEditor.classList.add("active");
-    if (el.tabContentPreview) el.tabContentPreview.classList.remove("active");
-    if (el.editorPane) el.editorPane.style.display = "block";
-    if (el.previewPane) el.previewPane.style.display = "none";
-  });
-}
-
-if (el.tabContentPreview) {
-  el.tabContentPreview.addEventListener("click", () => {
-    el.tabContentPreview.classList.add("active");
-    if (el.tabContentEditor) el.tabContentEditor.classList.remove("active");
-    if (el.editorPane) el.editorPane.style.display = "none";
-    if (el.previewPane) el.previewPane.style.display = "block";
-
-    // Parse and format with semantic formatting engine and DOMPurify
-    const rawHtml = el.postContent ? el.postContent.value : "";
-    const formattedHtml = parseAndFormatLessonContent(rawHtml);
-    if (el.previewPane) {
-      el.previewPane.innerHTML = formattedHtml || "<p style='color:#94a3b8; font-style:italic;'>No content written yet.</p>";
-    }
-  });
-}
-
-// Helper to toggle in-development alert & explicit publish button inside Post Modal
-function updatePostModalInDevNotice() {
-  const selectedCourseId = el.postCourseSelect.value;
-  const course = coursesData.find(c => c.id === selectedCourseId);
-  const isCourseInDev = course && course.status === "in_development";
-
-  if (el.postCourseInDevAlert) {
-    if (isCourseInDev) {
-      el.postCourseInDevAlert.classList.remove("hidden");
-    } else {
-      el.postCourseInDevAlert.classList.add("hidden");
-    }
-  }
-
-  if (el.postPublishContentBtn) {
-    el.postPublishContentBtn.style.display = isCourseInDev ? "inline-flex" : "none";
-  }
-}
-
-if (el.postCourseSelect) el.postCourseSelect.addEventListener("change", updatePostModalInDevNotice);
-
-function renderPostVideoRows() {
-  const container = document.getElementById("post-videos-container");
-  if (!container) return;
-
-  container.innerHTML = "";
-  if (!currentPostVideos || currentPostVideos.length === 0) {
-    container.innerHTML = `<div style="font-size:12px; color:var(--text-muted); font-style:italic; padding:6px 0;">No videos added yet. Click "+ Add Video" to embed videos.</div>`;
-    return;
-  }
-
-  currentPostVideos.forEach((v, index) => {
-    const row = document.createElement("div");
-    row.className = "post-video-row";
-    row.style.cssText = "background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 6px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;";
-    
-    row.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <span style="font-size: 11.5px; font-weight: 700; color: #f87171;">▶ Video ${index + 1}</span>
-        ${currentPostVideos.length > 1 ? `<button type="button" class="btn btn-danger btn-sm remove-post-v-btn" data-index="${index}" style="font-size:10px; padding:2px 6px;">Remove</button>` : ''}
-      </div>
-
-      <div class="form-row" style="gap: 8px;">
-        <input type="text" class="form-input p-v-title" placeholder="Video Title (e.g. Lesson Video 1)" value="${escapeHtml(v.title || '')}" style="font-size:12.5px; flex:1;">
-        <input type="text" class="form-input font-mono p-v-url" placeholder="YouTube URL or Embed code" value="${escapeHtml(v.videoUrl || '')}" style="font-size:12.5px; flex:1.5;">
-      </div>
-
-      <div>
-        <textarea class="form-textarea p-v-desc" placeholder="Plain-text video description (No HTML required. Layout will format paragraphs automatically)" style="min-height: 50px; font-size:12px; line-height:1.5;">${escapeHtml(v.description || '')}</textarea>
-      </div>
-    `;
-
-    container.appendChild(row);
-  });
-
-  container.querySelectorAll(".remove-post-v-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const idx = parseInt(btn.dataset.index, 10);
-      currentPostVideos.splice(idx, 1);
-      renderPostVideoRows();
-    });
-  });
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  const btnAdd = document.getElementById("btn-add-post-video-row");
-  if (btnAdd) {
-    btnAdd.addEventListener("click", () => {
-      currentPostVideos.push({
-        id: "v-" + Date.now(),
-        title: `Video ${currentPostVideos.length + 1}`,
-        videoUrl: "",
-        description: ""
-      });
-      renderPostVideoRows();
-    });
-  }
+document.getElementById("btn-new-course")?.addEventListener("click", () => openCourseModal());
+document.getElementById("course-modal-close")?.addEventListener("click", closeCourseModal);
+document.getElementById("course-cancel-btn")?.addEventListener("click", closeCourseModal);
+document.getElementById("btn-add-course-video-row")?.addEventListener("click", () => {
+  addVideoRowToContainer(document.getElementById("course-videos-list-container"));
 });
 
-function openPostModal(postId = null) {
-  editingPostId = postId;
-  populateCourseSelects();
-  el.postForm.reset();
-  el.postYoutubePreview.innerHTML = "";
-  el.postYoutubePreview.classList.remove("has-video");
-  
-  // Default to editor tab
-  el.tabContentEditor.click();
+if (courseForm) {
+  courseForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-  if (postId) {
-    const post = postsData.find(p => p.id === postId);
-    if (post) {
-      el.postModalTitle.textContent = "Edit Post / Lesson";
-      el.postCourseSelect.value = post.courseId || "";
-      el.postTitle.value = post.title || "";
-      el.postSlug.value = post.slug || "";
-      el.postExcerpt.value = post.excerpt || "";
-      el.postReadingTime.value = post.readingTime || "5 min read";
-      el.postStatus.value = post.status || "published";
-      el.postOrder.value = post.order ?? 1;
-      el.postYoutubeInput.value = post.youtubeEmbed || "";
-      el.postContent.value = post.content || "";
+    const titleInput = document.getElementById("course-title");
+    const descInput = document.getElementById("course-description");
+    const priceInput = document.getElementById("course-price");
+    const origPriceInput = document.getElementById("course-original-price");
+    const typeSelect = document.getElementById("course-type");
+    const paymentLinkInput = document.getElementById("course-payment-link");
+    const imageInput = document.getElementById("course-image");
+    const instructorInput = document.getElementById("course-instructor");
+    const levelSelect = document.getElementById("course-level");
+    const durationInput = document.getElementById("course-duration");
+    const lessonsInput = document.getElementById("course-lessons");
+    const languageInput = document.getElementById("course-language");
+    const badgeInput = document.getElementById("course-badge");
+    const featuredCheckbox = document.getElementById("course-featured");
+    const isPurchasedInput = document.getElementById("course-is-purchased");
+    const slugInput = document.getElementById("course-slug");
+    const linkInput = document.getElementById("course-link");
+    const iconInput = document.getElementById("course-icon");
+    const statusSelect = document.getElementById("course-status");
+    const orderInput = document.getElementById("course-order");
 
-      if (post.videos && Array.isArray(post.videos) && post.videos.length > 0) {
-        currentPostVideos = JSON.parse(JSON.stringify(post.videos));
-      } else if (post.youtubeEmbed && post.youtubeEmbed.trim() !== "") {
-        currentPostVideos = [{ id: "v-1", title: post.title || "Lesson Video 1", videoUrl: post.youtubeEmbed, description: "" }];
+    const title = titleInput.value.trim();
+    const description = descInput.value.trim();
+    const rawType = typeSelect?.value || "paid";
+    const paymentLink = paymentLinkInput?.value?.trim() || "";
+    const image = imageInput?.value?.trim() || "";
+    const isPurchasedBool = isPurchasedInput ? isPurchasedInput.value === "true" : false;
+    
+    const videosList = getVideosFromContainer("course-videos-list-container");
+    const primaryVideo = videosList.length > 0 ? videosList[0] : null;
+
+    const price = priceInput?.value?.trim() || (rawType === "paid" ? "₹2599" : "Free");
+    const originalPrice = origPriceInput?.value?.trim() || "₹3899";
+    const isPaid = rawType === "paid" || (!price.toLowerCase().includes("free") && price !== "0" && price !== "₹0");
+    const type = isPaid ? "paid" : "free";
+    const instructor = instructorInput?.value?.trim() || "ShortStudy";
+    const level = levelSelect?.value || "Beginner";
+    const duration = durationInput?.value?.trim() || "36h 22m";
+    const lessons = lessonsInput?.value?.trim() || `${Math.max(videosList.length, 1)} Lectures`;
+    const language = languageInput?.value?.trim() || "Hindi";
+    const badge = badgeInput?.value?.trim() || "Featured";
+    const isFeatured = Boolean(featuredCheckbox?.checked);
+    const slug = slugInput.value.trim() || slugify(title);
+    const link = linkInput?.value?.trim() || `${slug}.html`;
+    const icon = iconInput?.value?.trim() || (isPaid ? "⭐" : "📘");
+    const status = statusSelect?.value || "published";
+    const order = parseInt(orderInput?.value, 10) || 1;
+
+    const coursePayload = {
+      title,
+      description,
+      type,
+      category: isPaid ? "Paid Masterclass" : "Core Curriculum",
+      paymentLink,
+      image,
+      imageUrl: image,
+      courseImage: image,
+      isPurchased: isPurchasedBool,
+      purchased: isPurchasedBool,
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : "",
+      price,
+      originalPrice,
+      instructor,
+      level,
+      duration,
+      lessons,
+      language,
+      badge,
+      featured: isFeatured,
+      slug,
+      link,
+      icon,
+      status,
+      order,
+      updatedAt: serverTimestamp()
+    };
+
+    const submitBtn = document.getElementById("course-submit-btn");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving to Firestore...";
+    }
+
+    try {
+      const validId = getValidDocId(editingCourseId);
+      const cleanData = sanitizeFirestoreData(coursePayload);
+
+      if (validId) {
+        await setDoc(doc(db, "courses", validId), cleanData, { merge: true });
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] Course updated with ID:", validId, cleanData);
+        showToast("Course updated successfully in Firestore!", "success");
       } else {
-        currentPostVideos = [{ id: "v-1", title: "Video 1: Lesson Overview", videoUrl: "", description: "" }];
+        cleanData.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanData);
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] New Course created with ID:", docRef.id, cleanData);
+        showToast("New course saved to Firestore successfully!", "success");
       }
-
-      // Trigger YouTube preview if video exists
-      if (post.youtubeEmbed) {
-        el.postYoutubeInput.dispatchEvent(new Event("input"));
+      courseForm.reset();
+      closeCourseModal();
+    } catch (error) {
+      console.error("🚨 [FIRESTORE WRITE ERROR] Failed to save course:", error);
+      showToast("Firestore Write Error: " + (error.message || "Failed to save course"), "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save Course";
       }
     }
-  } else {
-    el.postModalTitle.textContent = "Create New Post / Lesson";
-    el.postStatus.value = "published";
-    el.postReadingTime.value = "6 min read";
-    el.postOrder.value = postsData.length + 1;
-    currentPostVideos = [{ id: "v-1", title: "Video 1: Lesson Overview", videoUrl: "", description: "" }];
-  }
+  });
+}
 
-  renderPostVideoRows();
-  updatePostModalInDevNotice();
-  if (el.postModal) el.postModal.classList.add("open");
+// -------------------------------------------------------------
+// 4. ATOMIC FIRESTORE WRITES: LESSONS / POSTS SUBMISSION
+// -------------------------------------------------------------
+function openPostModal(postId = null) {
+  editingPostId = postId;
+  const modalTitle = document.getElementById("post-modal-title");
+  const courseSelect = document.getElementById("post-course") || document.getElementById("post-course-select");
+  const titleInput = document.getElementById("post-title");
+  const slugInput = document.getElementById("post-slug");
+  const contentInput = document.getElementById("post-content");
+  const statusSelect = document.getElementById("post-status");
+  const orderInput = document.getElementById("post-order");
+
+  populateCourseSelects();
+
+  if (postId) {
+    const post = postsData.find((p) => p.id === postId);
+    if (post) {
+      if (modalTitle) modalTitle.textContent = "Edit Lesson Content";
+      if (courseSelect) courseSelect.value = post.courseId || "";
+      if (titleInput) titleInput.value = post.title || "";
+      if (slugInput) slugInput.value = post.slug || "";
+      if (contentInput) contentInput.value = post.content || "";
+      if (statusSelect) statusSelect.value = post.status || "published";
+      if (orderInput) orderInput.value = post.order ?? 1;
+    }
+  } else {
+    if (modalTitle) modalTitle.textContent = "Create New Lesson";
+    postForm?.reset();
+    if (statusSelect) statusSelect.value = "published";
+    if (orderInput) orderInput.value = postsData.length + 1;
+  }
+  postModal?.classList.add("open");
 }
 
 function closePostModal() {
-  if (el.postModal) el.postModal.classList.remove("open");
   editingPostId = null;
-  if (el.postCourseInDevAlert) el.postCourseInDevAlert.classList.add("hidden");
-  if (el.postPublishContentBtn) el.postPublishContentBtn.style.display = "none";
+  postModal?.classList.remove("open");
 }
 
-if (el.btnNewPost) el.btnNewPost.addEventListener("click", () => openPostModal());
-if (el.postModalClose) el.postModalClose.addEventListener("click", closePostModal);
-if (el.postCancelBtn) el.postCancelBtn.addEventListener("click", closePostModal);
+document.getElementById("btn-new-post")?.addEventListener("click", () => openPostModal());
+document.getElementById("post-modal-close")?.addEventListener("click", closePostModal);
+document.getElementById("post-cancel-btn")?.addEventListener("click", closePostModal);
 
-if (el.postTitle) {
-  el.postTitle.addEventListener("input", () => {
-    if (!editingPostId && el.postSlug) {
-      el.postSlug.value = slugify(el.postTitle.value);
-    }
-  });
-}
+if (postForm) {
+  postForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-function getPostVideosListFromDOM() {
-  const videoRows = document.querySelectorAll("#post-videos-container .post-video-row");
-  const finalVideosList = [];
-  videoRows.forEach((row, i) => {
-    const titleVal = row.querySelector(".p-v-title")?.value.trim() || `Video ${i + 1}`;
-    const urlVal = row.querySelector(".p-v-url")?.value.trim() || "";
-    const descVal = row.querySelector(".p-v-desc")?.value || "";
-    if (urlVal || titleVal) {
-      let cleanUrl = urlVal;
-      if (urlVal) {
-        const processed = processYouTubeEmbed(urlVal);
-        cleanUrl = processed.isValid ? processed.iframeHtml : urlVal;
-      }
-      finalVideosList.push({ id: `v-${i + 1}`, title: titleVal, videoUrl: cleanUrl, description: descVal });
-    }
-  });
-  return finalVideosList;
-}
+    const courseSelect = document.getElementById("post-course") || document.getElementById("post-course-select");
+    const titleInput = document.getElementById("post-title");
+    const slugInput = document.getElementById("post-slug");
+    const contentInput = document.getElementById("post-content");
+    const statusSelect = document.getElementById("post-status");
+    const orderInput = document.getElementById("post-order");
 
-// Explicit "Publish Content & Course" button inside Post Modal
-if (el.postPublishContentBtn) {
-  el.postPublishContentBtn.addEventListener("click", async () => {
-    const selectedCourseId = el.postCourseSelect.value;
-    const selectedCourse = coursesData.find(c => c.id === selectedCourseId);
-    if (!selectedCourseId) {
-      showToast("Please select an associated course first.", "error");
-      return;
-    }
-
-    const titleVal = el.postTitle.value.trim();
-    const rawContent = el.postContent.value;
-    if (!titleVal || !rawContent) {
-      showToast("Please fill in lesson title and lesson content.", "error");
-      return;
-    }
-
-    const formattedHtml = parseAndFormatLessonContent(rawContent);
-    const readingTime = (el.postReadingTime && el.postReadingTime.value.trim())
-      ? el.postReadingTime.value.trim()
-      : calculateReadingTime(rawContent);
-    const excerpt = (el.postExcerpt && el.postExcerpt.value.trim())
-      ? el.postExcerpt.value.trim()
-      : generateExcerpt(rawContent);
-
-    const rawYoutube = el.postYoutubeInput.value.trim();
-    let cleanYoutubeEmbed = "";
-    if (rawYoutube) {
-      const processed = processYouTubeEmbed(rawYoutube);
-      cleanYoutubeEmbed = processed.isValid ? processed.iframeHtml : rawYoutube;
-    }
-
-    const videosList = getPostVideosListFromDOM();
+    const courseId = courseSelect?.value || "";
+    const courseObj = coursesData.find((c) => c.id === courseId);
+    const title = titleInput.value.trim();
+    const slug = slugInput.value.trim() || slugify(title);
+    const content = contentInput.value.trim();
+    const status = statusSelect?.value || "published";
+    const order = parseInt(orderInput?.value, 10) || 1;
 
     const postPayload = {
-      courseId: selectedCourseId,
-      courseTitle: selectedCourse ? selectedCourse.title : "General",
-      title: titleVal,
-      slug: (el.postSlug && el.postSlug.value.trim()) || slugify(titleVal),
-      excerpt: excerpt,
-      readingTime: readingTime,
-      status: "published", // Force published
-      order: parseInt(el.postOrder.value, 10) || 1,
-      youtubeEmbed: videosList[0]?.videoUrl || cleanYoutubeEmbed,
-      videos: videosList,
-      content: rawContent,
-      formattedHtml: formattedHtml,
-      author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
+      courseId,
+      courseTitle: courseObj ? courseObj.title : "",
+      title,
+      slug,
+      content,
+      status,
+      order,
       updatedAt: serverTimestamp()
     };
 
-    const targetPostId = editingPostId || ("post-" + Date.now());
-    postPayload.id = targetPostId;
-
-    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
-    firestorePostsMap.set(targetPostId, postPayload);
-    firestoreLessonsMap.set(targetPostId, postPayload);
-    const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
-    if (cExisting) {
-      firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published", latestLessonTitle: titleVal });
-    }
-    const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
-    if (cIdx !== -1) {
-      coursesData[cIdx].status = "published";
-      coursesData[cIdx].latestLessonTitle = titleVal;
+    const submitBtn = document.getElementById("post-submit-btn");
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Saving Lesson...";
     }
 
-    rebuildAndRenderContent();
-    closePostModal();
-    showToast(`Course "${selectedCourse ? selectedCourse.title : ''}" & content published instantly!`, "success");
-
-    // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-    (async () => {
-      try {
-        const courseDocRef = doc(db, "courses", selectedCourseId);
-        if (editingPostId) {
-          const postDocRef = doc(db, "posts", editingPostId);
-          const lessonDocRef = doc(db, "lessons", editingPostId);
-          await updateDoc(postDocRef, postPayload);
-          await setDoc(lessonDocRef, postPayload, { merge: true }).catch(() => {});
-        } else {
-          const newPostDocRef = doc(db, "posts", targetPostId);
-          const newLessonDocRef = doc(db, "lessons", targetPostId);
-          postPayload.createdAt = serverTimestamp();
-          await setDoc(newPostDocRef, postPayload);
-          await setDoc(newLessonDocRef, postPayload);
-        }
-        await updateDoc(courseDocRef, {
-          status: "published",
-          updatedAt: serverTimestamp(),
-          latestLessonTitle: titleVal
-        });
-      } catch (err) {
-        console.warn("Background publish post notice:", err);
-      }
-    })();
-  });
-}
-
-// Post Submit Handler with Semantic Formatting
-if (el.postForm) {
-  el.postForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-
-  const selectedCourseId = el.postCourseSelect.value;
-  const selectedCourse = coursesData.find(c => c.id === selectedCourseId);
-  const rawContent = el.postContent.value;
-  const rawYoutube = el.postYoutubeInput.value.trim();
-
-  // 1. Format content using semantic formatting engine
-  const formattedHtml = parseAndFormatLessonContent(rawContent);
-
-  // 2. Validate and sanitize YouTube Embed
-  let cleanYoutubeEmbed = "";
-  if (rawYoutube) {
-    const processed = processYouTubeEmbed(rawYoutube);
-    if (processed.isValid) {
-      cleanYoutubeEmbed = processed.iframeHtml;
-    } else {
-      showToast("Warning: YouTube embed could not be parsed, saving raw input.", "error");
-      cleanYoutubeEmbed = rawYoutube;
-    }
-  }
-
-  const readingTime = (el.postReadingTime && el.postReadingTime.value.trim())
-    ? el.postReadingTime.value.trim()
-    : calculateReadingTime(rawContent);
-  const excerpt = (el.postExcerpt && el.postExcerpt.value.trim())
-    ? el.postExcerpt.value.trim()
-    : generateExcerpt(rawContent);
-  const titleVal = el.postTitle.value.trim();
-  const videosList = getPostVideosListFromDOM();
-
-  const postPayload = {
-    courseId: selectedCourseId,
-    courseTitle: selectedCourse ? selectedCourse.title : "General",
-    title: titleVal,
-    slug: (el.postSlug && el.postSlug.value.trim()) || slugify(titleVal),
-    excerpt: excerpt,
-    readingTime: readingTime,
-    status: el.postStatus.value,
-    order: parseInt(el.postOrder.value, 10) || 1,
-    youtubeEmbed: videosList[0]?.videoUrl || cleanYoutubeEmbed,
-    videos: videosList,
-    content: rawContent,
-    formattedHtml: formattedHtml,
-    author: (currentUser && currentUser.displayName) ? currentUser.displayName : "Admin",
-    updatedAt: serverTimestamp()
-  };
-
-  const targetDocId = editingPostId || ("post-" + Date.now());
-  postPayload.id = targetDocId;
-
-  // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
-  firestorePostsMap.set(targetDocId, postPayload);
-  firestoreLessonsMap.set(targetDocId, postPayload);
-
-  const isPublished = el.postStatus.value === "published";
-  if (isPublished && selectedCourse && selectedCourse.status === "in_development") {
-    const cExisting = firestoreCoursesMap.get(selectedCourseId) || selectedCourse;
-    firestoreCoursesMap.set(selectedCourseId, { ...cExisting, status: "published", latestLessonTitle: titleVal });
-    const cIdx = coursesData.findIndex(c => c.id === selectedCourseId);
-    if (cIdx !== -1) {
-      coursesData[cIdx].status = "published";
-      coursesData[cIdx].latestLessonTitle = titleVal;
-    }
-  }
-
-  rebuildAndRenderContent();
-  closePostModal();
-  showToast(editingPostId ? "Lesson updated instantly!" : "Lesson published instantly!", "success");
-
-  // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-  (async () => {
     try {
-      if (editingPostId) {
-        const docRef = doc(db, "posts", editingPostId);
-        await updateDoc(docRef, postPayload);
-        await setDoc(doc(db, "lessons", editingPostId), postPayload, { merge: true }).catch(() => {});
+      const validPostId = getValidDocId(editingPostId);
+      const cleanPostData = sanitizeFirestoreData(postPayload);
+
+      if (validPostId) {
+        await setDoc(doc(db, "posts", validPostId), cleanPostData, { merge: true });
+        console.log("Firestore Write Success: Lesson updated with ID:", validPostId);
+        showToast("Lesson updated in Firestore!", "success");
       } else {
-        postPayload.createdAt = serverTimestamp();
-        await setDoc(doc(db, "posts", targetDocId), postPayload);
-        await setDoc(doc(db, "lessons", targetDocId), postPayload, { merge: true }).catch(() => {});
+        cleanPostData.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "posts"), cleanPostData);
+        console.log("Firestore Write Success: New Lesson created with ID:", docRef.id);
+        showToast("Lesson created in Firestore!", "success");
       }
-
-      if (isPublished && selectedCourse && selectedCourse.status === "in_development") {
-        await updateDoc(doc(db, "courses", selectedCourseId), {
-          status: "published",
-          updatedAt: serverTimestamp(),
-          latestLessonTitle: titleVal
-        });
+      postForm.reset();
+      closePostModal();
+    } catch (error) {
+      console.error("Firestore Write Error:", error);
+      showToast("Firestore Write Error: " + (error.message || "Failed to save lesson"), "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Save Lesson";
       }
-    } catch (err) {
-      console.warn("Background post save notice:", err);
     }
-  })();
   });
 }
-
-function confirmDeletePost(postId) {
-  const post = postsData.find(p => p.id === postId);
-  const title = post ? post.title : "this post";
-  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete "${title}"? This cannot be undone.`;
-  if (el.deleteModal) el.deleteModal.classList.add("open");
-
-  el.deleteConfirmBtn.onclick = () => {
-    // 1. INSTANT OPTIMISTIC DELETE (< 1ms)
-    deletedPostIds.add(postId);
-    
-    firestorePostsMap.delete(postId);
-    firestoreLessonsMap.delete(postId);
-
-    postsData = postsData.filter(p => p.id !== postId);
-    renderPostsTable();
-    updateMetrics();
-    showToast(`Lesson "${title}" deleted instantly.`, "success");
-    if (el.deleteModal) el.deleteModal.classList.remove("open");
-
-    // 2. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-    (async () => {
-      try {
-        await deleteDoc(doc(db, "posts", postId));
-        await deleteDoc(doc(db, "lessons", postId));
-      } catch (err) {
-        console.warn("Background Firestore delete post notice:", err);
-      }
-    })();
-  };
-}
-
-if (el.deleteCancelBtn) {
-  el.deleteCancelBtn.addEventListener("click", () => {
-    if (el.deleteModal) el.deleteModal.classList.remove("open");
-  });
-}
-
-// Search Filters
-if (el.courseSearch) el.courseSearch.addEventListener("input", (e) => renderCoursesTable(e.target.value));
-if (el.postSearch) el.postSearch.addEventListener("input", (e) => renderPostsTable(e.target.value));
 
 // -------------------------------------------------------------
-// 5. PAID COURSES CRUD OPERATIONS (Programming Video's Store)
+// 5. DIRECT PUBLISH MODAL (QUICK LESSON + ACTIVATE COURSE)
 // -------------------------------------------------------------
-const DUMMY_PAID_COURSE_IDS = new Set(["paid-fullstack-webdev", "paid-python-ai-analytics", "paid-dsa-mastery"]);
+function openPublishModal(courseId) {
+  const validId = getValidDocId(courseId);
+  currentPublishCourseId = validId;
+  const course = coursesData.find((c) => c.id === validId);
+  if (!course) return;
 
-function rebuildAndRenderPaidCourses() {
-  const map = new Map();
+  const titleEl = document.getElementById("publish-course-title");
+  const iconEl = document.getElementById("publish-course-icon");
+  const badgeEl = document.getElementById("publish-course-badge");
+  const targetInput = document.getElementById("publish-target-course-id");
 
-  serverPaidCoursesMap.forEach((val, key) => {
-    if (deletedPaidCourseIds.has(key) || val.isDeleted || DUMMY_PAID_COURSE_IDS.has(key)) return;
-    map.set(key, { id: key, ...val });
-  });
+  if (titleEl) titleEl.textContent = course.title;
+  if (iconEl) iconEl.textContent = course.icon || "📘";
+  if (badgeEl) {
+    badgeEl.textContent = course.status === "published" ? "Published" : "In Development";
+    badgeEl.className = course.status === "published" ? "badge badge-published" : "badge badge-in-dev";
+  }
+  if (targetInput) targetInput.value = validId || "";
 
-  firestorePaidCoursesMap.forEach((val, key) => {
-    if (deletedPaidCourseIds.has(key) || val.isDeleted || DUMMY_PAID_COURSE_IDS.has(key)) return;
-    map.set(key, { id: key, ...val });
-  });
-
-  paidCoursesData = Array.from(map.values()).filter(c => !deletedPaidCourseIds.has(c.id) && !DUMMY_PAID_COURSE_IDS.has(c.id));
-  renderPaidCoursesTable(el.paidCourseSearch ? el.paidCourseSearch.value : "");
-  updateMetrics();
+  publishContentModal?.classList.add("open");
 }
 
-function renderPaidCoursesTable(filterQuery = "") {
-  if (!el.paidCoursesTableBody) return;
-  el.paidCoursesTableBody.innerHTML = "";
-  const queryLower = (filterQuery || "").toLowerCase();
-  const filtered = paidCoursesData.filter(c =>
-    (c.title || "").toLowerCase().includes(queryLower) ||
-    (c.badge || "").toLowerCase().includes(queryLower) ||
-    (c.price || "").toLowerCase().includes(queryLower)
-  );
-
-  if (filtered.length === 0) {
-    el.paidCoursesTableBody.innerHTML = `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:32px; color:var(--text-muted);">
-          No paid courses found. Click "+ New Paid Course" to add one.
-        </td>
-      </tr>
-    `;
-    return;
-  }
-
-  filtered.forEach((course) => {
-    const tr = document.createElement("tr");
-    const isPublished = course.status === "published";
-    const imgUrl = course.image || "https://images.unsplash.com/photo-1516116211227-bbc141e6c38a?auto=format&fit=crop&w=400&q=80";
-    const hasVideo = (Array.isArray(course.videos) && course.videos.length > 0) || (course.videoEmbed && course.videoEmbed.trim() !== "");
-    const isFeatured = Boolean(course.isFeatured || course.featured);
-
-    const origNum = parseFloat((course.origPrice || course.originalPrice || "").replace(/[^0-9.]/g, "")) || 0;
-    const priceNum = parseFloat((course.price || "").replace(/[^0-9.]/g, "")) || 0;
-    const discount = (origNum > priceNum && origNum > 0) 
-      ? Math.round(((origNum - priceNum) / origNum) * 100) 
-      : (course.discountPercent || 0);
-
-    tr.innerHTML = `
-      <td>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <div style="position:relative; width:64px; aspect-ratio:16/9; border-radius:6px; overflow:hidden; border:1px solid var(--border-light); background:var(--bg-slate-800); flex-shrink:0;">
-            <img src="${escapeHtml(imgUrl)}" alt="" style="width:100%; height:100%; object-fit:cover;">
-            ${discount > 0 ? `<span style="position:absolute; top:2px; left:2px; background:#ef4444; color:#fff; font-size:9px; font-weight:700; padding:1px 4px; border-radius:2px;">${discount}%</span>` : ''}
-          </div>
-          <div>
-            <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-              <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(course.title)}</strong>
-              ${isFeatured ? `<span style="background:#eab308; color:#000; font-size:9.5px; font-weight:700; padding:1px 5px; border-radius:3px; text-transform:uppercase;">Featured</span>` : ''}
-            </div>
-            <div style="font-size:11.5px; color:var(--text-muted); display:flex; gap:8px; margin-top:2px;">
-              <span>👨‍🏫 ${escapeHtml(course.instructor || "ShortStudy")}</span>
-              <span>•</span>
-              <span>🔍 ${escapeHtml(course.level || "Beginner")}</span>
-              <span>•</span>
-              <span>⏱️ ${escapeHtml(course.duration || "36h 22m")}</span>
-            </div>
-          </div>
-        </div>
-      </td>
-      <td>
-        <span class="badge" style="background:rgba(99, 102, 241, 0.15); color:var(--indigo-light); border-color:rgba(99, 102, 241, 0.3); font-size:11px;">
-          ${escapeHtml(course.badge || "Masterclass")}
-        </span>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:4px;">${escapeHtml(course.language || "Hindi")} · ${escapeHtml(course.lessonsCount || "219 lessons")}</div>
-      </td>
-      <td>
-        <div style="display:flex; align-items:baseline; gap:6px;">
-          <strong style="color:#ffffff; font-size:15px; font-weight:800;">${escapeHtml(course.price || "₹2599")}</strong>
-          ${course.origPrice ? `<span style="font-size:11.5px; color:var(--text-muted); text-decoration:line-through;">${escapeHtml(course.origPrice)}</span>` : ''}
-        </div>
-        ${discount > 0 ? `<div style="font-size:10.5px; color:#ef4444; font-weight:700; margin-top:2px;">🔥 ${discount}% OFF</div>` : ''}
-      </td>
-      <td>
-        <span class="badge ${isPublished ? 'badge-published' : 'badge-draft'}">
-          ${isPublished ? 'Published' : 'Draft'}
-        </span>
-      </td>
-      <td>
-        ${hasVideo ? '<span class="badge badge-video">▶ Configured</span>' : '<span style="color:var(--text-dim);">Missing</span>'}
-      </td>
-      <td>
-        <div style="display:flex; gap:6px; align-items:center;">
-          <a href="courses.html" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none; padding:4px 8px; font-size:12px;" title="View Live Course">View Live</a>
-          <button class="btn btn-secondary btn-sm edit-paid-btn" data-id="${course.id}">Edit</button>
-          <button class="btn btn-danger btn-sm delete-paid-btn" data-id="${course.id}">Delete</button>
-        </div>
-      </td>
-    `;
-    el.paidCoursesTableBody.appendChild(tr);
-  });
-
-  // Attach button events
-  el.paidCoursesTableBody.querySelectorAll(".edit-paid-btn").forEach(btn => {
-    btn.addEventListener("click", () => openPaidCourseModal(btn.dataset.id));
-  });
-
-  el.paidCoursesTableBody.querySelectorAll(".delete-paid-btn").forEach(btn => {
-    btn.addEventListener("click", () => confirmDeletePaidCourse(btn.dataset.id));
-  });
+function closePublishModal() {
+  currentPublishCourseId = null;
+  publishContentModal?.classList.remove("open");
 }
 
-let currentCourseVideos = [];
+document.getElementById("publish-modal-close")?.addEventListener("click", closePublishModal);
+document.getElementById("publish-cancel-btn")?.addEventListener("click", closePublishModal);
 
-function updateAdminDiscountCalc() {
-  const origEl = document.getElementById("paid-modal-orig-price");
-  const priceEl = document.getElementById("paid-modal-price");
-  const calcBox = document.getElementById("paid-modal-discount-calc");
-  const textEl = document.getElementById("paid-modal-discount-text");
-  const savingsEl = document.getElementById("paid-modal-discount-savings");
-
-  const prevTitle = document.getElementById("prev-card-title");
-  const prevDesc = document.getElementById("prev-card-desc");
-  const prevSalePrice = document.getElementById("prev-card-sale-price");
-  const prevOrigPrice = document.getElementById("prev-card-orig-price");
-  const prevDiscount = document.getElementById("prev-card-discount");
-  const prevFeatured = document.getElementById("prev-card-featured");
-  const prevImg = document.getElementById("prev-card-img");
-  const prevInstructor = document.getElementById("prev-card-instructor");
-  const prevLevel = document.getElementById("prev-card-level");
-  const prevDuration = document.getElementById("prev-card-duration");
-  const prevLessons = document.getElementById("prev-card-lessons");
-  const prevLang = document.getElementById("prev-card-lang");
-
-  const titleInput = document.getElementById("paid-modal-title");
-  const descInput = document.getElementById("paid-modal-desc");
-  const urlInput = document.getElementById("paid-modal-image");
-  const instructorInput = document.getElementById("paid-modal-instructor");
-  const levelInput = document.getElementById("paid-modal-level");
-  const durationInput = document.getElementById("paid-modal-duration");
-  const lessonsInput = document.getElementById("paid-modal-lessons");
-  const langInput = document.getElementById("paid-modal-language");
-  const featuredInput = document.getElementById("paid-modal-featured");
-
-  if (origEl && priceEl) {
-    const origNum = parseFloat((origEl.value || "").replace(/[^0-9.]/g, "")) || 0;
-    const priceNum = parseFloat((priceEl.value || "").replace(/[^0-9.]/g, "")) || 0;
-
-    let percent = 0;
-    if (origNum > priceNum && origNum > 0) {
-      percent = Math.round(((origNum - priceNum) / origNum) * 100);
-      const savings = origNum - priceNum;
-      if (calcBox) calcBox.style.display = "flex";
-      if (textEl) textEl.textContent = `🔥 ${percent}% OFF`;
-      if (savingsEl) savingsEl.textContent = `Cost Reduction: Student Saves ₹${savings.toLocaleString("en-IN")}`;
-      if (prevDiscount) {
-        prevDiscount.style.display = "block";
-        prevDiscount.textContent = `${percent}% OFF`;
-      }
-    } else {
-      if (calcBox) calcBox.style.display = "none";
-      if (prevDiscount) prevDiscount.style.display = "none";
-    }
-
-    if (prevSalePrice) prevSalePrice.textContent = priceEl.value || "₹2599";
-    if (prevOrigPrice) {
-      prevOrigPrice.textContent = origEl.value || "₹3899";
-      prevOrigPrice.style.display = origEl.value ? "inline" : "none";
-    }
-  }
-
-  // Update other live preview elements
-  if (prevTitle && titleInput) {
-    prevTitle.textContent = titleInput.value.trim() || "Ultimate Job-Ready AI-Powered Data Analytics Course";
-  }
-  if (prevDesc && descInput) {
-    prevDesc.textContent = descInput.value.trim() || "This is a to-the-point, CodeWithHarry style comprehensive course...";
-  }
-  if (prevImg && urlInput && urlInput.value.trim()) {
-    prevImg.src = urlInput.value.trim();
-  }
-  if (prevInstructor && instructorInput) {
-    prevInstructor.textContent = `👨‍🏫 ${instructorInput.value.trim() || "ShortStudy"}`;
-  }
-  if (prevLevel && levelInput) {
-    prevLevel.textContent = `🔍 ${levelInput.value}`;
-  }
-  if (prevDuration && durationInput) {
-    prevDuration.textContent = `⏱️ ${durationInput.value.trim() || "36h 22m"}`;
-  }
-  if (prevLessons && lessonsInput) {
-    prevLessons.textContent = `📚 ${lessonsInput.value.trim() || "219 lessons"}`;
-  }
-  if (prevLang && langInput) {
-    prevLang.textContent = `🗣️ ${langInput.value.trim() || "Hindi"}`;
-  }
-  if (prevFeatured && featuredInput) {
-    prevFeatured.style.display = featuredInput.checked ? "block" : "none";
-  }
-}
-
-function renderPaidModalVideoRows() {
-  const container = document.getElementById("paid-modal-videos-list");
-  if (!container) return;
-  container.innerHTML = "";
-
-  if (currentCourseVideos.length === 0) {
-    currentCourseVideos.push({
-      id: "v-" + Date.now(),
-      title: "Lesson 1: Complete Video Masterclass",
-      videoUrl: "",
-      description: ""
+// Quick Activate Course to Published Status
+document.getElementById("btn-quick-activate-course")?.addEventListener("click", async () => {
+  const validId = getValidDocId(currentPublishCourseId);
+  if (!validId) return;
+  try {
+    await updateDoc(doc(db, "courses", validId), {
+      status: "published",
+      updatedAt: serverTimestamp()
     });
+    console.log("Firestore Write Success: Course marked published", validId);
+    showToast("Course published live!", "success");
+    closePublishModal();
+  } catch (error) {
+    console.error("Firestore Write Error:", error);
+    showToast("Failed to activate course: " + error.message, "error");
   }
+});
 
-  currentCourseVideos.forEach((v, idx) => {
-    const row = document.createElement("div");
-    row.className = "paid-video-row";
-    row.style.cssText = "background: rgba(15, 23, 42, 0.9); border: 1px solid var(--border-light); border-radius: 6px; padding: 12px;";
-    row.innerHTML = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span style="font-size: 12px; font-weight: 700; color: var(--text-white);">Video #${idx + 1}</span>
-        ${currentCourseVideos.length > 1 ? `<button type="button" class="btn btn-sm btn-danger remove-video-btn" style="padding: 2px 8px; font-size: 11px;">Remove Video</button>` : ''}
-      </div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <input type="text" class="form-input video-title-input" placeholder="Video Title (e.g. Lesson 1: Introduction & Concepts)" value="${escapeHtml(v.title || '')}">
-        <input type="text" class="form-input font-mono video-url-input" placeholder="YouTube Video Link or Embed URL (e.g. https://www.youtube.com/watch?v=...)" value="${escapeHtml(v.videoUrl || '')}">
-        <div>
-          <label class="form-label" style="font-size: 11px; margin-bottom: 3px; color: var(--text-muted);">Video Description (Written normally in plain text - no HTML tags needed)</label>
-          <textarea class="form-textarea video-desc-input" style="min-height: 60px; font-size: 12.5px; font-family: inherit;" placeholder="Write video description normally in plain text...">${escapeHtml(v.description || '')}</textarea>
-        </div>
-      </div>
-    `;
-
-    const removeBtn = row.querySelector(".remove-video-btn");
-    if (removeBtn) {
-      removeBtn.addEventListener("click", () => {
-        currentCourseVideos.splice(idx, 1);
-        renderPaidModalVideoRows();
-      });
-    }
-
-    container.appendChild(row);
-  });
-}
-
-function initPaidCourseModalEventsOnce() {
-  const fileInput = document.getElementById("paid-modal-image-file");
-  const urlInput = document.getElementById("paid-modal-image");
-  const preview = document.getElementById("paid-modal-image-preview");
-  const previewContainer = document.getElementById("paid-modal-image-preview-container");
-  const addVideoBtn = document.getElementById("btn-add-paid-video");
-  const origEl = document.getElementById("paid-modal-orig-price");
-  const priceEl = document.getElementById("paid-modal-price");
-  const titleInput = document.getElementById("paid-modal-title");
-  const descInput = document.getElementById("paid-modal-desc");
-  const instructorInput = document.getElementById("paid-modal-instructor");
-  const levelInput = document.getElementById("paid-modal-level");
-  const durationInput = document.getElementById("paid-modal-duration");
-  const lessonsInput = document.getElementById("paid-modal-lessons");
-  const langInput = document.getElementById("paid-modal-language");
-  const featuredInput = document.getElementById("paid-modal-featured");
-
-  if (fileInput && !fileInput.dataset.bound) {
-    fileInput.dataset.bound = "true";
-    fileInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-          const dataUrl = evt.target.result;
-          if (urlInput) urlInput.value = dataUrl;
-          if (preview) preview.src = dataUrl;
-          if (previewContainer) previewContainer.style.display = "block";
-          const prevImg = document.getElementById("prev-card-img");
-          if (prevImg) prevImg.src = dataUrl;
-        };
-        reader.readAsDataURL(file);
-      }
-    });
-  }
-
-  const liveInputs = [
-    urlInput, origEl, priceEl, titleInput, descInput,
-    instructorInput, levelInput, durationInput, lessonsInput, langInput, featuredInput
-  ];
-
-  liveInputs.forEach(input => {
-    if (input && !input.dataset.bound) {
-      input.dataset.bound = "true";
-      input.addEventListener("input", updateAdminDiscountCalc);
-      input.addEventListener("change", updateAdminDiscountCalc);
-    }
-  });
-
-  if (addVideoBtn && !addVideoBtn.dataset.bound) {
-    addVideoBtn.dataset.bound = "true";
-    addVideoBtn.addEventListener("click", () => {
-      const rows = document.querySelectorAll("#paid-modal-videos-list .paid-video-row");
-      const updatedList = [];
-      rows.forEach((row, idx) => {
-        const t = row.querySelector(".video-title-input")?.value.trim() || "";
-        const u = row.querySelector(".video-url-input")?.value.trim() || "";
-        const d = row.querySelector(".video-desc-input")?.value.trim() || "";
-        updatedList.push({ id: "v-" + (idx + 1), title: t, videoUrl: u, description: d });
-      });
-      updatedList.push({
-        id: "v-" + Date.now(),
-        title: `Lesson ${updatedList.length + 1}: Video Topic`,
-        videoUrl: "",
-        description: ""
-      });
-      currentCourseVideos = updatedList;
-      renderPaidModalVideoRows();
-    });
-  }
-}
-
-function openPaidCourseModal(courseId = null) {
-  editingPaidCourseId = courseId;
-  if (!el.paidCourseModal) return;
-
-  initPaidCourseModalEventsOnce();
-
-  const preview = document.getElementById("paid-modal-image-preview");
-  const previewContainer = document.getElementById("paid-modal-image-preview-container");
-  const instructorInput = document.getElementById("paid-modal-instructor");
-  const levelInput = document.getElementById("paid-modal-level");
-  const lessonsInput = document.getElementById("paid-modal-lessons");
-  const langInput = document.getElementById("paid-modal-language");
-  const featuredInput = document.getElementById("paid-modal-featured");
-
-  if (courseId) {
-    const course = paidCoursesData.find(c => c.id === courseId);
-    if (!course) return;
-    if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Edit Paid Video Course";
-    if (el.paidModalTitle) el.paidModalTitle.value = course.title || "";
-    if (el.paidModalPrice) el.paidModalPrice.value = course.price || "₹2599";
-    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = course.originalPrice || course.origPrice || "₹3899";
-    if (el.paidModalDuration) el.paidModalDuration.value = course.duration || "36h 22m";
-    if (el.paidModalBadge) el.paidModalBadge.value = course.badge || "Featured Masterclass";
-    if (el.paidModalStatus) el.paidModalStatus.value = course.status || "published";
-    if (el.paidModalImage) el.paidModalImage.value = course.image || "";
-    if (el.paidModalDesc) el.paidModalDesc.value = course.description || "";
-
-    const categoryInput = document.getElementById("paid-modal-category");
-    if (categoryInput) categoryInput.value = course.category || "all";
-    if (instructorInput) instructorInput.value = course.instructor || "ShortStudy";
-    if (levelInput) levelInput.value = course.level || "Beginner";
-    if (lessonsInput) lessonsInput.value = course.lessonsCount || "219 lessons";
-    if (langInput) langInput.value = course.language || "Hindi";
-    if (featuredInput) featuredInput.checked = Boolean(course.isFeatured || course.featured);
-
-    if (course.image && preview && previewContainer) {
-      preview.src = course.image;
-      previewContainer.style.display = "block";
-    } else if (previewContainer) {
-      previewContainer.style.display = "none";
-    }
-
-    if (Array.isArray(course.videos) && course.videos.length > 0) {
-      currentCourseVideos = course.videos.map((v, i) => ({
-        id: v.id || `v-${i + 1}`,
-        title: v.title || `Video ${i + 1}`,
-        videoUrl: v.videoUrl || v.url || course.videoEmbed || "",
-        description: v.description || ""
-      }));
-    } else if (course.videoEmbed || course.videoUrl) {
-      currentCourseVideos = [{
-        id: "v-1",
-        title: course.title ? `${course.title} - Main Video` : "Main Masterclass Video",
-        videoUrl: course.videoEmbed || course.videoUrl || "",
-        description: course.description || ""
-      }];
-    } else {
-      currentCourseVideos = [];
-    }
-
-  } else {
-    if (el.paidCourseModalHeading) el.paidCourseModalHeading.textContent = "Add Paid Video Course";
-    if (el.paidCourseForm) el.paidCourseForm.reset();
-    if (el.paidModalPrice) el.paidModalPrice.value = "₹2599";
-    if (el.paidModalOrigPrice) el.paidModalOrigPrice.value = "₹3899";
-    if (el.paidModalDuration) el.paidModalDuration.value = "36h 22m";
-    if (el.paidModalBadge) el.paidModalBadge.value = "Featured Masterclass";
-    if (el.paidModalStatus) el.paidModalStatus.value = "published";
-    const categoryInput = document.getElementById("paid-modal-category");
-    if (categoryInput) categoryInput.value = "all";
-    if (instructorInput) instructorInput.value = "ShortStudy";
-    if (levelInput) levelInput.value = "Beginner";
-    if (lessonsInput) lessonsInput.value = "219 lessons";
-    if (langInput) langInput.value = "Hindi";
-    if (featuredInput) featuredInput.checked = true;
-
-    if (previewContainer) previewContainer.style.display = "none";
-    currentCourseVideos = [{
-      id: "v-1",
-      title: "Lesson 1: Introduction & Masterclass Overview",
-      videoUrl: "",
-      description: ""
-    }];
-  }
-
-  renderPaidModalVideoRows();
-  updateAdminDiscountCalc();
-  el.paidCourseModal.classList.add("open");
-}
-
-function closePaidCourseModal() {
-  if (el.paidCourseModal) el.paidCourseModal.classList.remove("open");
-  editingPaidCourseId = null;
-}
-
-if (el.btnNewPaidCourse) {
-  el.btnNewPaidCourse.addEventListener("click", () => openPaidCourseModal(null));
-}
-
-if (el.paidCourseModalClose) {
-  el.paidCourseModalClose.addEventListener("click", closePaidCourseModal);
-}
-
-if (el.paidCourseModalCancel) {
-  el.paidCourseModalCancel.addEventListener("click", closePaidCourseModal);
-}
-
-if (el.paidCourseSearch) {
-  el.paidCourseSearch.addEventListener("input", (e) => renderPaidCoursesTable(e.target.value));
-}
-
-if (el.paidCourseForm) {
-  el.paidCourseForm.addEventListener("submit", async (e) => {
+if (publishContentForm) {
+  publishContentForm.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const title = el.paidModalTitle ? el.paidModalTitle.value.trim() : "";
-    const price = el.paidModalPrice ? el.paidModalPrice.value.trim() : "";
-    const origPrice = el.paidModalOrigPrice ? el.paidModalOrigPrice.value.trim() : "";
-    const duration = el.paidModalDuration ? el.paidModalDuration.value.trim() : "";
-    const badge = el.paidModalBadge ? el.paidModalBadge.value.trim() : "";
-    const status = el.paidModalStatus ? el.paidModalStatus.value : "published";
-    const image = el.paidModalImage ? el.paidModalImage.value.trim() : "";
-    const description = el.paidModalDesc ? el.paidModalDesc.value.trim() : "";
-
-    const category = document.getElementById("paid-modal-category")?.value || "all";
-    const instructor = document.getElementById("paid-modal-instructor")?.value.trim() || "ShortStudy";
-    const level = document.getElementById("paid-modal-level")?.value || "Beginner";
-    const lessonsCount = document.getElementById("paid-modal-lessons")?.value.trim() || "219 lessons";
-    const language = document.getElementById("paid-modal-language")?.value.trim() || "Hindi";
-    const isFeatured = Boolean(document.getElementById("paid-modal-featured")?.checked);
-
-    // Gather videos array from DOM rows
-    const videoRows = document.querySelectorAll("#paid-modal-videos-list .paid-video-row");
-    const videosList = [];
-    videoRows.forEach((row, idx) => {
-      const vTitle = (row.querySelector(".video-title-input") || {}).value?.trim() || `Lesson ${idx + 1}`;
-      const vUrl = (row.querySelector(".video-url-input") || {}).value?.trim() || "";
-      const vDesc = (row.querySelector(".video-desc-input") || {}).value?.trim() || "";
-
-      let cleanUrl = vUrl;
-      const proc = processYouTubeEmbed(vUrl);
-      if (proc && proc.isValid) {
-        cleanUrl = proc.iframeHtml;
-      }
-
-      if (vUrl || vTitle) {
-        videosList.push({
-          id: "v-" + (idx + 1),
-          title: vTitle,
-          videoUrl: cleanUrl,
-          description: vDesc // Plain text description without HTML tags
-        });
-      }
-    });
-
-    if (!title || !price || !description) {
-      showToast("Please fill in course title, price, and overall description.", "error");
+    const validId = getValidDocId(currentPublishCourseId);
+    if (!validId) {
+      showToast("Error: No valid course selected for lesson publishing", "error");
       return;
     }
 
-    // Backend JS Discount Percentage Calculation
-    const origNum = parseFloat((origPrice || "").replace(/[^0-9.]/g, "")) || 0;
-    const priceNum = parseFloat((price || "").replace(/[^0-9.]/g, "")) || 0;
-    let discountPercent = 0;
-    if (origNum > priceNum && origNum > 0) {
-      discountPercent = Math.round(((origNum - priceNum) / origNum) * 100);
-    }
+    const titleInput = document.getElementById("publish-lesson-title");
+    const contentInput = document.getElementById("publish-lesson-content");
 
-    const firstVideoEmbed = videosList[0]?.videoUrl || "";
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    const courseObj = coursesData.find((c) => c.id === validId);
 
-    // If no videos were explicitly created, provide default lesson item so save succeeds seamlessly
-    if (videosList.length === 0) {
-      videosList.push({
-        id: "v-1",
-        title: "Lesson 1: Introduction & Masterclass Overview",
-        videoUrl: firstVideoEmbed || "https://www.youtube.com/embed/dQw4w9WgXcQ",
-        description: description
+    try {
+      const lessonPayload = sanitizeFirestoreData({
+        courseId: validId,
+        courseTitle: courseObj ? courseObj.title : "",
+        title,
+        slug: slugify(title),
+        content,
+        status: "published",
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       });
+
+      await addDoc(collection(db, "posts"), lessonPayload);
+
+      // Update course to published
+      await updateDoc(doc(db, "courses", validId), {
+        status: "published",
+        updatedAt: serverTimestamp()
+      });
+
+      console.log("Firestore Write Success: Direct lesson published into course");
+      showToast("Lesson content published live!", "success");
+      publishContentForm.reset();
+      closePublishModal();
+    } catch (error) {
+      console.error("Firestore Write Error:", error);
+      showToast("Failed to publish lesson: " + error.message, "error");
     }
+  });
+}
+
+// -------------------------------------------------------------
+// 6. PAID COURSES / MASTERCLASSES SUBMISSION
+// -------------------------------------------------------------
+function openPaidCourseModal(courseId = null) {
+  editingPaidCourseId = courseId;
+  const modalTitle = document.getElementById("paid-modal-heading");
+  const titleInput = document.getElementById("paid-modal-title");
+  const priceInput = document.getElementById("paid-modal-price");
+  const origPriceInput = document.getElementById("paid-modal-orig-price");
+  const catSelect = document.getElementById("paid-modal-category");
+  const instructorInput = document.getElementById("paid-modal-instructor");
+  const durationInput = document.getElementById("paid-modal-duration");
+  const descInput = document.getElementById("paid-modal-desc");
+  const imageInput = document.getElementById("paid-modal-image");
+  const imageFileInput = document.getElementById("paid-modal-image-file");
+
+  if (imageFileInput && !imageFileInput.dataset.listenerAttached) {
+    imageFileInput.dataset.listenerAttached = "true";
+    imageFileInput.addEventListener("change", async (e) => {
+      const file = e.target.files?.[0];
+      if (file) {
+        showToast("Optimizing masterclass photo for live display...", "info");
+        const compressedDataUrl = await compressImageFile(file, 800, 450, 0.82);
+        if (compressedDataUrl) {
+          if (imageInput) imageInput.value = compressedDataUrl;
+          showToast("Masterclass photo loaded and optimized! Ready to save.", "success");
+        }
+      }
+    });
+  }
+
+  if (courseId) {
+    const course = paidCoursesData.find((c) => c.id === courseId) || coursesData.find((c) => c.id === courseId);
+    if (course) {
+      if (modalTitle) modalTitle.textContent = "Edit Masterclass";
+      if (titleInput) titleInput.value = course.title || "";
+      if (priceInput) priceInput.value = course.price || "₹2599";
+      if (origPriceInput) origPriceInput.value = course.originalPrice || "₹3899";
+      if (catSelect) catSelect.value = course.category || "programming";
+      if (instructorInput) instructorInput.value = course.instructor || "ShortStudy";
+      if (durationInput) durationInput.value = course.duration || "40+ Hours";
+      if (descInput) descInput.value = course.description || "";
+      if (imageInput) imageInput.value = course.imageUrl || course.courseImage || course.image || "";
+      renderVideoListInContainer("paid-videos-list-container", normalizeCourseVideos(course));
+    }
+  } else {
+    if (modalTitle) modalTitle.textContent = "Create Masterclass (Live Conversion)";
+    paidCourseForm?.reset();
+    if (priceInput) priceInput.value = "₹2599";
+    if (origPriceInput) origPriceInput.value = "₹3899";
+    if (instructorInput) instructorInput.value = "ShortStudy";
+    if (durationInput) durationInput.value = "40+ Hours";
+    if (descInput) descInput.value = "";
+    if (imageInput) imageInput.value = "";
+    renderVideoListInContainer("paid-videos-list-container", []);
+  }
+  paidCourseModal?.classList.add("open");
+}
+
+function closePaidCourseModal() {
+  editingPaidCourseId = null;
+  paidCourseModal?.classList.remove("open");
+}
+
+document.getElementById("btn-new-paid-course")?.addEventListener("click", () => openPaidCourseModal());
+document.getElementById("paid-course-modal-close")?.addEventListener("click", closePaidCourseModal);
+document.getElementById("paid-course-modal-cancel")?.addEventListener("click", closePaidCourseModal);
+document.getElementById("btn-add-paid-video-row")?.addEventListener("click", () => {
+  addVideoRowToContainer(document.getElementById("paid-videos-list-container"));
+});
+
+if (paidCourseForm) {
+  paidCourseForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const titleInput = document.getElementById("paid-modal-title");
+    const priceInput = document.getElementById("paid-modal-price");
+    const origPriceInput = document.getElementById("paid-modal-orig-price");
+    const catSelect = document.getElementById("paid-modal-category");
+    const instructorInput = document.getElementById("paid-modal-instructor");
+    const durationInput = document.getElementById("paid-modal-duration");
+    const descInput = document.getElementById("paid-modal-desc");
+    const imageInput = document.getElementById("paid-modal-image");
+    const badgeInput = document.getElementById("paid-modal-badge");
+    const lessonsInput = document.getElementById("paid-modal-lessons");
+    const languageInput = document.getElementById("paid-modal-language");
+    const levelSelect = document.getElementById("paid-modal-level");
+    const featuredCheckbox = document.getElementById("paid-modal-featured");
+
+    const title = titleInput.value.trim();
+    const price = priceInput?.value?.trim() || "₹2599";
+    const origPrice = origPriceInput?.value?.trim() || "₹3899";
+    const category = catSelect?.value || "Masterclass";
+    const instructor = instructorInput?.value?.trim() || "ShortStudy";
+    const duration = durationInput?.value?.trim() || "40+ Hours";
+    const description = descInput?.value?.trim() || `Comprehensive masterclass with ${instructor}. Includes ${duration} of hands-on materials.`;
+    const image = imageInput?.value?.trim() || "";
+    const badge = badgeInput?.value?.trim() || "Featured Masterclass";
+    const language = languageInput?.value?.trim() || "Hindi / English";
+    const level = levelSelect?.value || "All Levels";
+    const isFeatured = Boolean(featuredCheckbox?.checked);
+    const slug = slugify(title);
+
+    const videosList = getVideosFromContainer("paid-videos-list-container");
+    const primaryVideo = videosList.length > 0 ? videosList[0] : null;
+    const lessons = lessonsInput?.value?.trim() || `${Math.max(videosList.length, 1)} Masterclass Modules`;
 
     const payload = {
       title,
       price,
       originalPrice: origPrice,
-      origPrice,
-      discountPercent,
-      duration,
-      badge,
-      status,
+      type: "paid",
       category,
       instructor,
-      level,
-      lessonsCount,
-      language,
-      isFeatured,
-      image: image || "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&auto=format&fit=crop&q=80",
-      videoEmbed: firstVideoEmbed,
-      videoUrl: firstVideoEmbed,
-      videos: videosList,
+      duration,
       description,
-      updatedAt: new Date().toISOString()
+      image,
+      imageUrl: image,
+      courseImage: image,
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : "",
+      badge,
+      lessons,
+      language,
+      level,
+      featured: isFeatured,
+      isPurchased: false,
+      purchased: false,
+      order: 1,
+      slug,
+      link: `programming-videos.html?id=${slug}`,
+      status: "published",
+      updatedAt: serverTimestamp()
     };
 
-    const targetId = editingPaidCourseId || ("paid-" + Date.now());
-    payload.id = targetId;
-
-    // 1. INSTANT OPTIMISTIC IN-MEMORY & UI UPDATE (< 1ms)
-    serverPaidCoursesMap.set(targetId, payload);
-    firestorePaidCoursesMap.set(targetId, payload);
-    rebuildAndRenderPaidCourses();
-    closePaidCourseModal();
-    showToast(`Paid course "${title}" saved instantly!`, "success");
-
-    // 2. INSTANT CROSS-TAB & LOCAL STORAGE BROADCAST (< 1ms)
     try {
-      
-    } catch (e) {}
+      const validPaidId = getValidDocId(editingPaidCourseId);
+      const cleanPayload = sanitizeFirestoreData(payload);
 
-    try {
-      const syncChannel = new BroadcastChannel("shortstudy_paid_courses_sync");
-      syncChannel.postMessage({
-        type: "PAID_COURSES_UPDATED",
-        action: "upsert",
-        courseId: targetId,
-        course: payload,
-        courses: paidCoursesData
-      });
-      syncChannel.close();
-    } catch (e) {}
-
-// 3. ASYNC BACKGROUND PERSISTENCE (Non-blocking)
-    (async () => {
-      try {
-        if (editingPaidCourseId) {
-          await updateDoc(doc(db, "paid_courses", targetId), payload);
-        } else {
-          await setDoc(doc(db, "paid_courses", targetId), { ...payload, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      if (validPaidId) {
+        await setDoc(doc(db, "courses", validPaidId), cleanPayload, { merge: true });
+        await setDoc(doc(db, "paid_courses", validPaidId), cleanPayload, { merge: true });
+        console.log("Firestore Write Success: Masterclass updated", validPaidId);
+        showToast("Masterclass updated in Firestore!", "success");
+      } else {
+        cleanPayload.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanPayload);
+        if (docRef && docRef.id) {
+          await setDoc(doc(db, "paid_courses", docRef.id), { ...cleanPayload, id: docRef.id });
         }
-      } catch (err) {
-        console.warn("Background Paid Course Note:", err);
+        console.log("Firestore Write Success: Masterclass created with ID", docRef?.id);
+        showToast("Masterclass created and published to Firestore!", "success");
       }
-    })();
+      paidCourseForm.reset();
+      closePaidCourseModal();
+    } catch (error) {
+      console.error("Firestore Write Error:", error);
+      showToast("Firestore Write Error: " + (error.message || "Failed to save masterclass"), "error");
+    }
   });
 }
 
-// Ensure deletePaidCourse is global so onclick works
-window.deletePaidCourse = function(courseId, title) {
-  if (el.deleteModalText) el.deleteModalText.textContent = `Are you sure you want to delete paid course "${title}"? This cannot be undone.`;
-  if (el.deleteModal) el.deleteModal.classList.add("open");
+// -------------------------------------------------------------
+// 6.5 DEDICATED QUICK ATTACH COURSE VIDEOS (MULTI-VIDEO MANAGER)
+// -------------------------------------------------------------
+function openCourseVideoModal(courseId) {
+  const validId = getValidDocId(courseId);
+  if (!validId) return;
 
-  el.deleteConfirmBtn.onclick = () => {
-    firestorePaidCoursesMap.delete(courseId);
-    paidCoursesData = paidCoursesData.filter(c => c.id !== courseId);
-    rebuildAndRenderPaidCourses();
-    updateMetrics();
-
-    if (el.deleteModal) el.deleteModal.classList.remove("open");
-    showToast(`Paid course "${title}" deleted instantly.`, "success");
-
-    (async () => {
-      try {
-        await deleteDoc(doc(db, "paid_courses", courseId));
-      } catch (err) {
-        console.warn("Background Firestore delete paid course notice:", err);
-      }
-    })();
-  };
-}
-
-function rebuildAndRenderOrders() {
-  const ordersMap = new Map();
-  
-
-  firestoreOrdersMap.forEach((val, key) => {
-    ordersMap.set(key, { ...val, id: key });
-  });
-
-  ordersData = Array.from(ordersMap.values());
-  ordersData.sort((a, b) => {
-    const timeA = new Date(a.createdAt?.seconds ? a.createdAt.seconds * 1000 : (a.createdAt || 0)).getTime();
-    const timeB = new Date(b.createdAt?.seconds ? b.createdAt.seconds * 1000 : (b.createdAt || 0)).getTime();
-    return timeB - timeA;
-  });
-
-  renderOrdersTable(currentOrderFilter);
-  updateMetrics();
-}
-function renderOrdersTable(filter = "all") {
-  if (!el.ordersTableBody) return;
-  el.ordersTableBody.innerHTML = "";
-
-  let filtered = [...ordersData];
-  if (filter === "pending") {
-    filtered = filtered.filter(o => !o.accessGranted || o.paymentStatus === "pending_manual_access" || o.failSafeReason);
-  } else if (filter === "granted") {
-    filtered = filtered.filter(o => o.accessGranted === true);
+  const course = coursesData.find((c) => c.id === validId) || paidCoursesData.find((c) => c.id === validId);
+  if (!course) {
+    showToast("Course not found", "error");
+    return;
   }
 
+  const targetIdInput = document.getElementById("course-video-target-id");
+  const targetNameEl = document.getElementById("course-video-target-name");
+
+  if (targetIdInput) targetIdInput.value = validId;
+  if (targetNameEl) targetNameEl.textContent = course.title || "Course Video Manager";
+
+  renderVideoListInContainer("quick-videos-list-container", normalizeCourseVideos(course));
+  document.getElementById("course-video-modal")?.classList.add("open");
+}
+
+function closeCourseVideoModal() {
+  document.getElementById("course-video-modal")?.classList.remove("open");
+}
+
+document.getElementById("course-video-modal-close")?.addEventListener("click", closeCourseVideoModal);
+document.getElementById("course-video-quick-cancel")?.addEventListener("click", closeCourseVideoModal);
+document.getElementById("btn-quick-add-video-row")?.addEventListener("click", () => {
+  addVideoRowToContainer(document.getElementById("quick-videos-list-container"));
+});
+
+const courseVideoQuickForm = document.getElementById("course-video-quick-form");
+if (courseVideoQuickForm) {
+  courseVideoQuickForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const targetId = getValidDocId(document.getElementById("course-video-target-id")?.value);
+    if (!targetId) {
+      showToast("Invalid course ID", "error");
+      return;
+    }
+
+    const videosList = getVideosFromContainer("quick-videos-list-container");
+    const primaryVideo = videosList.length > 0 ? videosList[0] : null;
+
+    const updatePayload = sanitizeFirestoreData({
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : "",
+      updatedAt: serverTimestamp()
+    });
+
+    const saveBtn = document.getElementById("course-video-quick-save");
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving Videos...";
+    }
+
+    try {
+      await updateDoc(doc(db, "courses", targetId), updatePayload);
+      await updateDoc(doc(db, "paid_courses", targetId), updatePayload).catch(() => {});
+      console.log("⚡ [FIRESTORE VIDEOS ATTACHED]:", targetId, updatePayload);
+      showToast(`Saved ${videosList.length} video(s) to course successfully!`, "success");
+      closeCourseVideoModal();
+    } catch (err) {
+      console.error("Failed to attach videos to course:", err);
+      showToast("Error saving videos: " + err.message, "error");
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "💾 Save All Course Videos";
+      }
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 7. ATOMIC DELETION ENGINE
+// -------------------------------------------------------------
+function confirmDelete(type, id, title) {
+  const validId = getValidDocId(id);
+  if (!validId) {
+    showToast("Invalid item selected for deletion", "error");
+    return;
+  }
+  itemToDelete = { type, id: validId, title: title || "Item" };
+  if (deleteModalText) {
+    deleteModalText.textContent = `Are you sure you want to permanently delete "${title}"? This will delete the document directly from Firestore.`;
+  }
+  deleteModal?.classList.add("open");
+}
+
+function closeDeleteModal() {
+  itemToDelete = null;
+  deleteModal?.classList.remove("open");
+}
+
+document.getElementById("delete-modal-close")?.addEventListener("click", closeDeleteModal);
+document.getElementById("delete-cancel-btn")?.addEventListener("click", closeDeleteModal);
+
+if (deleteConfirmBtn) {
+  deleteConfirmBtn.addEventListener("click", async () => {
+    if (!itemToDelete) return;
+    const { type, id, title } = itemToDelete;
+    const validId = getValidDocId(id);
+    if (!validId) {
+      showToast("Invalid ID for deletion", "error");
+      closeDeleteModal();
+      return;
+    }
+
+    try {
+      if (type === "course") {
+        await deleteDoc(doc(db, "courses", validId));
+        console.log("Firestore Delete Success: Course document deleted", validId);
+        showToast(`Course "${title}" deleted from Firestore.`, "success");
+      } else if (type === "post") {
+        await deleteDoc(doc(db, "posts", validId));
+        console.log("Firestore Delete Success: Lesson document deleted", validId);
+        showToast(`Lesson "${title}" deleted from Firestore.`, "success");
+      } else if (type === "paidCourse") {
+        await deleteDoc(doc(db, "paid_courses", validId));
+        await deleteDoc(doc(db, "courses", validId)).catch(() => {});
+        console.log("Firestore Delete Success: Masterclass deleted", validId);
+        showToast(`Masterclass "${title}" deleted from Firestore.`, "success");
+      }
+    } catch (error) {
+      console.error("Firestore Delete Error:", error);
+      showToast("Delete Error: " + error.message, "error");
+    } finally {
+      closeDeleteModal();
+    }
+  });
+}
+
+// -------------------------------------------------------------
+// 8. TABLE RENDERERS & LIVE UI UPDATES
+// -------------------------------------------------------------
+function renderCoursesTable() {
+  const tbody = document.getElementById("courses-table-body");
+  if (!tbody) return;
+
+  const searchInput = document.getElementById("course-search");
+  const query = (searchInput?.value || "").toLowerCase().trim();
+
+  const filtered = coursesData.filter((c) => {
+    if (!query) return true;
+    return (
+      (c.title || "").toLowerCase().includes(query) ||
+      (c.slug || "").toLowerCase().includes(query) ||
+      (c.description || "").toLowerCase().includes(query)
+    );
+  });
+
   if (filtered.length === 0) {
-    const filterMsg = filter === "pending"
-      ? "Great news! There are no pending or unresolved student orders."
-      : "No student course orders logged yet.";
-    el.ordersTableBody.innerHTML = `
+    tbody.innerHTML = `
       <tr>
-        <td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">
-          ${filterMsg}
+        <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);">
+          No courses found. Click "+ New Course" to add one.
         </td>
       </tr>
     `;
     return;
   }
 
-  filtered.forEach((order) => {
-    const tr = document.createElement("tr");
-    const isPurchased = order.purchased === true || order.accessGranted === true;
-    const isPendingManual = order.purchased === false || !isPurchased || order.paymentStatus === "pending_manual_access" || !!order.failSafeReason;
+  tbody.innerHTML = filtered.map((course) => {
+    const lessonCount = postsData.filter((p) => p.courseId === course.id).length;
+    const isPublished = course.status === "published";
+    const statusBadge = isPublished
+      ? '<span class="badge badge-published">Published</span>'
+      : '<span class="badge badge-in-dev">Draft / In Dev</span>';
 
-    // Date formatting
-    let dateStr = "Recent";
-    if (order.createdAt) {
-      const d = order.createdAt.seconds ? new Date(order.createdAt.seconds * 1000) : new Date(order.createdAt);
-      dateStr = d.toLocaleDateString("en-IN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
-    }
+    const isPaid = course.type === "paid" || Boolean(course.price && !String(course.price).toLowerCase().includes("free") && course.price !== "0");
+    const typeBadge = isPaid
+      ? `<span class="badge" style="background: rgba(242, 201, 76, 0.2); color: var(--yellow); border: 1px solid rgba(242, 201, 76, 0.4);">⭐ Paid (${escapeHTML(course.price || "₹499")})</span>`
+      : `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4);">🌱 Free</span>`;
 
-    const studentName = order.name || order.studentName || order.fullName || "Student";
-    const studentEmail = order.email || order.studentEmail || "—";
-    const studentPhone = order.phone || order.studentPhone || "—";
-    const utrNumber = order.utr || order.transactionId || order.referenceNo || "—";
+    const paymentLinkPreview = isPaid && course.paymentLink
+      ? `<div style="margin-top: 4px;"><a href="${escapeHTML(course.paymentLink)}" target="_blank" rel="noopener noreferrer" style="color: var(--yellow); font-size: 11px; text-decoration: underline;">💳 Payment Gateway Link ↗</a></div>`
+      : '';
 
-    tr.innerHTML = `
-      <td>
-        <span class="font-mono" style="font-size:11px; color:var(--indigo-light);">${escapeHtml(order.id)}</span>
-        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">${dateStr}</div>
-      </td>
-      <td>
-        <strong style="color:var(--text-white); font-size:13.5px;">${escapeHtml(studentName)}</strong>
-        <div style="font-size:11.5px; color:var(--indigo-light);">${escapeHtml(studentEmail)}</div>
-        <div style="font-size:11px; color:var(--text-muted);">📱 ${escapeHtml(studentPhone)}</div>
-      </td>
-      <td>
-        <div style="font-size:11px; color:var(--text-muted); margin-bottom: 2px;">UTR / Ref:</div>
-        <span class="font-mono" style="font-size:11px; color:#fbbf24; background:rgba(251,191,36,0.1); padding:2px 6px; border-radius:4px; border: 1px solid rgba(251,191,36,0.25);">
-          ${escapeHtml(utrNumber)}
-        </span>
-      </td>
-      <td>
-        <div style="font-weight:600; color:var(--text-white); font-size:13px;">${escapeHtml(order.courseTitle || "Premium Course")}</div>
-        <span style="color:#F2C94C; font-weight:700; font-size:12px;">${escapeHtml(order.amount || order.coursePrice || "")}</span>
-      </td>
-      <td>
-        ${isPurchased
-          ? `<span class="badge badge-published" style="font-size:10.5px;">UPI (+91 9315671951)</span>`
-          : `<span class="badge" style="background:rgba(245,158,11,0.2); color:#f59e0b; border:1px solid rgba(245,158,11,0.4); font-size:10px;">
-              ⚠️ Verification Needed
-            </span>`
-        }
-      </td>
-      <td>
-        ${isPurchased
-          ? `<span class="badge badge-published" style="font-size:11px; font-weight:700;">purchased: true</span>`
-          : `<span class="badge" style="background:rgba(239,68,68,0.2); color:#f87171; border:1px solid rgba(239,68,68,0.4); font-size:11px; font-weight:700;">purchased: false</span>`
-        }
-      </td>
-      <td>
-        <div style="display:flex; gap:6px; align-items:center;">
-          ${!isPurchased
-            ? `<button class="btn btn-success btn-sm btn-grant-order" data-id="${order.id}" style="font-size:11.5px; padding:6px 12px; font-weight:600;">
-                ✓ Set purchased = true
-              </button>`
-            : `<button class="btn btn-secondary btn-sm btn-revoke-order" data-id="${order.id}" style="font-size:11px; color:#f87171;">
-                Set purchased = false
-              </button>`
-          }
-        </div>
-      </td>
+    const courseImg = course.imageUrl || course.courseImage || course.image;
+    const photoOrIcon = courseImg && courseImg.trim()
+      ? `<img src="${escapeHTML(courseImg.trim())}" alt="Photo" style="width: 42px; height: 42px; border-radius: 6px; object-fit: cover; border: 1px solid rgba(242, 201, 76, 0.4); flex-shrink: 0;">`
+      : `<span style="font-size: 20px; flex-shrink: 0;">${escapeHTML(course.icon || "📘")}</span>`;
+
+    const isCoursePurchased = course.isPurchased === true || course.purchased === true;
+    const accessBadge = isPaid
+      ? (isCoursePurchased
+          ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-size: 11px; font-weight: 700;">✓ isPurchased: true</span>`
+          : `<span class="badge" style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); font-size: 11px; font-weight: 700;">✗ isPurchased: false</span>`)
+      : '';
+
+    const toggleAccessBtn = isPaid
+      ? `<button class="btn btn-sm btn-toggle-course-access" data-id="${course.id}" data-current="${isCoursePurchased}" title="Toggle isPurchased" style="font-size: 11px; padding: 3px 8px; border-radius: 4px; border: 1px solid ${isCoursePurchased ? 'rgba(244, 63, 94, 0.4)' : 'rgba(16, 185, 129, 0.4)'}; background: ${isCoursePurchased ? 'rgba(244, 63, 94, 0.15)' : 'rgba(16, 185, 129, 0.15)'}; color: ${isCoursePurchased ? '#f43f5e' : '#10b981'}; cursor: pointer;">
+           ${isCoursePurchased ? 'Set False' : 'Set True'}
+         </button>`
+      : '';
+
+    return `
+      <tr>
+        <td>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            ${photoOrIcon}
+            <div>
+              <strong style="color: var(--text-white); display: block; font-size: 15px;">${escapeHTML(course.title)}</strong>
+              <div style="margin-top: 4px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                ${typeBadge}
+                ${accessBadge}
+                ${toggleAccessBtn}
+              </div>
+              ${paymentLinkPreview}
+            </div>
+          </div>
+        </td>
+        <td><code class="font-mono" style="font-size: 12px; color: var(--indigo-light);">${escapeHTML(course.slug || "")}</code></td>
+        <td>${statusBadge}</td>
+        <td><span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-white);">${lessonCount}</span></td>
+        <td>${course.order ?? 1}</td>
+        <td>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm btn-edit-course" data-id="${course.id}" title="Edit Course">Edit</button>
+            <button class="btn btn-secondary btn-sm btn-course-video" data-id="${course.id}" title="Add/Edit YouTube Video" style="background: rgba(242, 201, 76, 0.15); color: var(--yellow); border: 1px solid rgba(242, 201, 76, 0.4);">🎬 Video</button>
+            <button class="btn btn-secondary btn-sm btn-quick-lesson" data-id="${course.id}" title="Add content / lesson">+ Lesson</button>
+            <button class="btn btn-danger btn-sm btn-delete-course" data-id="${course.id}" data-title="${escapeHTML(course.title)}" title="Delete Course">✕</button>
+          </div>
+        </td>
+      </tr>
     `;
+  }).join("");
 
-    el.ordersTableBody.appendChild(tr);
-  });
+  // Bind Actions
+  tbody.querySelectorAll(".btn-toggle-course-access").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const courseId = getValidDocId(btn.getAttribute("data-id"));
+      if (!courseId) {
+        showToast("Invalid course ID", "error");
+        return;
+      }
+      const current = btn.getAttribute("data-current") === "true";
+      const nextState = !current;
 
-  // Attach Grant / Revoke Access event handlers
-  el.ordersTableBody.querySelectorAll(".btn-grant-order").forEach(btn => {
-    btn.addEventListener("click", () => handleGrantOrderAccess(btn.dataset.id));
-  });
+      btn.disabled = true;
+      btn.textContent = "...";
 
-  el.ordersTableBody.querySelectorAll(".btn-revoke-order").forEach(btn => {
-    btn.addEventListener("click", () => handleRevokeOrderAccess(btn.dataset.id));
-  });
-}
-
-async function handleGrantOrderAccess(orderId) {
-  const order = ordersData.find(o => o.id === orderId);
-  if (!order) return;
-
-  const updateData = {
-    purchased: true, // EXACT field set to true
-    accessGranted: true,
-    paymentStatus: "completed",
-    status: "completed",
-    manualGrantBy: currentUser ? currentUser.email : "admin@shortstudy.com",
-    grantedAt: serverTimestamp()
-  };
-
-  try {
-    await updateDoc(doc(db, "course_orders", orderId), updateData);
-    
-    const studentEmail = order.email || order.studentEmail || "user";
-    const courseId = order.courseId || "course";
-    const accessKey = `${studentEmail}_${courseId}`.replace(/[^a-zA-Z0-9_]/g, "_");
-    
-    await setDoc(doc(db, "course_access", accessKey), {
-      email: studentEmail,
-      studentName: order.name || order.studentName || order.fullName,
-      courseId: courseId,
-      courseTitle: order.courseTitle,
-      purchased: true,
-      accessGranted: true,
-      grantedBy: currentUser ? currentUser.email : "admin",
-      updatedAt: serverTimestamp()
-    }, { merge: true }).catch(() => {});
-
-    // Update in-memory and local state
-    if (firestoreOrdersMap.has(orderId)) {
-      firestoreOrdersMap.set(orderId, { ...firestoreOrdersMap.get(orderId), ...updateData });
-    }
-    const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], ...updateData };
-
-    renderOrdersTable(currentOrderFilter);
-    updateMetrics();
-    showToast(`Purchased access set to TRUE for ${order.name || order.studentName || order.email}!`, "success");
-  } catch (err) {
-    console.warn("Firestore order update fallback:", err);
-    const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], purchased: true, accessGranted: true, paymentStatus: "completed" };
-    renderOrdersTable(currentOrderFilter);
-    updateMetrics();
-    showToast(`Purchased access set to true locally!`, "info");
-  }
-}
-
-async function handleRevokeOrderAccess(orderId) {
-  const order = ordersData.find(o => o.id === orderId);
-  if (!order) return;
-
-  const updateData = {
-    purchased: false, // EXACT field set to false
-    accessGranted: false,
-    paymentStatus: "revoked",
-    status: "revoked",
-    updatedAt: serverTimestamp()
-  };
-
-  try {
-    await updateDoc(doc(db, "course_orders", orderId), updateData);
-    const studentEmail = order.email || order.studentEmail || "user";
-    const courseId = order.courseId || "course";
-    const accessKey = `${studentEmail}_${courseId}`.replace(/[^a-zA-Z0-9_]/g, "_");
-    
-    await setDoc(doc(db, "course_access", accessKey), { 
-      purchased: false, 
-      accessGranted: false 
-    }, { merge: true }).catch(() => {});
-
-    if (firestoreOrdersMap.has(orderId)) {
-      firestoreOrdersMap.set(orderId, { ...firestoreOrdersMap.get(orderId), ...updateData });
-    }
-    const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], ...updateData };
-
-    renderOrdersTable(currentOrderFilter);
-    updateMetrics();
-    showToast(`Purchased status set to FALSE for ${order.name || order.studentName || order.email}.`, "info");
-  } catch (err) {
-    console.warn("Firestore revoke fallback:", err);
-    const idx = ordersData.findIndex(o => o.id === orderId);
-    if (idx !== -1) ordersData[idx] = { ...ordersData[idx], purchased: false, accessGranted: false, paymentStatus: "revoked" };
-    renderOrdersTable(currentOrderFilter);
-    updateMetrics();
-    showToast(`Purchased status updated locally.`, "info");
-  }
-}
-
-// Order Filter Buttons
-if (el.orderFilterBtns) {
-  el.orderFilterBtns.forEach(btn => {
-    btn.addEventListener("click", () => {
-      el.orderFilterBtns.forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      currentOrderFilter = btn.dataset.filter || "all";
-      renderOrdersTable(currentOrderFilter);
-    });
-  });
-}
-
-// -------------------------------------------------------------
-// 5. NAVIGATION & VIEW SWITCHING
-// -------------------------------------------------------------
-el.navLinks.forEach((link) => {
-  link.addEventListener("click", (e) => {
-    e.preventDefault();
-    const targetTab = link.dataset.tab;
-    if (!targetTab) return;
-
-    el.navLinks.forEach(l => l.classList.remove("active"));
-    link.classList.add("active");
-
-    el.viewSections.forEach(section => {
-      if (section.id === `view-${targetTab}`) {
-        section.classList.add("active");
-      } else {
-        section.classList.remove("active");
+      try {
+        await updateDoc(doc(db, "courses", courseId), {
+          isPurchased: nextState,
+          purchased: nextState,
+          updatedAt: serverTimestamp()
+        });
+        showToast(nextState ? "Course set to isPurchased: true!" : "Course set to isPurchased: false!", "success");
+      } catch (err) {
+        console.error("Failed to toggle course access:", err);
+        showToast("Error updating course access: " + err.message, "error");
       }
     });
-
-    // Close mobile drawer if open
-    if (el.sidebar) el.sidebar.classList.remove("open");
   });
-});
 
-// Mobile drawer & backdrop management
-let adminSidebarBackdrop = document.querySelector(".admin-sidebar-backdrop");
-if (!adminSidebarBackdrop) {
-  adminSidebarBackdrop = document.createElement("div");
-  adminSidebarBackdrop.className = "admin-sidebar-backdrop";
-  document.body.appendChild(adminSidebarBackdrop);
-}
-
-function openMobileAdminSidebar() {
-  if (el.sidebar) el.sidebar.classList.add("open");
-  if (adminSidebarBackdrop) adminSidebarBackdrop.classList.add("active");
-}
-
-function closeMobileAdminSidebar() {
-  if (el.sidebar) el.sidebar.classList.remove("open");
-  if (adminSidebarBackdrop) adminSidebarBackdrop.classList.remove("active");
-}
-
-if (adminSidebarBackdrop) {
-  adminSidebarBackdrop.addEventListener("click", closeMobileAdminSidebar);
-}
-
-if (el.menuBurger) {
-  el.menuBurger.addEventListener("click", () => {
-    if (el.sidebar && el.sidebar.classList.contains("open")) {
-      closeMobileAdminSidebar();
-    } else {
-      openMobileAdminSidebar();
-    }
+  tbody.querySelectorAll(".btn-course-video").forEach((btn) => {
+    btn.addEventListener("click", () => openCourseVideoModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-edit-course").forEach((btn) => {
+    btn.addEventListener("click", () => openCourseModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-quick-lesson").forEach((btn) => {
+    btn.addEventListener("click", () => openPublishModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-delete-course").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      confirmDelete("course", btn.getAttribute("data-id"), btn.getAttribute("data-title"));
+    });
   });
 }
 
-// Close sidebar on navigation item click on mobile
-el.navLinks.forEach((link) => {
-  link.addEventListener("click", () => {
-    if (window.innerWidth <= 1024) {
-      closeMobileAdminSidebar();
-    }
+function renderPostsTable() {
+  const tbody = document.getElementById("posts-table-body");
+  if (!tbody) return;
+
+  const searchInput = document.getElementById("post-search");
+  const query = (searchInput?.value || "").toLowerCase().trim();
+
+  const filtered = postsData.filter((p) => {
+    if (!query) return true;
+    return (
+      (p.title || "").toLowerCase().includes(query) ||
+      (p.slug || "").toLowerCase().includes(query) ||
+      (p.courseTitle || "").toLowerCase().includes(query)
+    );
   });
-});
 
-// API Key Custom Configuration
-const quickApiKeyInput = document.getElementById("quick-api-key-input");
-const btnSaveQuickApiKey = document.getElementById("btn-save-quick-api-key");
-const btnToggleApiKey = document.getElementById("btn-toggle-api-key");
-const apiKeyFixPanel = document.getElementById("api-key-fix-panel");
-
-if (btnToggleApiKey && apiKeyFixPanel) {
-  btnToggleApiKey.addEventListener("click", (e) => {
-    e.preventDefault();
-    apiKeyFixPanel.classList.toggle("hidden");
-  });
-}
-
-async function saveApiKeyToSystem(rawKey) {
-  const key = rawKey.trim();
-  if (!key.startsWith("AIzaSy")) {
-    showToast("Invalid key format: Google API keys must begin with AIzaSy", "error");
+  if (filtered.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">
+          No lessons found. Click "+ New Post / Lesson" to create one.
+        </td>
+      </tr>
+    `;
     return;
   }
 
-  localStorage.setItem("shortstudy_firebase_api_key", key);
+  tbody.innerHTML = filtered.map((post) => {
+    const courseObj = coursesData.find((c) => c.id === post.courseId);
+    const courseName = courseObj ? courseObj.title : (post.courseTitle || "Unassigned");
+    const isPublished = post.status === "published";
+    const statusBadge = isPublished
+      ? '<span class="badge badge-published">Published</span>'
+      : '<span class="badge badge-draft">Draft</span>';
 
-  try {
-    const res = await fetch("/api/save-firebase-key", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ apiKey: key })
+    return `
+      <tr>
+        <td><strong style="color: var(--text-white);">${escapeHTML(post.title)}</strong></td>
+        <td><span style="color: var(--text-muted); font-size: 13px;">${escapeHTML(courseName)}</span></td>
+        <td>${statusBadge}</td>
+        <td><span style="font-size: 12px; color: var(--text-muted);">${post.videoUrl ? "✓ Video" : "—"}</span></td>
+        <td><span style="font-size: 12px; color: var(--text-muted);">${post.readTime || "5 min"}</span></td>
+        <td>${post.order ?? 1}</td>
+        <td>
+          <div style="display: flex; gap: 6px;">
+            <button class="btn btn-secondary btn-sm btn-edit-post" data-id="${post.id}">Edit</button>
+            <button class="btn btn-danger btn-sm btn-delete-post" data-id="${post.id}" data-title="${escapeHTML(post.title)}">✕</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.querySelectorAll(".btn-edit-post").forEach((btn) => {
+    btn.addEventListener("click", () => openPostModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-delete-post").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      confirmDelete("post", btn.getAttribute("data-id"), btn.getAttribute("data-title"));
     });
-    const data = await res.json();
-    if (data.success) {
-      showToast("Firebase API Key updated successfully! Reloading...", "success");
-    } else {
-      showToast("Key saved locally. Reloading...", "info");
-    }
-  } catch (err) {
-    showToast("Key saved in browser. Reloading...", "info");
+  });
+}
+
+function renderPaidCoursesTable() {
+  const tbody = document.getElementById("paid-courses-table-body");
+  if (!tbody) return;
+
+  if (paidCoursesData.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">
+          No masterclasses created yet. Click "+ Create Masterclass" to publish one.
+        </td>
+      </tr>
+    `;
+    return;
   }
 
-  setTimeout(() => window.location.reload(), 900);
-}
+  tbody.innerHTML = paidCoursesData.map((course) => {
+    return `
+      <tr>
+        <td><strong style="color: var(--text-white);">${escapeHTML(course.title)}</strong></td>
+        <td><span style="color: #10b981; font-weight: 700;">${escapeHTML(course.price || "₹2599")}</span></td>
+        <td><span style="color: var(--text-muted); text-decoration: line-through;">${escapeHTML(course.originalPrice || "—")}</span></td>
+        <td><span class="badge" style="background: rgba(255,255,255,0.06); color: var(--text-white);">${escapeHTML(course.category || "Masterclass")}</span></td>
+        <td><span style="font-size: 13px; color: var(--text-muted);">${escapeHTML(course.instructor || "ShortStudy")}</span></td>
+        <td><span class="badge badge-published">Active</span></td>
+        <td>
+          <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm btn-edit-paid" data-id="${course.id}">Edit</button>
+            <button class="btn btn-secondary btn-sm btn-course-video" data-id="${course.id}" title="Add/Edit YouTube Video" style="background: rgba(242, 201, 76, 0.15); color: var(--yellow); border: 1px solid rgba(242, 201, 76, 0.4);">🎬 Video</button>
+            <button class="btn btn-danger btn-sm btn-delete-paid" data-id="${course.id}" data-title="${escapeHTML(course.title)}">✕</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 
-if (btnSaveQuickApiKey && quickApiKeyInput) {
-  btnSaveQuickApiKey.addEventListener("click", () => {
-    saveApiKeyToSystem(quickApiKeyInput.value);
+  tbody.querySelectorAll(".btn-course-video").forEach((btn) => {
+    btn.addEventListener("click", () => openCourseVideoModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-edit-paid").forEach((btn) => {
+    btn.addEventListener("click", () => openPaidCourseModal(btn.getAttribute("data-id")));
+  });
+  tbody.querySelectorAll(".btn-delete-paid").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      confirmDelete("paidCourse", btn.getAttribute("data-id"), btn.getAttribute("data-title"));
+    });
   });
 }
 
-if (el.apiKeyInput) {
-  const currentKey = localStorage.getItem("shortstudy_firebase_api_key") || "";
-  el.apiKeyInput.value = currentKey;
-}
+function renderOrdersTable() {
+  const tbody = document.getElementById("orders-table-body");
+  if (!tbody) return;
 
-if (el.btnSaveApiKey) {
-  el.btnSaveApiKey.addEventListener("click", () => {
-    const key = el.apiKeyInput.value.trim();
-    if (key) {
-      saveApiKeyToSystem(key);
-    } else {
-      localStorage.removeItem("shortstudy_firebase_api_key");
-      showToast("API Key reset to default.", "info");
-      setTimeout(() => window.location.reload(), 900);
+  if (ordersData.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" style="text-align: center; padding: 32px; color: var(--text-muted);">
+          No purchase orders yet. Student purchases will appear here live in real time.
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = ordersData.map((order) => {
+    // Check if user has received course access
+    const isPurchased = order.isPurchased === true || order.purchased === true || (order.purchased !== false && order.status === "approved");
+    const studentName = order.studentName || order.userName || order.name || "Student";
+    const studentEmail = order.studentEmail || order.userEmail || order.email || "—";
+    const studentPhone = order.studentPhone || order.userPhone || order.phone || "";
+    const courseTitle = order.courseTitle || "Course";
+    const amount = order.amount || order.coursePrice || "₹499";
+    
+    let dateStr = "Recent";
+    if (order.createdAt?.toDate) {
+      dateStr = order.createdAt.toDate().toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" });
     }
+
+    const accessBadge = isPurchased
+      ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+           ✓ isPurchased: true
+         </span>`
+      : `<span class="badge" style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+           ✗ isPurchased: false
+         </span>`;
+
+    const controlButton = !isPurchased
+      ? `<button class="btn btn-success btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="grant" style="background: #10b981; color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 12px;">
+           ⚡ Grant Access (Make TRUE)
+         </button>`
+      : `<button class="btn btn-secondary btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="revoke" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 11.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer;">
+           Revoke (Make FALSE)
+         </button>`;
+
+    return `
+      <tr>
+        <td>
+          <code class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${escapeHTML((order.id || "").slice(0, 10))}...</code>
+          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">📅 ${dateStr}</div>
+        </td>
+        <td>
+          <strong style="color: var(--text-white); font-size: 14px;">${escapeHTML(studentName)}</strong>
+          <div style="color: var(--indigo-light); font-size: 12px; margin-top: 2px;">✉️ ${escapeHTML(studentEmail)}</div>
+          ${studentPhone ? `<div style="color: var(--yellow); font-size: 11.5px; margin-top: 2px;">📱 ${escapeHTML(studentPhone)}</div>` : ''}
+        </td>
+        <td>
+          <strong style="color: var(--yellow); font-size: 14px;">${escapeHTML(courseTitle)}</strong>
+        </td>
+        <td><strong style="color: #10b981; font-size: 14px;">${escapeHTML(amount)}</strong></td>
+        <td>${accessBadge}</td>
+        <td>${controlButton}</td>
+      </tr>
+    `;
+  }).join("");
+
+  tbody.querySelectorAll(".btn-toggle-purchase").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const orderId = getValidDocId(btn.getAttribute("data-id"));
+      if (!orderId) {
+        showToast("Invalid order ID", "error");
+        return;
+      }
+      const action = btn.getAttribute("data-action");
+      const setPurchased = action === "grant";
+      
+      btn.disabled = true;
+      btn.textContent = "Updating...";
+
+      try {
+        await updateDoc(doc(db, "course_orders", orderId), {
+          isPurchased: setPurchased,
+          purchased: setPurchased,
+          status: setPurchased ? "approved" : "pending",
+          updatedAt: serverTimestamp()
+        });
+        showToast(
+          setPurchased 
+            ? "Access granted! 'isPurchased: true' saved to Firestore." 
+            : "Access revoked! 'isPurchased: false' saved to Firestore.",
+          "success"
+        );
+      } catch (err) {
+        console.error("Failed to update access:", err);
+        showToast("Failed to update access: " + err.message, "error");
+      }
+    });
   });
 }
 
-// Helper utilities
-function escapeHtml(str) {
-  if (!str) return "";
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+function populateCourseSelects() {
+  const selects = [
+    document.getElementById("post-course"),
+    document.getElementById("filter-post-course")
+  ].filter(Boolean);
+
+  selects.forEach((sel) => {
+    const currentVal = sel.value;
+    const isFilter = sel.id === "filter-post-course";
+    let html = isFilter ? '<option value="all">All Courses</option>' : '<option value="">Select a Course *</option>';
+
+    coursesData.forEach((course) => {
+      html += `<option value="${escapeHTML(course.id)}">${escapeHTML(course.title)}</option>`;
+    });
+
+    sel.innerHTML = html;
+    if (currentVal) sel.value = currentVal;
+  });
 }
 
-// Global initialization
-setAuthMode("login");
+function updateMetrics() {
+  const totalCoursesEl = document.getElementById("metric-total-courses");
+  const totalPostsEl = document.getElementById("metric-total-posts");
+  const pendingOrdersEl = document.getElementById("metric-pending-orders");
+  const pendingBadgeEl = document.getElementById("pending-orders-badge");
 
-// Host / Environment Detection & Display
-const envHostName = document.getElementById("env-host-name");
-const envBadge = document.getElementById("env-badge");
-if (envHostName) {
-  const host = window.location.hostname;
-  if (host.includes("github.io")) {
-    envHostName.textContent = `GitHub Pages (${host})`;
-    envHostName.style.color = "#818cf8";
-  } else if (host === "localhost" || host === "127.0.0.1") {
-    envHostName.textContent = `Local Server (${host})`;
-  } else if (host.includes("run.app")) {
-    envHostName.textContent = `Cloud Preview (${host.slice(0, 18)}...)`;
-  } else if (window.location.protocol === "file:") {
-    envHostName.textContent = "Local File (file://)";
-    envHostName.style.color = "#f43f5e";
-  } else {
-    envHostName.textContent = host || "Active Host";
+  if (totalCoursesEl) totalCoursesEl.textContent = coursesData.length;
+  if (totalPostsEl) totalPostsEl.textContent = postsData.length;
+
+  const pendingCount = ordersData.filter((o) => o.status !== "approved").length;
+  if (pendingOrdersEl) pendingOrdersEl.textContent = pendingCount;
+  if (pendingBadgeEl) {
+    pendingBadgeEl.textContent = pendingCount;
+    pendingBadgeEl.style.display = pendingCount > 0 ? "inline-flex" : "none";
   }
 }
 
-if (envBadge) {
-  envBadge.addEventListener("click", () => {
-    const host = window.location.hostname;
-    if (host) {
-      navigator.clipboard.writeText(host).then(() => {
-        showToast(`Domain copied: ${host}`, "success");
-      });
-    }
+// -------------------------------------------------------------
+// 9. TAB NAVIGATION & SEARCH ENGINE
+// -------------------------------------------------------------
+document.querySelectorAll(".nav-link").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const targetTab = link.getAttribute("data-tab");
+    if (!targetTab) return;
+
+    document.querySelectorAll(".nav-link").forEach((l) => l.classList.remove("active"));
+    document.querySelectorAll(".view-section").forEach((s) => s.classList.remove("active"));
+
+    link.classList.add("active");
+    const targetSection = document.getElementById(`view-${targetTab}`);
+    if (targetSection) targetSection.classList.add("active");
   });
-}
+});
+
+document.getElementById("course-search")?.addEventListener("input", renderCoursesTable);
+document.getElementById("post-search")?.addEventListener("input", renderPostsTable);
+
+// Mobile Sidebar Toggle
+document.getElementById("menu-burger")?.addEventListener("click", () => {
+  document.querySelector(".admin-sidebar")?.classList.toggle("open");
+});
+
+// Auto-initialize when module is loaded
+console.log("ShortStudy Admin Engine Loaded (Pure Firestore Mode)");

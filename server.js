@@ -183,72 +183,8 @@ app.delete('/api/courses/:id', (req, res) => {
 });
 
 // =========================================================
-// FIREBASE AI LOGIC & DOUBT SOLVER ENDPOINTS
+// QUIZ GENERATION ENDPOINTS
 // =========================================================
-
-// Express AI Endpoint for Floating Doubt Solver
-app.post('/api/ai/doubt-solver', async (req, res) => {
-  const { topic = 'General Programming', question = '', pageInfo = {} } = req.body || {};
-  const query = question.trim();
-
-  if (!query) {
-    return res.status(400).json({ success: false, error: 'Question text is required.' });
-  }
-
-  // Strict Rule 1: DEVELOPER IDENTITY
-  const devPatterns = /(who (built|made|created|developed|is the developer|is the creator|designed|wrote|owns) (this|the)? (website|site|app|platform|shortstudy)|developer name|who built this|who made this)/i;
-  if (devPatterns.test(query)) {
-    return res.json({ success: true, answer: "Gaurav Fartiyal" });
-  }
-
-  // Strict Rule 2: PRIVATE DATA PROTECTION
-  const privatePatterns = /(private|secret|password|credential|backend|database|user data|admin|order log|transaction ledger|payment details|user account|firestore rule|env var)/i;
-  if (privatePatterns.test(query)) {
-    return res.json({ success: true, answer: "Sorry, The content is not publicly available." });
-  }
-
-  const ai = getAI();
-  if (!ai) {
-    // Fallback response if GEMINI_API_KEY environment variable is not configured yet
-    return res.json({
-      success: true,
-      answer: `ShortStudy AI Tutor (${topic}): To get instant live responses powered by Gemini AI, please configure GEMINI_API_KEY in server environment variables. For now: '${query}' is a great question! Check out our detailed curriculum notes on the site for full code examples.`
-    });
-  }
-
-  try {
-    const pageContextText = pageInfo.title 
-      ? `Current Page: ${pageInfo.title}\nPage Menu/Sections: ${Array.isArray(pageInfo.headings) ? pageInfo.headings.join(', ') : ''}`
-      : `Topic Context: ${topic}`;
-
-    const systemInstruction = `You are ShortStudy AI Tutor for ShortStudy (https://shortstudy.in/).
-STRICT GUARDRAILS:
-1. DEVELOPER IDENTITY: If asked "Who is the developer?", "Who built this website?", or variations, respond STRICTLY: "Gaurav Fartiyal".
-2. PRIVATE DATA PROTECTION: If asked about personal/private/backend data, database, order logs, or admin secrets, respond STRICTLY: "Sorry, The content is not publicly available.".
-3. CONTEXT & COMPREHENSIVE TEACHING: Provide complete, accurate, and easy-to-understand explanations with full code examples in markdown. Never truncate code blocks or leave answers half-finished. Tailor explanations to the current page and topic context.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      config: {
-        systemInstruction,
-        maxOutputTokens: 1500,
-        temperature: 0.3
-      },
-      contents: [
-        { role: 'user', parts: [{ text: `${pageContextText}\nStudent Question: ${query}` }] }
-      ]
-    });
-
-    const text = response.text || "I couldn't generate a response. Please rephrase your question.";
-    return res.json({ success: true, answer: text });
-  } catch (err) {
-    console.error('Error calling Gemini API for doubt solver:', err);
-    return res.json({
-      success: true,
-      answer: `ShortStudy AI Tutor (${topic}): '${query}' - Here is a quick hint: review the code examples and concepts covered on our ${topic} curriculum page! (AI service momentarily busy).`
-    });
-  }
-});
 
 // Express AI Endpoint for Dynamic Quiz Generation
 app.post('/api/ai/generate-quiz', async (req, res) => {
