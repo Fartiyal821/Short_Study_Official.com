@@ -1,5 +1,6 @@
 import { 
   doc,
+  getDoc,
   setDoc,
   collection, 
   addDoc, 
@@ -114,7 +115,7 @@ function processEmbedCode(raw) {
   const params = "autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&controls=1&playsinline=1&enablejsapi=1";
 
   if (videoId) {
-    return `<iframe src="https://www.youtube.com/embed/${videoId}?${params}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    return `<iframe src="https://www.youtube.com/embed/${videoId}?${params}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
   }
 
   if (str.includes("<iframe")) {
@@ -125,10 +126,11 @@ function processEmbedCode(raw) {
     return str
       .replace(/width="[^"]*"/i, 'width="100%"')
       .replace(/height="[^"]*"/i, 'height="100%"')
-      .replace(/style="[^"]*"/i, 'style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;"');
+      .replace(/style="[^"]*"/i, 'style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;"')
+      .replace(/<iframe/i, '<iframe frameborder="0" referrerpolicy="strict-origin-when-cross-origin"');
   }
 
-  return `<iframe src="${str}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" allowfullscreen></iframe>`;
+  return `<iframe src="${str}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
 }
 
 function closeCourseVideosModal() {
@@ -290,11 +292,62 @@ function renderActiveModalVideo() {
   });
 }
 
-window.openCourseVideosModal = function(courseId) {
-  ensureCourseVideosModal();
+window.openCourseVideosModal = async function(courseId) {
   const course = cachedCourses.find(c => c.id === courseId) || PRE_EXISTING_COURSES.find(c => c.id === courseId);
   if (!course) return;
 
+  const isPaid = isCoursePaid(course);
+
+  if (isPaid) {
+    // 1. MANDATORY AUTH CHECK
+    if (!auth.currentUser || auth.currentUser.isAnonymous) {
+      alert("Please login to access this course");
+      const authModal = document.getElementById("auth-modal");
+      if (authModal) authModal.style.display = "flex";
+      return;
+    }
+
+    // 2. FIRESTORE PAYMENT VERIFICATION (CRITICAL)
+    const isAdminUser = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+    if (!isAdminUser) {
+      let isVerified = false;
+
+      // Check live cache from user's approved orders
+      if (purchasedCourseIdsFromOrders.has(courseId)) {
+        isVerified = true;
+      } else {
+        try {
+          const orderDocRef = doc(db, "course_orders", `${auth.currentUser.uid}_${courseId}`);
+          const orderSnap = await getDoc(orderDocRef);
+          if (orderSnap.exists()) {
+            const orderData = orderSnap.data();
+            const isApproved = orderData.status === "approved";
+            const isMarkedPurchased = orderData.isPurchased === true || orderData.purchased === true;
+            if (isApproved && isMarkedPurchased) {
+              isVerified = true;
+              purchasedCourseIdsFromOrders.add(courseId);
+            }
+          }
+        } catch (err) {
+          console.error("Firestore order verification failed:", err);
+        }
+      }
+
+      if (!isVerified) {
+        // DO NOT render the iframe or YouTube Video Player container
+        const playerContainer = document.getElementById("cv-player-container");
+        if (playerContainer) playerContainer.innerHTML = "";
+
+        // Automatically trigger the Checkout/Payment Modal showing the UTR payment form
+        window.openCheckoutModal(courseId);
+        return;
+      }
+    }
+  }
+
+  // 3. SANDBOXED VIDEO PLAYER RENDERING (ONLY UPON SUCCESSFUL VERIFICATION)
+  ensureCourseVideosModal();
   activeModalCourse = course;
   activeModalVideos = normalizeCourseVideosList(course);
   activeVideoIndex = 0;
@@ -351,6 +404,7 @@ window.openCourseVideosModal = function(courseId) {
   renderActiveModalVideo();
   modal.style.display = "flex";
 };
+window.openCourseVideo = window.openCourseVideosModal;
 
 function escapeHtml(str) {
   if (!str) return "";
