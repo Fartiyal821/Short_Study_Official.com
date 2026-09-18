@@ -73,14 +73,45 @@ function setupOrdersListener() {
 
 function isCoursePaid(course) {
   if (!course) return false;
-  if (course.type === "paid") return true;
-  if (course.category && (
-    String(course.category).toLowerCase().includes("masterclass") ||
-    String(course.category).toLowerCase().includes("paid") ||
-    String(course.category).toLowerCase().includes("premium")
-  )) {
+
+  // 1. Explicit type & flags
+  if (course.type === "paid" || course.type === "masterclass") return true;
+  if (course.isPaid === true || course.paid === true) return true;
+
+  // 2. Check if present in firestorePaidCourses list
+  if (firestorePaidCourses && firestorePaidCourses.some(pc => pc.id === course.id)) {
     return true;
   }
+
+  // 3. Check price property: If price is defined and NOT explicitly Free or 0
+  if (course.price !== undefined && course.price !== null) {
+    const pStr = String(course.price).toLowerCase().trim();
+    if (pStr && pStr !== "free" && pStr !== "₹0" && pStr !== "0" && pStr !== "$0" && pStr !== "free curriculum") {
+      const num = parseInt(pStr.replace(/[^\d]/g, ""), 10);
+      if (!isNaN(num) && num > 0) return true;
+      if (/\d+/.test(pStr)) return true;
+    }
+  }
+
+  // 4. Check if originalPrice or paymentLink exists
+  if (course.paymentLink && String(course.paymentLink).trim().length > 0) return true;
+  if (course.originalPrice || course.origPrice) {
+    const origStr = String(course.originalPrice || course.origPrice).trim();
+    if (origStr && origStr !== "0" && origStr.toLowerCase() !== "free") return true;
+  }
+
+  // 5. Check category, badge, or title keywords
+  const cat = String(course.category || "").toLowerCase();
+  const badge = String(course.badge || "").toLowerCase();
+  const title = String(course.title || "").toLowerCase();
+  if (
+    cat.includes("masterclass") || cat.includes("paid") || cat.includes("premium") ||
+    badge.includes("masterclass") || badge.includes("paid") || badge.includes("premium") ||
+    title.includes("masterclass")
+  ) {
+    return true;
+  }
+
   return false;
 }
 
@@ -102,35 +133,85 @@ function normalizeCourseVideosList(course) {
   return [];
 }
 
+function extractYouTubeVideoId(input) {
+  if (!input) return "";
+  const str = String(input).trim();
+
+  // Direct 11-char alphanumeric YouTube video ID
+  if (/^[a-zA-Z0-9_-]{11}$/.test(str)) {
+    return str;
+  }
+
+  // YouTube URLs & patterns:
+  // - youtu.be/ID
+  // - youtube.com/watch?v=ID
+  // - youtube.com/embed/ID
+  // - youtube.com/v/ID
+  // - youtube.com/shorts/ID
+  // - youtube.com/live/ID
+  // - youtube-nocookie.com/embed/ID
+  const patterns = [
+    /(?:youtu\.be\/|youtube(?:-nocookie)?\.com\/(?:embed\/|v\/|shorts\/|live\/|watch\?v=|watch\?.+?&v=))([\w-]{11})/i,
+    /[?&]v=([\w-]{11})/i,
+    /src=["']https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/([\w-]{11})["']/i
+  ];
+
+  for (const pattern of patterns) {
+    const match = str.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  // If iframe has src with any link
+  const iframeSrcMatch = str.match(/src=["']([^"']+)["']/i);
+  if (iframeSrcMatch && iframeSrcMatch[1]) {
+    return extractYouTubeVideoId(iframeSrcMatch[1]);
+  }
+
+  return "";
+}
+
 function processEmbedCode(raw) {
-  if (!raw) return "";
-  let str = String(raw).trim();
-  let videoId = "";
-  const match = str.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
-  if (match && match[1]) {
-    videoId = match[1];
+  if (!raw) {
+    return `
+      <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #16201b; color: #f2c94c; padding: 20px; text-align: center;">
+        <span style="font-size: 36px; margin-bottom: 8px;">🎬</span>
+        <p style="font-size: 15px; font-weight: 700; margin: 0 0 6px 0; color: #f5f3ea;">Video Lecture Coming Soon</p>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0;">No video URL is linked yet for this lecture.</p>
+      </div>
+    `;
   }
 
-  // Strict parameters to provide a clean player and hide YouTube branding/related clutter
-  const params = "autoplay=1&modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&controls=1&playsinline=1&enablejsapi=1";
+  const videoId = extractYouTubeVideoId(raw);
 
-  if (videoId) {
-    return `<iframe src="https://www.youtube.com/embed/${videoId}?${params}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+  if (!videoId) {
+    return `
+      <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #16201b; color: #f2c94c; padding: 20px; text-align: center;">
+        <span style="font-size: 36px; margin-bottom: 8px;">⚠️</span>
+        <p style="font-size: 15px; font-weight: 700; margin: 0 0 6px 0; color: #f5f3ea;">Video Link Unavailable</p>
+        <p style="font-size: 13px; color: #94a3b8; margin: 0 0 12px 0;">The lecture video URL could not be formatted. Please update the YouTube link in Admin.</p>
+      </div>
+    `;
   }
 
-  if (str.includes("<iframe")) {
-    str = str.replace(/src="([^"]+)"/i, (m, srcUrl) => {
-      const sep = srcUrl.includes("?") ? "&" : "?";
-      return `src="${srcUrl}${sep}${params}"`;
-    });
-    return str
-      .replace(/width="[^"]*"/i, 'width="100%"')
-      .replace(/height="[^"]*"/i, 'height="100%"')
-      .replace(/style="[^"]*"/i, 'style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;"')
-      .replace(/<iframe/i, '<iframe frameborder="0" referrerpolicy="strict-origin-when-cross-origin"');
-  }
+  // STRICT PRIVACY-ENHANCED EMBED (youtube-nocookie.com)
+  // Essential for mobile devices to prevent "Please sign out and sign in again in a new tab" error
+  // playsinline=1 allows inline playback on iOS and Android
+  const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1&enablejsapi=1`;
 
-  return `<iframe src="${str}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0; border-radius:10px;" frameborder="0" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`;
+  return `
+    <iframe 
+      src="${embedUrl}" 
+      title="Course Video Player" 
+      style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; border-radius: 10px;" 
+      frameborder="0" 
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+      referrerpolicy="no-referrer-when-downgrade" 
+      allowfullscreen 
+      loading="lazy">
+    </iframe>
+  `;
 }
 
 function closeCourseVideosModal() {
@@ -179,9 +260,14 @@ function ensureCourseVideosModal() {
             </div>
 
             <!-- Nav Controls -->
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
               <button id="cv-btn-prev" class="btn" style="background: rgba(255,255,255,0.06); color: #f5f3ea; border: 1px solid rgba(242,201,76,0.25); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">← Previous Video</button>
-              <span id="cv-video-counter" style="font-size: 12.5px; color: #94a3b8; font-weight: 600;">Video 1 of 1</span>
+              <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span id="cv-video-counter" style="font-size: 12.5px; color: #94a3b8; font-weight: 600;">Video 1 of 1</span>
+                <a id="cv-watch-on-youtube" href="#" target="_blank" rel="noopener noreferrer" style="color: #f2c94c; background: rgba(242, 201, 76, 0.15); border: 1px solid rgba(242, 201, 76, 0.35); padding: 5px 10px; border-radius: 6px; font-size: 12px; text-decoration: none; display: none; align-items: center; gap: 5px; font-weight: 600;">
+                  <span>📺 Open in YouTube</span> ↗
+                </a>
+              </div>
               <button id="cv-btn-next" class="btn" style="background: rgba(242, 201, 76, 0.2); color: #f2c94c; border: 1px solid rgba(242,201,76,0.4); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 700;">Next Video →</button>
             </div>
           </div>
@@ -248,6 +334,7 @@ function renderActiveModalVideo() {
   const counterEl = document.getElementById("cv-video-counter");
   const prevBtn = document.getElementById("cv-btn-prev");
   const nextBtn = document.getElementById("cv-btn-next");
+  const ytLink = document.getElementById("cv-watch-on-youtube");
 
   if (!activeModalVideos || activeModalVideos.length === 0) {
     if (container) container.innerHTML = `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #94a3b8; font-size: 14px;">No videos attached to this course yet.</div>`;
@@ -256,6 +343,7 @@ function renderActiveModalVideo() {
     if (counterEl) counterEl.textContent = "0 of 0";
     if (prevBtn) prevBtn.disabled = true;
     if (nextBtn) nextBtn.disabled = true;
+    if (ytLink) ytLink.style.display = "none";
     return;
   }
 
@@ -270,6 +358,16 @@ function renderActiveModalVideo() {
   if (titleEl) titleEl.textContent = title;
   if (descEl) descEl.textContent = desc;
   if (counterEl) counterEl.textContent = `Video ${activeVideoIndex + 1} of ${activeModalVideos.length}`;
+
+  const vidId = extractYouTubeVideoId(rawUrl);
+  if (ytLink) {
+    if (vidId) {
+      ytLink.href = `https://www.youtube.com/watch?v=${vidId}`;
+      ytLink.style.display = "inline-flex";
+    } else {
+      ytLink.style.display = "none";
+    }
+  }
 
   if (prevBtn) {
     prevBtn.disabled = activeVideoIndex <= 0;
@@ -298,27 +396,20 @@ window.openCourseVideosModal = async function(courseId) {
 
   const isPaid = isCoursePaid(course);
 
+  // STRICT PAYWALL & ACCESS ENFORCEMENT
   if (isPaid) {
-    // 1. MANDATORY AUTH CHECK
-    if (!auth.currentUser || auth.currentUser.isAnonymous) {
-      alert("Please login to access this course");
-      const authModal = document.getElementById("auth-modal");
-      if (authModal) authModal.style.display = "flex";
-      return;
-    }
-
-    // 2. FIRESTORE PAYMENT VERIFICATION (CRITICAL)
     const isAdminUser = currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
     if (!isAdminUser) {
       let isVerified = false;
 
-      // Check live cache from user's approved orders
+      // 1. Check live cache of approved orders
       if (purchasedCourseIdsFromOrders.has(courseId)) {
         isVerified = true;
-      } else {
+      } else if (currentUserUid) {
+        // 2. Query Firestore order document for verification
         try {
-          const orderDocRef = doc(db, "course_orders", `${auth.currentUser.uid}_${courseId}`);
+          const orderDocRef = doc(db, "course_orders", `${currentUserUid}_${courseId}`);
           const orderSnap = await getDoc(orderDocRef);
           if (orderSnap.exists()) {
             const orderData = orderSnap.data();
@@ -335,11 +426,12 @@ window.openCourseVideosModal = async function(courseId) {
       }
 
       if (!isVerified) {
-        // DO NOT render the iframe or YouTube Video Player container
+        // HARD BLOCK: Wipe any player container so no video can be played
         const playerContainer = document.getElementById("cv-player-container");
         if (playerContainer) playerContainer.innerHTML = "";
+        closeCourseVideosModal();
 
-        // Automatically trigger the Checkout/Payment Modal showing the UTR payment form
+        // Automatically trigger the Checkout/Payment Modal demanding payment & UTR verification
         window.openCheckoutModal(courseId);
         return;
       }
@@ -454,7 +546,7 @@ function ensureCheckoutModal() {
             </div>
             <div style="background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; padding: 12px; border-radius: 8px; margin-top: 4px;">
               <label style="display: block; font-size: 13px; color: #10b981; margin-bottom: 6px; font-weight: bold;">Pay via UPI to 9315671951@upi first, then enter the 12-digit UTR here:</label>
-              <input type="text" id="checkout-input-utr" required pattern="\\d{12}" maxlength="12" minlength="12" title="Please enter exactly 12 digits" style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid #10b981; color: #fff; font-size: 15px;" placeholder="e.g. 301234567890">
+              <input type="text" id="checkout-input-utr" required pattern="[0-9]{12}" maxlength="12" minlength="12" title="Please enter exactly 12 digits" style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid #10b981; color: #fff; font-size: 15px;" placeholder="e.g. 301234567890">
             </div>
             <button id="checkout-submit-button" type="submit" style="background: #f2c94c; color: #2b3a32; font-weight: 700; font-size: 16px; padding: 14px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
               <span>⚡ Submit UTR for Verification</span><span style="font-size: 20px;">→</span>
@@ -520,7 +612,7 @@ window.openCheckoutModal = function(courseId) {
     const phone = document.getElementById("checkout-input-phone").value.trim();
     const utr = document.getElementById("checkout-input-utr").value.trim();
     
-    if (!/^\\d{12}$/.test(utr)) {
+    if (!/^\d{12}$/.test(utr)) {
       alert("Please enter a valid 12-digit UTR number.");
       return;
     }
@@ -690,7 +782,10 @@ function updateAndRenderMergedCourses() {
   
   // Override/Add Firestore courses
   firestoreCourses.forEach(c => mergedMap.set(c.id, c));
-  firestorePaidCourses.forEach(c => mergedMap.set(c.id, c));
+  firestorePaidCourses.forEach(c => {
+    const existing = mergedMap.get(c.id) || {};
+    mergedMap.set(c.id, { ...existing, ...c, type: "paid", isPaid: true });
+  });
   
   cachedCourses = Array.from(mergedMap.values());
   renderCoursesUI(cachedCourses);
@@ -716,7 +811,7 @@ export function initRealtimeSync() {
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
         if (!data.isDeleted && data.status !== "draft" && data.status !== "inactive") {
-          firestorePaidCourses.push({ id: docSnap.id, ...data });
+          firestorePaidCourses.push({ id: docSnap.id, ...data, type: "paid", isPaid: true });
         }
       });
       firestorePaidCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
