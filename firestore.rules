@@ -2,44 +2,72 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Allow read, write on paid_courses
+    // Admins are hardcoded by email in this system
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == "gauravfartiyal751@gmail.com";
+    }
+
     match /paid_courses/{courseId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
+      
+      match /private_content/{docId} {
+        allow read: if isAdmin() || (
+          request.auth != null &&
+          get(/databases/$(database)/documents/course_orders/$(request.auth.uid + "_" + courseId)).data.status == "approved"
+        );
+        allow write: if isAdmin();
+      }
     }
-
-    // Allow read, write on courses
+    
     match /courses/{courseId} {
-      allow read, write: if true;
-    }
+      allow read: if true;
+      allow write: if isAdmin();
 
-    // Allow read, write on posts
+      match /private_content/{docId} {
+        allow read: if isAdmin() || (
+          request.auth != null &&
+          get(/databases/$(database)/documents/course_orders/$(request.auth.uid + "_" + courseId)).data.status == "approved"
+        );
+        allow write: if isAdmin();
+      }
+    }
+    
     match /posts/{postId} {
-      allow read, write: if true;
+      allow read: if isAdmin() || 
+                  resource.data.courseId == null ||
+                  get(/databases/$(database)/documents/courses/$(resource.data.courseId)).data.type != 'paid' ||
+                  (request.auth != null && get(/databases/$(database)/documents/course_orders/$(request.auth.uid + "_" + resource.data.courseId)).data.status == "approved");
+      allow write: if isAdmin();
     }
-
-    // Allow read, write on lessons
+    
     match /lessons/{lessonId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
-    // Allow read, write on course_orders
     match /course_orders/{orderId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
+      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null 
+                    && request.resource.data.uid == request.auth.uid
+                    && request.resource.data.isPurchased == false
+                    && request.resource.data.purchased == false
+                    && request.resource.data.status == "pending";
+      allow update, delete: if false; 
     }
-
-    // Allow read, write on course_access
+    
     match /course_access/{accessId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
-
-    // Allow read, write on admins
+    
     match /admins/{adminId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
-    // Default catch-all rule
+    // Default catch-all rule - Block everything else securely
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
     }
   }
 }

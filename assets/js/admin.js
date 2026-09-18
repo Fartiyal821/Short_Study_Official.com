@@ -887,7 +887,7 @@ if (courseForm) {
     const status = statusSelect?.value || "published";
     const order = parseInt(orderInput?.value, 10) || 1;
 
-    const coursePayload = {
+    const coursePublicPayload = {
       title,
       description,
       type,
@@ -898,13 +898,6 @@ if (courseForm) {
       courseImage: image,
       isPurchased: isPurchasedBool,
       purchased: isPurchasedBool,
-      videos: videosList,
-      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
-      videoUrl: primaryVideo ? primaryVideo.url : "",
-      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
-      youtubeUrl: primaryVideo ? primaryVideo.url : "",
-      videoDescription: primaryVideo ? primaryVideo.description : "",
-      videoNotes: primaryVideo ? primaryVideo.description : "",
       price,
       originalPrice,
       instructor,
@@ -921,6 +914,16 @@ if (courseForm) {
       order,
       updatedAt: serverTimestamp()
     };
+    
+    const coursePrivatePayload = {
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : ""
+    };
 
     const submitBtn = document.getElementById("course-submit-btn");
     if (submitBtn) {
@@ -930,16 +933,19 @@ if (courseForm) {
 
     try {
       const validId = getValidDocId(editingCourseId);
-      const cleanData = sanitizeFirestoreData(coursePayload);
+      const cleanPublicData = sanitizeFirestoreData(coursePublicPayload);
+      const cleanPrivateData = sanitizeFirestoreData(coursePrivatePayload);
 
       if (validId) {
-        await setDoc(doc(db, "courses", validId), cleanData, { merge: true });
-        console.log("⚡ [FIRESTORE WRITE SUCCESS] Course updated with ID:", validId, cleanData);
+        await setDoc(doc(db, "courses", validId), cleanPublicData, { merge: true });
+        await setDoc(doc(db, "courses", validId, "private_content", "data"), cleanPrivateData, { merge: true });
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] Course updated with ID:", validId, cleanPublicData);
         showToast("Course updated successfully in Firestore!", "success");
       } else {
-        cleanData.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, "courses"), cleanData);
-        console.log("⚡ [FIRESTORE WRITE SUCCESS] New Course created with ID:", docRef.id, cleanData);
+        cleanPublicData.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanPublicData);
+        await setDoc(doc(db, "courses", docRef.id, "private_content", "data"), cleanPrivateData);
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] New Course created with ID:", docRef.id, cleanPublicData);
         showToast("New course saved to Firestore successfully!", "success");
       }
       courseForm.reset();
@@ -1269,7 +1275,7 @@ if (paidCourseForm) {
     const primaryVideo = videosList.length > 0 ? videosList[0] : null;
     const lessons = lessonsInput?.value?.trim() || `${Math.max(videosList.length, 1)} Masterclass Modules`;
 
-    const payload = {
+    const publicPayload = {
       title,
       price,
       originalPrice: origPrice,
@@ -1281,13 +1287,6 @@ if (paidCourseForm) {
       image,
       imageUrl: image,
       courseImage: image,
-      videos: videosList,
-      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
-      videoUrl: primaryVideo ? primaryVideo.url : "",
-      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
-      youtubeUrl: primaryVideo ? primaryVideo.url : "",
-      videoDescription: primaryVideo ? primaryVideo.description : "",
-      videoNotes: primaryVideo ? primaryVideo.description : "",
       badge,
       lessons,
       language,
@@ -1301,21 +1300,39 @@ if (paidCourseForm) {
       status: "published",
       updatedAt: serverTimestamp()
     };
+    
+    const privatePayload = {
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : ""
+    };
 
     try {
       const validPaidId = getValidDocId(editingPaidCourseId);
-      const cleanPayload = sanitizeFirestoreData(payload);
+      const cleanPublicPayload = sanitizeFirestoreData(publicPayload);
+      const cleanPrivatePayload = sanitizeFirestoreData(privatePayload);
 
       if (validPaidId) {
-        await setDoc(doc(db, "courses", validPaidId), cleanPayload, { merge: true });
-        await setDoc(doc(db, "paid_courses", validPaidId), cleanPayload, { merge: true });
+        await setDoc(doc(db, "courses", validPaidId), cleanPublicPayload, { merge: true });
+        await setDoc(doc(db, "paid_courses", validPaidId), cleanPublicPayload, { merge: true });
+        
+        await setDoc(doc(db, "courses", validPaidId, "private_content", "data"), cleanPrivatePayload, { merge: true });
+        await setDoc(doc(db, "paid_courses", validPaidId, "private_content", "data"), cleanPrivatePayload, { merge: true });
+        
         console.log("Firestore Write Success: Masterclass updated", validPaidId);
         showToast("Masterclass updated in Firestore!", "success");
       } else {
-        cleanPayload.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, "courses"), cleanPayload);
+        cleanPublicPayload.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanPublicPayload);
         if (docRef && docRef.id) {
-          await setDoc(doc(db, "paid_courses", docRef.id), { ...cleanPayload, id: docRef.id });
+          await setDoc(doc(db, "paid_courses", docRef.id), { ...cleanPublicPayload, id: docRef.id });
+          
+          await setDoc(doc(db, "courses", docRef.id, "private_content", "data"), cleanPrivatePayload);
+          await setDoc(doc(db, "paid_courses", docRef.id, "private_content", "data"), cleanPrivatePayload);
         }
         console.log("Firestore Write Success: Masterclass created with ID", docRef?.id);
         showToast("Masterclass created and published to Firestore!", "success");
@@ -1375,7 +1392,7 @@ if (courseVideoQuickForm) {
     const videosList = getVideosFromContainer("quick-videos-list-container");
     const primaryVideo = videosList.length > 0 ? videosList[0] : null;
 
-    const updatePayload = sanitizeFirestoreData({
+    const updatePrivatePayload = sanitizeFirestoreData({
       videos: videosList,
       videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
       videoUrl: primaryVideo ? primaryVideo.url : "",
@@ -1393,9 +1410,9 @@ if (courseVideoQuickForm) {
     }
 
     try {
-      await updateDoc(doc(db, "courses", targetId), updatePayload);
-      await updateDoc(doc(db, "paid_courses", targetId), updatePayload).catch(() => {});
-      console.log("⚡ [FIRESTORE VIDEOS ATTACHED]:", targetId, updatePayload);
+      await setDoc(doc(db, "courses", targetId, "private_content", "data"), updatePrivatePayload, { merge: true });
+      await setDoc(doc(db, "paid_courses", targetId, "private_content", "data"), updatePrivatePayload, { merge: true }).catch(() => {});
+      console.log("⚡ [FIRESTORE VIDEOS ATTACHED]:", targetId, updatePrivatePayload);
       showToast(`Saved ${videosList.length} video(s) to course successfully!`, "success");
       closeCourseVideoModal();
     } catch (err) {
@@ -1743,33 +1760,34 @@ function renderOrdersTable() {
     const studentPhone = order.studentPhone || order.userPhone || order.phone || "";
     const courseTitle = order.courseTitle || "Course";
     const amount = order.amount || order.coursePrice || "₹499";
+    const utr = order.utrNumber || "N/A";
+    const status = order.status || (isPurchased ? "approved" : "pending");
     
     let dateStr = "Recent";
     if (order.createdAt?.toDate) {
       dateStr = order.createdAt.toDate().toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" });
     }
 
-    const accessBadge = isPurchased
+    const statusBadge = isPurchased || status === "approved"
       ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-           ✓ isPurchased: true
+           ✓ Approved
          </span>`
       : `<span class="badge" style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.4); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
-           ✗ isPurchased: false
+           ⏳ Pending
          </span>`;
 
-    const controlButton = !isPurchased
+    const controlButton = (!isPurchased && status !== "approved")
       ? `<button class="btn btn-success btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="grant" style="background: #10b981; color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 12px;">
-           ⚡ Grant Access (Make TRUE)
+           ✓ Approve Payment
          </button>`
       : `<button class="btn btn-secondary btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="revoke" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 11.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer;">
-           Revoke (Make FALSE)
+           Revoke Access
          </button>`;
 
     return `
       <tr>
         <td>
-          <code class="font-mono" style="font-size: 11.5px; color: var(--text-muted);">${escapeHTML((order.id || "").slice(0, 10))}...</code>
-          <div style="font-size: 11.5px; color: var(--text-muted); margin-top: 3px;">📅 ${dateStr}</div>
+          <div style="font-size: 13px; color: var(--text-white); margin-top: 3px;">📅 ${dateStr}</div>
         </td>
         <td>
           <strong style="color: var(--text-white); font-size: 14px;">${escapeHTML(studentName)}</strong>
@@ -1778,9 +1796,14 @@ function renderOrdersTable() {
         </td>
         <td>
           <strong style="color: var(--yellow); font-size: 14px;">${escapeHTML(courseTitle)}</strong>
+          <div style="color: #10b981; font-size: 12px; margin-top: 2px;">${escapeHTML(amount)}</div>
         </td>
-        <td><strong style="color: #10b981; font-size: 14px;">${escapeHTML(amount)}</strong></td>
-        <td>${accessBadge}</td>
+        <td>
+          <code class="font-mono" style="background: rgba(255,255,255,0.1); padding: 4px 6px; border-radius: 4px; font-size: 14px; color: var(--text-white); font-weight: bold;">
+            ${escapeHTML(utr)}
+          </code>
+        </td>
+        <td>${statusBadge}</td>
         <td>${controlButton}</td>
       </tr>
     `;

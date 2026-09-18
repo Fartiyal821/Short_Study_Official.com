@@ -318,16 +318,58 @@
     }
 
     grid.innerHTML = filtered.map(course => {
-      const isPaid = Boolean(course.price && course.price !== "0" && !course.price.toLowerCase().includes("free"));
+      const isPaid = Boolean(course.price && course.price !== "0" && !String(course.price).toLowerCase().includes("free"));
       const link = isPaid ? `courses.html` : (staticMap[course.slug] || staticMap[course.id] || course.staticUrl || `course.html?id=${encodeURIComponent(course.id || course.slug)}`);
       const icon = course.icon || (isPaid ? "🎓" : "📘");
-      const level = course.level || (isPaid ? `Masterclass — ${course.price}` : "Beginner");
+      
+      let rawPrice = String(course.price || "₹499").trim();
+      let rawOrig = String(course.originalPrice || course.origPrice || "").trim();
+      let priceNum = parseInt(rawPrice.replace(/[^\d]/g, ""), 10);
+      if (!priceNum || isNaN(priceNum)) priceNum = 499;
+      let origNum = parseInt(rawOrig.replace(/[^\d]/g, ""), 10);
+      if (!origNum || isNaN(origNum) || origNum <= priceNum) {
+        origNum = Math.round(priceNum * 1.6);
+      }
+      let discountPct = Math.round(((origNum - priceNum) / origNum) * 100);
+      if (course.discount) {
+        const customPct = parseInt(String(course.discount).replace(/[^\d]/g, ""), 10);
+        if (customPct && !isNaN(customPct)) discountPct = customPct;
+      }
+      const formatRupee = (num) => "₹" + num.toLocaleString("en-IN");
+      const origPriceStr = formatRupee(origNum);
+      const reducedPriceStr = formatRupee(priceNum);
+
+      const priceDisplay = isPaid
+        ? `<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+             <span style="color: #94a3b8; text-decoration: line-through; font-size: 14px; font-weight: 600; opacity: 0.85;">${origPriceStr}</span>
+             <span class="num" style="background:rgba(242, 201, 76, 0.2); color:#f2c94c; padding:4px 10px; border-radius:6px; font-weight:700; font-size: 16px; border: 1px solid rgba(242, 201, 76, 0.3);">${reducedPriceStr}</span>
+           </div>`
+        : `<span class="num" style="background:rgba(16, 185, 129, 0.2); color:#10b981; padding:4px 10px; border-radius:6px; font-weight:700;">Free</span>`;
+
+      const discountBadge = isPaid
+        ? `<div style="position: absolute; top: 12px; left: 12px; background: #ef4444; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2; display: flex; align-items: center; gap: 4px;">
+             <span>🏷️ ${discountPct > 0 ? discountPct : 35}% OFF</span>
+           </div>`
+        : `<div style="position: absolute; top: 12px; left: 12px; background: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2;">
+             100% FREE
+           </div>`;
+
+      const imgSrc = course.imageUrl || course.courseImage || course.image;
+      const imgHtml = imgSrc 
+        ? `<div style="position: relative; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 14px; background: #16201b; border: 1px solid rgba(242, 201, 76, 0.25); display: flex; align-items: center; justify-content: center;">
+             ${discountBadge}
+             <img src="${imgSrc}" alt="${course.title || 'Course thumbnail'}" style="width: 100%; height: auto; max-height: none; display: block; object-fit: contain; border-radius: 6px;" loading="lazy">
+           </div>`
+        : `<div style="position: relative; width: 100%; height: 160px; border-radius: 8px; overflow: hidden; margin-bottom: 14px; background: linear-gradient(135deg, #1b2620, #2b3a32); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(242, 201, 76, 0.25);">
+             ${discountBadge}
+             <span style="font-size: 44px;">${icon}</span>
+           </div>`;
 
       return `
-        <div class="class-card">
-          <div class="tape"></div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-            <span class="num">${isPaid ? course.price : '01'}</span>
+        <div class="class-card" style="padding: 28px 24px; display: flex; flex-direction: column; position: relative;">
+          ${imgHtml}
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap: wrap; gap: 8px;">
+            ${priceDisplay}
             <span class="num" style="font-size: 12px; font-weight:700; color:var(--pink-dark); text-transform:uppercase;">${course.category || "programming"}</span>
           </div>
           <h3>${course.title}</h3>
