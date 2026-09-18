@@ -887,7 +887,7 @@ if (courseForm) {
     const status = statusSelect?.value || "published";
     const order = parseInt(orderInput?.value, 10) || 1;
 
-    const coursePublicPayload = {
+    const coursePayload = {
       title,
       description,
       type,
@@ -898,6 +898,13 @@ if (courseForm) {
       courseImage: image,
       isPurchased: isPurchasedBool,
       purchased: isPurchasedBool,
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : "",
       price,
       originalPrice,
       instructor,
@@ -914,16 +921,6 @@ if (courseForm) {
       order,
       updatedAt: serverTimestamp()
     };
-    
-    const coursePrivatePayload = {
-      videos: videosList,
-      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
-      videoUrl: primaryVideo ? primaryVideo.url : "",
-      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
-      youtubeUrl: primaryVideo ? primaryVideo.url : "",
-      videoDescription: primaryVideo ? primaryVideo.description : "",
-      videoNotes: primaryVideo ? primaryVideo.description : ""
-    };
 
     const submitBtn = document.getElementById("course-submit-btn");
     if (submitBtn) {
@@ -933,19 +930,16 @@ if (courseForm) {
 
     try {
       const validId = getValidDocId(editingCourseId);
-      const cleanPublicData = sanitizeFirestoreData(coursePublicPayload);
-      const cleanPrivateData = sanitizeFirestoreData(coursePrivatePayload);
+      const cleanData = sanitizeFirestoreData(coursePayload);
 
       if (validId) {
-        await setDoc(doc(db, "courses", validId), cleanPublicData, { merge: true });
-        await setDoc(doc(db, "courses", validId, "private_content", "data"), cleanPrivateData, { merge: true });
-        console.log("⚡ [FIRESTORE WRITE SUCCESS] Course updated with ID:", validId, cleanPublicData);
+        await setDoc(doc(db, "courses", validId), cleanData, { merge: true });
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] Course updated with ID:", validId, cleanData);
         showToast("Course updated successfully in Firestore!", "success");
       } else {
-        cleanPublicData.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, "courses"), cleanPublicData);
-        await setDoc(doc(db, "courses", docRef.id, "private_content", "data"), cleanPrivateData);
-        console.log("⚡ [FIRESTORE WRITE SUCCESS] New Course created with ID:", docRef.id, cleanPublicData);
+        cleanData.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanData);
+        console.log("⚡ [FIRESTORE WRITE SUCCESS] New Course created with ID:", docRef.id, cleanData);
         showToast("New course saved to Firestore successfully!", "success");
       }
       courseForm.reset();
@@ -1275,7 +1269,7 @@ if (paidCourseForm) {
     const primaryVideo = videosList.length > 0 ? videosList[0] : null;
     const lessons = lessonsInput?.value?.trim() || `${Math.max(videosList.length, 1)} Masterclass Modules`;
 
-    const publicPayload = {
+    const payload = {
       title,
       price,
       originalPrice: origPrice,
@@ -1287,6 +1281,13 @@ if (paidCourseForm) {
       image,
       imageUrl: image,
       courseImage: image,
+      videos: videosList,
+      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
+      videoUrl: primaryVideo ? primaryVideo.url : "",
+      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
+      youtubeUrl: primaryVideo ? primaryVideo.url : "",
+      videoDescription: primaryVideo ? primaryVideo.description : "",
+      videoNotes: primaryVideo ? primaryVideo.description : "",
       badge,
       lessons,
       language,
@@ -1300,39 +1301,21 @@ if (paidCourseForm) {
       status: "published",
       updatedAt: serverTimestamp()
     };
-    
-    const privatePayload = {
-      videos: videosList,
-      videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
-      videoUrl: primaryVideo ? primaryVideo.url : "",
-      videoEmbedUrl: primaryVideo ? primaryVideo.embedUrl : "",
-      youtubeUrl: primaryVideo ? primaryVideo.url : "",
-      videoDescription: primaryVideo ? primaryVideo.description : "",
-      videoNotes: primaryVideo ? primaryVideo.description : ""
-    };
 
     try {
       const validPaidId = getValidDocId(editingPaidCourseId);
-      const cleanPublicPayload = sanitizeFirestoreData(publicPayload);
-      const cleanPrivatePayload = sanitizeFirestoreData(privatePayload);
+      const cleanPayload = sanitizeFirestoreData(payload);
 
       if (validPaidId) {
-        await setDoc(doc(db, "courses", validPaidId), cleanPublicPayload, { merge: true });
-        await setDoc(doc(db, "paid_courses", validPaidId), cleanPublicPayload, { merge: true });
-        
-        await setDoc(doc(db, "courses", validPaidId, "private_content", "data"), cleanPrivatePayload, { merge: true });
-        await setDoc(doc(db, "paid_courses", validPaidId, "private_content", "data"), cleanPrivatePayload, { merge: true });
-        
+        await setDoc(doc(db, "courses", validPaidId), cleanPayload, { merge: true });
+        await setDoc(doc(db, "paid_courses", validPaidId), cleanPayload, { merge: true });
         console.log("Firestore Write Success: Masterclass updated", validPaidId);
         showToast("Masterclass updated in Firestore!", "success");
       } else {
-        cleanPublicPayload.createdAt = serverTimestamp();
-        const docRef = await addDoc(collection(db, "courses"), cleanPublicPayload);
+        cleanPayload.createdAt = serverTimestamp();
+        const docRef = await addDoc(collection(db, "courses"), cleanPayload);
         if (docRef && docRef.id) {
-          await setDoc(doc(db, "paid_courses", docRef.id), { ...cleanPublicPayload, id: docRef.id });
-          
-          await setDoc(doc(db, "courses", docRef.id, "private_content", "data"), cleanPrivatePayload);
-          await setDoc(doc(db, "paid_courses", docRef.id, "private_content", "data"), cleanPrivatePayload);
+          await setDoc(doc(db, "paid_courses", docRef.id), { ...cleanPayload, id: docRef.id });
         }
         console.log("Firestore Write Success: Masterclass created with ID", docRef?.id);
         showToast("Masterclass created and published to Firestore!", "success");
@@ -1392,7 +1375,7 @@ if (courseVideoQuickForm) {
     const videosList = getVideosFromContainer("quick-videos-list-container");
     const primaryVideo = videosList.length > 0 ? videosList[0] : null;
 
-    const updatePrivatePayload = sanitizeFirestoreData({
+    const updatePayload = sanitizeFirestoreData({
       videos: videosList,
       videoEmbed: primaryVideo ? (primaryVideo.embedCode || primaryVideo.url) : "",
       videoUrl: primaryVideo ? primaryVideo.url : "",
@@ -1410,9 +1393,9 @@ if (courseVideoQuickForm) {
     }
 
     try {
-      await setDoc(doc(db, "courses", targetId, "private_content", "data"), updatePrivatePayload, { merge: true });
-      await setDoc(doc(db, "paid_courses", targetId, "private_content", "data"), updatePrivatePayload, { merge: true }).catch(() => {});
-      console.log("⚡ [FIRESTORE VIDEOS ATTACHED]:", targetId, updatePrivatePayload);
+      await setDoc(doc(db, "courses", targetId), updatePayload, { merge: true });
+      await setDoc(doc(db, "paid_courses", targetId), updatePayload, { merge: true }).catch(() => {});
+      console.log("⚡ [FIRESTORE VIDEOS ATTACHED]:", targetId, updatePayload);
       showToast(`Saved ${videosList.length} video(s) to course successfully!`, "success");
       closeCourseVideoModal();
     } catch (err) {

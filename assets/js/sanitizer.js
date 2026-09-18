@@ -108,8 +108,8 @@ export function processYouTubeEmbed(input) {
     };
   }
 
-  const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}`;
-  const rawIframe = `<iframe src="${embedUrl}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>`;
+  const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?modestbranding=1&rel=0&iv_load_policy=3&showinfo=0&controls=1&playsinline=1&enablejsapi=1`;
+  const rawIframe = `<iframe src="${embedUrl}" title="Course Video Player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="lazy"></iframe>`;
   const iframeHtml = sanitizeHTML(rawIframe);
 
   return {

@@ -105,6 +105,34 @@ function initLessonListener() {
     } catch (err) {
       console.error("Slug query error:", err);
     }
+  } else if (courseParam) {
+    try {
+      const courseDocRef = doc(db, "courses", courseParam);
+      onSnapshot(courseDocRef, (snap) => {
+        if (snap.exists() && (!currentPost || currentPost.id === courseParam)) {
+          const courseData = { id: snap.id, ...snap.data() };
+          currentPost = {
+            id: courseData.id,
+            title: courseData.title || "Course Masterclass",
+            courseTitle: courseData.title || "Course Masterclass",
+            courseId: courseData.id,
+            description: courseData.description,
+            content: `<div style="font-size: 15px; line-height: 1.7; color: var(--ink-base);">${courseData.description || "Course modules and companion notes."}</div>`,
+            videos: courseData.videos || [],
+            videoEmbed: courseData.videoEmbed || "",
+            videoUrl: courseData.videoUrl || "",
+            videoDescription: courseData.videoDescription || "",
+            ...courseData
+          };
+          renderLesson(currentPost);
+          loadCourseSiblings(courseData.id);
+        }
+      }, (err) => {
+        console.warn("Course doc listener warning:", err);
+      });
+    } catch (err) {
+      console.error("Course listener error:", err);
+    }
   }
 }
 
@@ -283,19 +311,25 @@ function renderCourseSidebar(lessons) {
   const currentIndex = lessons.findIndex(l => l.id === currentId);
   if (currentIndex > 0) {
     const prev = lessons[currentIndex - 1];
-    el.prevLessonBtn.href = `lesson.html?id=${prev.id}`;
-    el.prevLessonBtn.style.visibility = "visible";
-    el.prevLessonBtn.querySelector(".nav-btn-title").textContent = prev.title;
-  } else {
+    if (el.prevLessonBtn) {
+      el.prevLessonBtn.href = `lesson.html?id=${prev.id}`;
+      el.prevLessonBtn.style.visibility = "visible";
+      const titleSpan = el.prevLessonBtn.querySelector(".nav-btn-title");
+      if (titleSpan) titleSpan.textContent = prev.title;
+    }
+  } else if (el.prevLessonBtn) {
     el.prevLessonBtn.style.visibility = "hidden";
   }
 
   if (currentIndex !== -1 && currentIndex < lessons.length - 1) {
     const next = lessons[currentIndex + 1];
-    el.nextLessonBtn.href = `lesson.html?id=${next.id}`;
-    el.nextLessonBtn.style.visibility = "visible";
-    el.nextLessonBtn.querySelector(".nav-btn-title").textContent = next.title;
-  } else {
+    if (el.nextLessonBtn) {
+      el.nextLessonBtn.href = `lesson.html?id=${next.id}`;
+      el.nextLessonBtn.style.visibility = "visible";
+      const titleSpan = el.nextLessonBtn.querySelector(".nav-btn-title");
+      if (titleSpan) titleSpan.textContent = next.title;
+    }
+  } else if (el.nextLessonBtn) {
     el.nextLessonBtn.style.visibility = "hidden";
   }
 }
