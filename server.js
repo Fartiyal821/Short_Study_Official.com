@@ -233,6 +233,11 @@ app.get('/logo.png', (req, res) => {
   res.sendFile(path.join(__dirname, 'logo.png'));
 });
 
+// Health check endpoints for Cloud Run & load balancer readiness/liveness probes
+app.get(['/health', '/healthz', '/api/health', '/_health'], (req, res) => {
+  res.status(200).send('OK');
+});
+
 // Serve static files with proper MIME types
 app.use(express.static(__dirname, {
   extensions: ['html'],
@@ -244,6 +249,23 @@ app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, '404.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`ShortStudy server running on http://0.0.0.0:${PORT}`);
 });
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, closing server gracefully...');
+  server.close(() => {
+    console.log('Server closed successfully.');
+    process.exit(0);
+  });
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, closing server gracefully...');
+  server.close(() => {
+    console.log('Server closed successfully.');
+    process.exit(0);
+  });
+});
+

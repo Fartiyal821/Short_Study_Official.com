@@ -19,6 +19,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { auth, db } from "./firebase-config.js";
 import { slugify } from "./content-format.js";
+import { PRE_EXISTING_COURSES } from "./catalog-data.js";
 
 // Canonical Admin Email
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
@@ -299,6 +300,36 @@ let coursesData = [];
 let postsData = [];
 let paidCoursesData = [];
 let ordersData = [];
+
+export function getUnifiedAdminCourses() {
+  const map = new Map();
+  PRE_EXISTING_COURSES.forEach((c) => {
+    map.set(c.id, { ...c });
+    if (c.slug) map.set(c.slug, { ...c });
+  });
+  coursesData.forEach((c) => {
+    const existing = map.get(c.id) || (c.slug ? map.get(c.slug) : null) || {};
+    const updated = { ...existing, ...c };
+    map.set(c.id, updated);
+    if (c.slug) map.set(c.slug, updated);
+  });
+  paidCoursesData.forEach((c) => {
+    const existing = map.get(c.id) || (c.slug ? map.get(c.slug) : null) || {};
+    const updated = { ...existing, ...c, type: "paid", isPaid: true };
+    map.set(c.id, updated);
+    if (c.slug) map.set(c.slug, updated);
+  });
+  const unique = [];
+  const seen = new Set();
+  for (const item of map.values()) {
+    const key = (item.slug || item.id || item.title || "").toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(item);
+    }
+  }
+  return unique.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+}
 
 // Listener Unsubscribe Handles
 let unsubscribeCourses = null;
@@ -757,7 +788,7 @@ function openCourseModal(courseId = null) {
   }
 
   if (courseId) {
-    const course = coursesData.find((c) => c.id === courseId);
+    const course = getUnifiedAdminCourses().find((c) => c.id === courseId || c.slug === courseId);
     if (course) {
       if (modalTitle) modalTitle.textContent = "Edit Course";
       if (titleInput) titleInput.value = course.title || "";
@@ -1336,7 +1367,7 @@ function openCourseVideoModal(courseId) {
   const validId = getValidDocId(courseId);
   if (!validId) return;
 
-  const course = coursesData.find((c) => c.id === validId) || paidCoursesData.find((c) => c.id === validId);
+  const course = getUnifiedAdminCourses().find((c) => c.id === validId || c.slug === validId);
   if (!course) {
     showToast("Course not found", "error");
     return;
@@ -1479,7 +1510,8 @@ function renderCoursesTable() {
   const searchInput = document.getElementById("course-search");
   const query = (searchInput?.value || "").toLowerCase().trim();
 
-  const filtered = coursesData.filter((c) => {
+  const allUnified = getUnifiedAdminCourses();
+  const filtered = allUnified.filter((c) => {
     if (!query) return true;
     return (
       (c.title || "").toLowerCase().includes(query) ||
@@ -1676,7 +1708,11 @@ function renderPaidCoursesTable() {
   const tbody = document.getElementById("paid-courses-table-body");
   if (!tbody) return;
 
-  if (paidCoursesData.length === 0) {
+  const paidList = getUnifiedAdminCourses().filter(
+    (c) => c.type === "paid" || c.isPaid || Boolean(c.price && !String(c.price).toLowerCase().includes("free") && c.price !== "0")
+  );
+
+  if (paidList.length === 0) {
     tbody.innerHTML = `
       <tr>
         <td colspan="7" style="text-align: center; padding: 32px; color: var(--text-muted);">
@@ -1687,7 +1723,7 @@ function renderPaidCoursesTable() {
     return;
   }
 
-  tbody.innerHTML = paidCoursesData.map((course) => {
+  tbody.innerHTML = paidList.map((course) => {
     return `
       <tr>
         <td><strong style="color: var(--text-white);">${escapeHTML(course.title)}</strong></td>
@@ -1837,7 +1873,7 @@ function populateCourseSelects() {
     const isFilter = sel.id === "filter-post-course";
     let html = isFilter ? '<option value="all">All Courses</option>' : '<option value="">Select a Course *</option>';
 
-    coursesData.forEach((course) => {
+    getUnifiedAdminCourses().forEach((course) => {
       html += `<option value="${escapeHTML(course.id)}">${escapeHTML(course.title)}</option>`;
     });
 
@@ -1852,7 +1888,7 @@ function updateMetrics() {
   const pendingOrdersEl = document.getElementById("metric-pending-orders");
   const pendingBadgeEl = document.getElementById("pending-orders-badge");
 
-  if (totalCoursesEl) totalCoursesEl.textContent = coursesData.length;
+  if (totalCoursesEl) totalCoursesEl.textContent = getUnifiedAdminCourses().length;
   if (totalPostsEl) totalPostsEl.textContent = postsData.length;
 
   const pendingCount = ordersData.filter((o) => o.status !== "approved").length;

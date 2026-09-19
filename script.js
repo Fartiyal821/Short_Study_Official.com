@@ -1,9 +1,49 @@
 /* =========================================================
    SHORT STUDY — SHARED CORE SCRIPT
+   - Cross-origin third-party script error shield (Payhip, AdSense)
    - Tiny top page loading progress bar (showing loading state across page transitions)
    - Mobile navigation toggle & e-book dropdown
    - Google AdSense / GDPR & CCPA Consent Management Platform (CMP)
    ========================================================= */
+
+/* ---- Global Error Shield for Third-Party Cross-Origin Scripts ---- */
+(function initGlobalErrorShield() {
+  function isCrossOriginScriptError(msg, src, line) {
+    if (!msg) return true;
+    var s = String(msg).toLowerCase();
+    if (s.indexOf('script error') !== -1) return true;
+    if ((!src || src === '' || !line || line === 0) && (s.indexOf('error') !== -1 || s.indexOf('syntax') !== -1)) return true;
+    if (src && (src.indexOf('payhip.com') !== -1 || src.indexOf('googlesyndication.com') !== -1 || src.indexOf('doubleclick.net') !== -1)) return true;
+    return false;
+  }
+
+  window.addEventListener('error', function(event) {
+    if (isCrossOriginScriptError(event.message, event.filename, event.lineno)) {
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      if (event.stopPropagation) event.stopPropagation();
+      event.preventDefault();
+      return true;
+    }
+  }, true);
+
+  var _prevOnError = window.onerror;
+  window.onerror = function(msg, url, lineNo, colNo, error) {
+    if (isCrossOriginScriptError(msg, url, lineNo)) {
+      return true;
+    }
+    if (typeof _prevOnError === 'function') {
+      return _prevOnError(msg, url, lineNo, colNo, error);
+    }
+  };
+
+  window.addEventListener('unhandledrejection', function(event) {
+    var reason = event.reason ? (event.reason.message || String(event.reason)) : '';
+    if (isCrossOriginScriptError(reason) || reason.indexOf('payhip') !== -1 || reason.indexOf('adsbygoogle') !== -1) {
+      if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+      event.preventDefault();
+    }
+  }, true);
+})();
 
 /* ---- Top Page Loading Progress Bar (Tiny line across top of page) ---- */
 (function initPageProgressBar() {

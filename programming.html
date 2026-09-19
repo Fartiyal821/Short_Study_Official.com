@@ -273,23 +273,15 @@
 
 <script src="script.js"></script>
 <script type="module">
-  import { db, collection, onSnapshot } from "./assets/js/firebase-config.js";
+  import { TUTORIAL_COURSES } from "./assets/js/catalog-data.js";
+  import "./assets/js/app.js";
 
-  const grid = document.getElementById("courses-grid");
-  const filterBtns = document.querySelectorAll("#courses .cwh-filter-btn");
+  const grid = document.getElementById("curriculum-courses-grid");
+  const filterBtns = document.querySelectorAll(".cwh-filter-btn");
   let activeFilter = "all";
-  let allCourses = [];
-
-  const staticMap = {
-    "python-basics": "python-basics.html",
-    "python-operators-conditionals": "python-operators-conditionals.html",
-    "c-basics": "c-basics.html",
-    "data-structures-arrays": "data-structures-arrays.html",
-    "java-oop-concepts": "java-oop-basics.html",
-    "java-oop-basics": "java-oop-basics.html",
-    "html-css-basics": "html-css-basics.html",
-    "sql-basics": "sql-basics.html"
-  };
+  
+  const allCourses = [...TUTORIAL_COURSES];
+  allCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
 
   function render() {
     if (!grid) return;
@@ -304,81 +296,44 @@
       return cat.includes(activeFilter);
     });
 
-    if (filtered.length === 0) {
-      grid.innerHTML = `
-        <div style="grid-column: 1 / -1; text-align: center; padding: 48px 20px; background: #ffffff; border-radius: 12px; border: 1px dashed var(--paper-line);">
-          <span style="font-size: 36px; display: block; margin-bottom: 10px;">📚</span>
-          <h3 style="font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 6px;">No Courses Published Yet</h3>
-          <p style="color: #64748b; font-size: 14px; max-width: 440px; margin: 0 auto 16px;">
-            Courses added and published in the Admin Panel will appear here automatically.
-          </p>
-        </div>
-      `;
-      return;
-    }
-
     grid.innerHTML = filtered.map(course => {
-      const isPaid = Boolean(course.price && course.price !== "0" && !String(course.price).toLowerCase().includes("free"));
-      const link = isPaid ? `courses.html` : (staticMap[course.slug] || staticMap[course.id] || course.staticUrl || `course.html?id=${encodeURIComponent(course.id || course.slug)}`);
-      const icon = course.icon || (isPaid ? "🎓" : "📘");
-      
-      let rawPrice = String(course.price || "₹499").trim();
-      let rawOrig = String(course.originalPrice || course.origPrice || "").trim();
-      let priceNum = parseInt(rawPrice.replace(/[^\d]/g, ""), 10);
-      if (!priceNum || isNaN(priceNum)) priceNum = 499;
-      let origNum = parseInt(rawOrig.replace(/[^\d]/g, ""), 10);
-      if (!origNum || isNaN(origNum) || origNum <= priceNum) {
-        origNum = Math.round(priceNum * 1.6);
-      }
-      let discountPct = Math.round(((origNum - priceNum) / origNum) * 100);
-      if (course.discount) {
-        const customPct = parseInt(String(course.discount).replace(/[^\d]/g, ""), 10);
-        if (customPct && !isNaN(customPct)) discountPct = customPct;
-      }
-      const formatRupee = (num) => "₹" + num.toLocaleString("en-IN");
-      const origPriceStr = formatRupee(origNum);
-      const reducedPriceStr = formatRupee(priceNum);
-
-      const priceDisplay = isPaid
-        ? `<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-             <span style="color: #94a3b8; text-decoration: line-through; font-size: 14px; font-weight: 600; opacity: 0.85;">${origPriceStr}</span>
-             <span class="num" style="background:rgba(242, 201, 76, 0.2); color:#f2c94c; padding:4px 10px; border-radius:6px; font-weight:700; font-size: 16px; border: 1px solid rgba(242, 201, 76, 0.3);">${reducedPriceStr}</span>
-           </div>`
-        : `<span class="num" style="background:rgba(16, 185, 129, 0.2); color:#10b981; padding:4px 10px; border-radius:6px; font-weight:700;">Free</span>`;
-
-      const discountBadge = isPaid
-        ? `<div style="position: absolute; top: 12px; left: 12px; background: #ef4444; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2; display: flex; align-items: center; gap: 4px;">
-             <span>🏷️ ${discountPct > 0 ? discountPct : 35}% OFF</span>
-           </div>`
-        : `<div style="position: absolute; top: 12px; left: 12px; background: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2;">
-             100% FREE
-           </div>`;
+      const link = course.link || `${course.slug}.html`;
+      const icon = course.icon || "📘";
 
       const imgSrc = course.imageUrl || course.courseImage || course.image;
       const imgHtml = imgSrc 
         ? `<div style="position: relative; width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 14px; background: #16201b; border: 1px solid rgba(242, 201, 76, 0.25); display: flex; align-items: center; justify-content: center;">
-             ${discountBadge}
-             <img src="${imgSrc}" alt="${course.title || 'Course thumbnail'}" style="width: 100%; height: auto; max-height: none; display: block; object-fit: contain; border-radius: 6px;" loading="lazy">
+             <div style="position: absolute; top: 12px; left: 12px; background: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2;">
+               FREE TRACK
+             </div>
+             <img src="${imgSrc}" alt="${course.title || 'Tutorial thumbnail'}" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px;" loading="lazy">
            </div>`
         : `<div style="position: relative; width: 100%; height: 160px; border-radius: 8px; overflow: hidden; margin-bottom: 14px; background: linear-gradient(135deg, #1b2620, #2b3a32); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(242, 201, 76, 0.25);">
-             ${discountBadge}
+             <div style="position: absolute; top: 12px; left: 12px; background: #10b981; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 8px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.5); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; z-index: 2;">
+               FREE TRACK
+             </div>
              <span style="font-size: 44px;">${icon}</span>
            </div>`;
 
       return `
-        <div class="class-card" style="padding: 28px 24px; display: flex; flex-direction: column; position: relative;">
+        <div class="class-card" style="padding: 24px; display: flex; flex-direction: column; position: relative; background: #2b3a32; color: #f2c94c; border: 1px solid rgba(242, 201, 76, 0.4); border-radius: 12px;">
           ${imgHtml}
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap: wrap; gap: 8px;">
-            ${priceDisplay}
-            <span class="num" style="font-size: 12px; font-weight:700; color:var(--pink-dark); text-transform:uppercase;">${course.category || "programming"}</span>
+            <span class="num" style="background:rgba(16, 185, 129, 0.2); color:#10b981; padding:4px 10px; border-radius:6px; font-weight:700; font-size: 14px;">100% Free</span>
+            <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase;">${course.category || "Tutorial"}</span>
           </div>
-          <h3>${course.title}</h3>
-          <p>${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
-          <a href="${link}" class="go">${isPaid ? `Enroll →` : "Start Learning"}</a>
+          <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 22px; margin-top: 0; margin-bottom: 8px;">${course.title}</h3>
+          <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9; font-size: 14px; margin-bottom: 20px; line-height: 1.6;">${course.description || "Master core concepts with in-depth structured modules and interactive code examples."}</p>
+          <a href="${link}" class="go" style="width: 100%; background: #ffffff; color: #1b2620; font-family: 'Kalam', cursive; font-size: 18px; font-weight: bold; border: none; padding: 12px; border-radius: 8px; text-decoration: none; text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-top: auto;">
+            <span>Start Learning</span> <span>→</span>
+          </a>
         </div>
       `;
     }).join("");
   }
+
+  // Render initial tutorial catalog
+  render();
 
   if (filterBtns) {
     filterBtns.forEach(btn => {
@@ -389,27 +344,6 @@
         render();
       });
     });
-  }
-
-  // 100% Realtime Firebase Sync
-  try {
-    onSnapshot(collection(db, "courses"), (snapshot) => {
-      const items = [];
-      snapshot.forEach(docSnap => {
-        const d = docSnap.data();
-        if (!d.isDeleted && d.status !== "inactive" && d.status !== "draft") {
-          items.push({ id: docSnap.id, ...d });
-        }
-      });
-      // Sort by order
-      items.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
-      allCourses = items;
-      render();
-    }, (err) => {
-      console.warn("Real-time sync error:", err);
-    });
-  } catch (err) {
-    console.error("Firebase init error:", err);
   }
 </script>
 </body>

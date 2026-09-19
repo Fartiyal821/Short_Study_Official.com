@@ -1,6 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <!-- Global Error Shield for Third-Party Cross-Origin Scripts (Payhip, AdSense, Analytics) -->
+  <script>
+    (function() {
+      // 1. Safe PostMessage Bridge: Prevent 3rd-party scripts (e.g. Payhip) from crashing on structured objects
+      var _origAddEventListener = window.addEventListener;
+      window.addEventListener = function(type, listener, options) {
+        if (type === 'message' && typeof listener === 'function') {
+          var safeListener = function(event) {
+            try {
+              if (event && event.data !== undefined && event.data !== null && typeof event.data !== 'string' && !event.data.toString) {
+                try {
+                  event.data.toString = function() { return ''; };
+                } catch (_) {}
+              }
+              return listener.apply(this, arguments);
+            } catch (err) {
+              // Suppress unhandled exceptions originating inside 3rd-party cross-window message handlers
+              return;
+            }
+          };
+          return _origAddEventListener.call(this, type, safeListener, options);
+        }
+        return _origAddEventListener.apply(this, arguments);
+      };
+
+      // 2. Suppress generic browser CORS-masked "Script error." (lineno 0) from 3rd-party scripts
+      function isCrossOriginScriptError(msg, src, line) {
+        if (!msg) return true;
+        var s = String(msg).toLowerCase();
+        if (s.indexOf('script error') !== -1) return true;
+        if ((!src || src === '' || !line || line === 0) && (s.indexOf('error') !== -1 || s.indexOf('syntax') !== -1)) return true;
+        if (src && (src.indexOf('payhip.com') !== -1 || src.indexOf('googlesyndication.com') !== -1 || src.indexOf('doubleclick.net') !== -1)) return true;
+        return false;
+      }
+
+      window.addEventListener('error', function(event) {
+        if (isCrossOriginScriptError(event.message, event.filename, event.lineno)) {
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          if (event.stopPropagation) event.stopPropagation();
+          event.preventDefault();
+          return true;
+        }
+      }, true);
+
+      var _prevOnError = window.onerror;
+      window.onerror = function(msg, url, lineNo, colNo, error) {
+        if (isCrossOriginScriptError(msg, url, lineNo)) {
+          return true; // suppresses generic cross-origin Script error.
+        }
+        if (typeof _prevOnError === 'function') {
+          return _prevOnError(msg, url, lineNo, colNo, error);
+        }
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        var reason = event.reason ? (event.reason.message || String(event.reason)) : '';
+        if (isCrossOriginScriptError(reason) || reason.indexOf('payhip') !== -1 || reason.indexOf('adsbygoogle') !== -1) {
+          if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+          event.preventDefault();
+        }
+      }, true);
+    })();
+  </script>
   <meta name="google-adsense-account" content="ca-pub-8208662455546800">
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8208662455546800" crossorigin="anonymous"></script>
   <meta name="google-site-verification" content="0yVz3m3iYVAS-9VF3lUnngHlsOsDzOI_I1etI34o_Jg" />
@@ -132,7 +195,7 @@
     <!-- Left Column: Headline, Typewriter, Description & CTAs -->
     <div class="cwh-hero-content">
       <div class="cwh-hero-badge">
-        <span>🚀</span> 100% Free Computer Science &amp; Programming
+        <span>🚀</span> 100% Paid Premium Computer Science Tracks
       </div>
       
       <h1>
@@ -141,11 +204,11 @@
       </h1>
 
       <p class="cwh-hero-desc">
-        Confused on where to start coding? ShortStudy provides free, structured textbook-quality notes, in-depth programming tutorials, and interactive practice tests designed for beginners, software engineers, and technical interview preparation.
+        Confused on where to start coding? ShortStudy provides structured masterclasses, in-depth programming tutorials, and interactive practice tests designed for beginners, software engineers, and technical interview preparation.
       </p>
 
       <div class="cwh-hero-actions">
-        <a href="#courses" class="cwh-btn-primary">Explore Free Notes ↓</a>
+        <a href="#courses" class="cwh-btn-primary">Explore Masterclasses ↓</a>
         <a href="programming.html" class="cwh-btn-secondary">📚 Full Curriculum</a>
         <a href="test.html" class="cwh-btn-secondary" style="border-style:dashed;">📝 Practice Quiz</a>
       </div>
@@ -157,7 +220,7 @@
         <span>•</span>
         <span>✓ Real-World Syntax</span>
         <span>•</span>
-        <span>✓ No Sign-up Needed</span>
+        <span>✓ 100% Paid Masterclasses</span>
       </div>
     </div>
 
@@ -167,7 +230,7 @@
         <span>🐍</span> Python &amp; DSA
       </div>
       <div class="cwh-float-badge cwh-float-2">
-        <span>⭐</span> 100% Free Access
+        <span>⭐</span> 100% Paid Access
       </div>
 
       <div class="cwh-code-editor">
@@ -219,7 +282,7 @@
       </div>
       <div style="text-align:center;">
         <span style="display:block; font-family:'Kalam',cursive; font-size:40px; color:var(--yellow); line-height:1;">100%</span>
-        <span style="font-size:14px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:0.05em;">Free Forever</span>
+        <span style="font-size:14px; color:var(--chalk-dim); text-transform:uppercase; letter-spacing:0.05em;">Paid Masterclasses</span>
       </div>
     </div>
   </section>
@@ -270,9 +333,9 @@
       </div>
 
       <div class="cwh-feature-card">
-        <div class="cwh-feature-icon-box">🎁</div>
-        <h3>100% Free Forever</h3>
-        <p>No paywalls, no mandatory account sign-ups, and no lock-in. Pure open computer science education for all.</p>
+        <div class="cwh-feature-icon-box">🔒</div>
+        <h3>100% Paid Masterclasses</h3>
+        <p>All courses require verified enrollment with lifetime video access, direct tutor support, and code templates.</p>
       </div>
     </div>
   </section>
@@ -294,14 +357,14 @@
     <div class="section-head" style="margin-bottom: 32px;">
       <span class="kicker">Frequently Asked Questions</span>
       <h2 style="font-size: clamp(26px, 3.5vw, 36px); color: #0f172a;">Got Questions? We Have Answers.</h2>
-      <p>Everything you need to know about our free programming curriculum and notes.</p>
+      <p>Everything you need to know about our programming curriculum and masterclasses.</p>
     </div>
 
     <div style="max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;">
       <details class="notes-accordion" open>
-        <summary class="notes-accordion-summary">Is this programming curriculum really 100% free?</summary>
+        <summary class="notes-accordion-summary">How do the 100% Paid Masterclasses work?</summary>
         <div class="accordion-body">
-          <p>Yes! Every lesson, code example, and test on ShortStudy is completely free to read, bookmark, and study. There are zero subscription fees and no mandatory sign-ups.</p>
+          <p>Every masterclass is 100% paid. Click "Enroll Now" on any track, pay the fee via UPI to 9315671951@upi, and submit your 12-digit UTR transaction code. Your course is verified and unlocked for lifetime access.</p>
         </div>
       </details>
 

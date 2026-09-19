@@ -222,47 +222,8 @@ function setupOrdersListener() {
 }
 
 function isCoursePaid(course) {
-  if (!course) return false;
-
-  // 1. Explicit type & flags
-  if (course.type === "paid" || course.type === "masterclass") return true;
-  if (course.isPaid === true || course.paid === true) return true;
-
-  // 2. Check if present in firestorePaidCourses list
-  if (firestorePaidCourses && firestorePaidCourses.some(pc => pc.id === course.id)) {
-    return true;
-  }
-
-  // 3. Check price property: If price is defined and NOT explicitly Free or 0
-  if (course.price !== undefined && course.price !== null) {
-    const pStr = String(course.price).toLowerCase().trim();
-    if (pStr && pStr !== "free" && pStr !== "₹0" && pStr !== "0" && pStr !== "$0" && pStr !== "free curriculum") {
-      const num = parseInt(pStr.replace(/[^\d]/g, ""), 10);
-      if (!isNaN(num) && num > 0) return true;
-      if (/\d+/.test(pStr)) return true;
-    }
-  }
-
-  // 4. Check if originalPrice or paymentLink exists
-  if (course.paymentLink && String(course.paymentLink).trim().length > 0) return true;
-  if (course.originalPrice || course.origPrice) {
-    const origStr = String(course.originalPrice || course.origPrice).trim();
-    if (origStr && origStr !== "0" && origStr.toLowerCase() !== "free") return true;
-  }
-
-  // 5. Check category, badge, or title keywords
-  const cat = String(course.category || "").toLowerCase();
-  const badge = String(course.badge || "").toLowerCase();
-  const title = String(course.title || "").toLowerCase();
-  if (
-    cat.includes("masterclass") || cat.includes("paid") || cat.includes("premium") ||
-    badge.includes("masterclass") || badge.includes("paid") || badge.includes("premium") ||
-    title.includes("masterclass")
-  ) {
-    return true;
-  }
-
-  return false;
+  // 100% Paid Policy: Every course on ShortStudy is a paid premium masterclass requiring verified enrollment
+  return true;
 }
 
 function normalizeCourseVideosList(course) {
@@ -541,7 +502,7 @@ function renderActiveModalVideo() {
 }
 
 window.openCourseVideosModal = async function(courseId) {
-  const course = cachedCourses.find(c => c.id === courseId) || PRE_EXISTING_COURSES.find(c => c.id === courseId);
+  const course = cachedCourses.find(c => c.id === courseId || c.slug === courseId) || PRE_EXISTING_COURSES.find(c => c.id === courseId || c.slug === courseId);
   if (!course) return;
 
   const isPaid = isCoursePaid(course);
@@ -553,21 +514,27 @@ window.openCourseVideosModal = async function(courseId) {
     if (!isAdminUser) {
       let isVerified = false;
 
-      // 1. Check live cache of approved orders
-      if (purchasedCourseIdsFromOrders.has(courseId)) {
+      // 1. Check live cache of approved orders (check id and slug)
+      if (purchasedCourseIdsFromOrders.has(course.id) || (course.slug && purchasedCourseIdsFromOrders.has(course.slug)) || purchasedCourseIdsFromOrders.has(courseId)) {
         isVerified = true;
       } else if (currentUserUid) {
         // 2. Query Firestore order document for verification
         try {
-          const orderDocRef = doc(db, "course_orders", `${currentUserUid}_${courseId}`);
-          const orderSnap = await getDoc(orderDocRef);
-          if (orderSnap.exists()) {
-            const orderData = orderSnap.data();
-            const isApproved = orderData.status === "approved";
-            const isMarkedPurchased = orderData.isPurchased === true || orderData.purchased === true;
-            if (isApproved && isMarkedPurchased) {
-              isVerified = true;
-              purchasedCourseIdsFromOrders.add(courseId);
+          const checkIds = [course.id, course.slug, courseId].filter(Boolean);
+          for (const cid of checkIds) {
+            const orderDocRef = doc(db, "course_orders", `${currentUserUid}_${cid}`);
+            const orderSnap = await getDoc(orderDocRef);
+            if (orderSnap.exists()) {
+              const orderData = orderSnap.data();
+              const isApproved = orderData.status === "approved";
+              const isMarkedPurchased = orderData.isPurchased === true || orderData.purchased === true;
+              if (isApproved && isMarkedPurchased) {
+                isVerified = true;
+                purchasedCourseIdsFromOrders.add(cid);
+                purchasedCourseIdsFromOrders.add(course.id);
+                if (course.slug) purchasedCourseIdsFromOrders.add(course.slug);
+                break;
+              }
             }
           }
         } catch (err) {
@@ -662,7 +629,14 @@ function isCourseUnlocked(courseId) {
   if (currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
     return true;
   }
+  if (!courseId) return false;
   if (purchasedCourseIdsFromOrders.has(courseId)) return true;
+  const course = (cachedCourses || []).find(c => c.id === courseId || c.slug === courseId);
+  if (course) {
+    if (purchasedCourseIdsFromOrders.has(course.id) || (course.slug && purchasedCourseIdsFromOrders.has(course.slug))) {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -727,7 +701,7 @@ function ensureCheckoutModal() {
 
 window.openCheckoutModal = function(courseId) {
   ensureCheckoutModal();
-  const course = cachedCourses.find(c => c.id === courseId) || PRE_EXISTING_COURSES.find(c => c.id === courseId);
+  const course = cachedCourses.find(c => c.id === courseId || c.slug === courseId) || PRE_EXISTING_COURSES.find(c => c.id === courseId || c.slug === courseId);
   if (!course) return;
 
   activeCheckoutCourseId = courseId;
@@ -1576,14 +1550,14 @@ function renderCoursesUI(courses) {
   const freeGrid = document.getElementById("courses-grid");
   const paidGrid = document.getElementById("paid-courses-grid");
   const homepageGrid = document.getElementById("homepage-courses-grid");
+  const curriculumGrid = document.getElementById("curriculum-courses-grid");
   
-  let freeHtml = "";
-  let paidHtml = "";
+  let allCardsHtml = "";
   
   courses.forEach(course => {
     const isPaid = isCoursePaid(course);
-    const hasAccess = !isPaid || isCourseUnlocked(course.id);
-    const link = course.link || (course.slug ? `${course.slug}.html` : `lesson.html?course=${encodeURIComponent(course.id)}`);
+    const hasAccess = !isPaid || isCourseUnlocked(course.id) || (course.slug && isCourseUnlocked(course.slug));
+    const link = course.link || (course.slug ? `${course.slug}.html` : `courses.html`);
     const pricing = getCoursePricingInfo(course);
     
     let btnHtml;
@@ -1630,7 +1604,7 @@ function renderCoursesUI(courses) {
       imgHtml = `
         <div style="position: relative; width: 100%; height: 160px; border-radius: 8px; overflow: hidden; margin-bottom: 14px; background: linear-gradient(135deg, #1b2620, #2b3a32); display: flex; align-items: center; justify-content: center; border: 1px solid rgba(242, 201, 76, 0.25);">
           ${discountBadgeHtml}
-          <span style="font-size: 44px;">${course.icon || (isPaid ? '⭐' : '📘')}</span>
+          <span style="font-size: 44px;">${course.icon || '🚀'}</span>
         </div>
       `;
     }
@@ -1640,7 +1614,7 @@ function renderCoursesUI(courses) {
         ${imgHtml}
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap: wrap; gap: 8px;">
           ${priceHtml}
-          <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "Course"}</span>
+          <span class="num" style="font-size: 12px; font-weight:700; color: #f2c94c; text-transform:uppercase; opacity: 0.8;">${course.category || "Paid Masterclass"}</span>
         </div>
         <h3 style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 24px; margin-top: 0;">${course.title}</h3>
         <p style="color: #e2e8f0; font-family: 'Work Sans', sans-serif; opacity: 0.9; font-size: 14px; margin-bottom: 20px;">${course.description || "Comprehensive materials."}</p>
@@ -1648,14 +1622,11 @@ function renderCoursesUI(courses) {
       </div>
     `;
     
-    if (isPaid) paidHtml += card;
-    else freeHtml += card;
+    allCardsHtml += card;
   });
 
-  const isProgrammingPage = window.location.pathname.includes("programming.html");
-  if (freeGrid && !isProgrammingPage) freeGrid.innerHTML = freeHtml || `<div style="color:white; padding: 20px;">No free courses.</div>`;
-  if (paidGrid) paidGrid.innerHTML = paidHtml || `<div style="color:white; padding: 20px;">No premium courses.</div>`;
-  if (homepageGrid) homepageGrid.innerHTML = paidHtml || freeHtml || `<div style="color:white; padding: 20px;">No courses available.</div>`;
+  if (paidGrid) paidGrid.innerHTML = allCardsHtml || `<div style="color:white; padding: 20px;">No masterclasses available.</div>`;
+  if (homepageGrid) homepageGrid.innerHTML = allCardsHtml || `<div style="color:white; padding: 20px;">No courses available.</div>`;
 }
 
 let firestoreCourses = [];
@@ -1664,16 +1635,38 @@ let firestorePaidCourses = [];
 function updateAndRenderMergedCourses() {
   const mergedMap = new Map();
   // Base courses first
-  PRE_EXISTING_COURSES.forEach(c => mergedMap.set(c.id, c));
-  
-  // Override/Add Firestore courses
-  firestoreCourses.forEach(c => mergedMap.set(c.id, c));
-  firestorePaidCourses.forEach(c => {
-    const existing = mergedMap.get(c.id) || {};
-    mergedMap.set(c.id, { ...existing, ...c, type: "paid", isPaid: true });
+  PRE_EXISTING_COURSES.forEach(c => {
+    mergedMap.set(c.id, { ...c });
+    if (c.slug) mergedMap.set(c.slug, { ...c });
   });
   
-  cachedCourses = Array.from(mergedMap.values());
+  // Override/Add Firestore courses
+  firestoreCourses.forEach(c => {
+    const existing = mergedMap.get(c.id) || (c.slug ? mergedMap.get(c.slug) : null) || {};
+    const updated = { ...existing, ...c, type: "paid", isPaid: true, paid: true };
+    mergedMap.set(c.id, updated);
+    if (c.slug) mergedMap.set(c.slug, updated);
+  });
+  firestorePaidCourses.forEach(c => {
+    const existing = mergedMap.get(c.id) || (c.slug ? mergedMap.get(c.slug) : null) || {};
+    const updated = { ...existing, ...c, type: "paid", isPaid: true, paid: true };
+    mergedMap.set(c.id, updated);
+    if (c.slug) mergedMap.set(c.slug, updated);
+  });
+  
+  // Deduplicate unique courses
+  const uniqueCourses = [];
+  const seenKeys = new Set();
+  for (const c of mergedMap.values()) {
+    const key = (c.slug || c.id || c.title || '').toLowerCase().trim();
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      uniqueCourses.push(c);
+    }
+  }
+  uniqueCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+
+  cachedCourses = uniqueCourses;
   renderCoursesUI(cachedCourses);
 }
 
@@ -1684,33 +1677,37 @@ export function initRealtimeSync() {
       firestoreCourses = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        if (!data.isDeleted && data.status !== "draft" && data.status !== "inactive") {
-          firestoreCourses.push({ id: docSnap.id, ...data });
+        if (!data.isDeleted) {
+          firestoreCourses.push({ id: docSnap.id, ...data, type: "paid", isPaid: true, paid: true });
         }
       });
-      firestoreCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       updateAndRenderMergedCourses();
-    });
+    }, (err) => console.warn("Firestore courses listener error:", err));
 
     onSnapshot(collection(db, "paid_courses"), (snapshot) => {
       firestorePaidCourses = [];
       snapshot.forEach(docSnap => {
         const data = docSnap.data();
-        if (!data.isDeleted && data.status !== "draft" && data.status !== "inactive") {
-          firestorePaidCourses.push({ id: docSnap.id, ...data, type: "paid", isPaid: true });
+        if (!data.isDeleted) {
+          firestorePaidCourses.push({ id: docSnap.id, ...data, type: "paid", isPaid: true, paid: true });
         }
       });
-      firestorePaidCourses.sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
       updateAndRenderMergedCourses();
-    });
+    }, (err) => console.warn("Firestore paid_courses listener error:", err));
   } catch (err) {
     console.error("Firestore Listener Setup Error:", err);
   }
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  initRealtimeSync();
-});
+// Run immediately and guarantee execution
+updateAndRenderMergedCourses();
+initRealtimeSync();
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    updateAndRenderMergedCourses();
+  });
+}
 
 const checkAndTriggerFirstTimePopup = enforceCompulsoryAuth;
 
