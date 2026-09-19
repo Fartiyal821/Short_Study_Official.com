@@ -55,9 +55,27 @@
         "purchased": { "type": "boolean" },
         "status": { "type": "string" }
       }
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated student profile data",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "provider": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      }
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "User profile collection"
+    },
     "/courses/{courseId}": {
       "schema": { "$ref": "#/entities/Course" },
       "description": "Courses collection"

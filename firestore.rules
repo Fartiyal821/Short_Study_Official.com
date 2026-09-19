@@ -65,6 +65,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    match /users/{userId} {
+      allow read, write: if isAdmin() || (request.auth != null && request.auth.uid == userId);
+    }
+
     // Default catch-all rule - Block everything else securely
     match /{document=**} {
       allow read, write: if false;

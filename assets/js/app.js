@@ -11,29 +11,179 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
 import { 
   onAuthStateChanged, 
-  signInAnonymously 
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  updateProfile
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
 import { app, db, auth, firebaseConfig } from "./firebase-config.js";
 import { PRE_EXISTING_COURSES } from "./catalog-data.js";
 
-export { app, db, auth, firebaseConfig };
-
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
 let currentUserUid = null;
 let currentUserEmail = null;
+let currentUserName = null;
 let cachedCourses = [];
 let purchasedCourseIdsFromOrders = new Set();
 let activeCheckoutCourseId = null;
 
-onAuthStateChanged(auth, (user) => {
-  if (user) {
+/* =========================================================
+   1. USER PROFILE DATABASE ENTRY ONBOARDING (FIRESTORE)
+   ========================================================= */
+async function saveUserProfileToDatabase(user, additionalData = {}) {
+  if (!user || user.isAnonymous || !db) return;
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const resolvedName = additionalData.name || user.displayName || (user.email ? user.email.split("@")[0] : "Student");
+    const profile = {
+      uid: user.uid,
+      email: user.email || "",
+      name: resolvedName,
+      displayName: resolvedName,
+      photoURL: user.photoURL || "",
+      provider: user.providerData && user.providerData[0] ? user.providerData[0].providerId : (additionalData.provider || "password"),
+      lastLoginAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    await setDoc(userRef, profile, { merge: true });
+  } catch (err) {
+    console.warn("Could not record user profile to database:", err);
+  }
+}
+
+/* =========================================================
+   2. COMPULSORY AUTHENTICATION GATE LOGIC
+   ========================================================= */
+function enforceCompulsoryAuth() {
+  if (currentUserUid) {
+    removeCompulsoryLockOverlay();
+    return;
+  }
+
+  document.body.classList.add("auth-compulsory-locked");
+  let overlay = document.getElementById("auth-compulsory-overlay");
+  if (!overlay) {
+    overlay = document.createElement("div");
+    overlay.id = "auth-compulsory-overlay";
+    overlay.innerHTML = `
+      <div style="text-align: center; color: #f2c94c; padding: 24px 20px; max-width: 480px; width: 90%; animation: modalSlideUpFade 0.4s ease-out;">
+        <div style="display: inline-flex; width: 72px; height: 72px; border-radius: 50%; background: rgba(242, 201, 76, 0.15); border: 2px solid rgba(242, 201, 76, 0.4); align-items: center; justify-content: center; font-size: 34px; margin-bottom: 16px; animation: goldPulseGlow 2.5s infinite;">
+          🔒
+        </div>
+        <h2 style="font-family: 'Kalam', cursive; font-size: 30px; margin: 0 0 10px; color: #f2c94c;">
+          Sign In Required to Enter
+        </h2>
+        <p style="color: #cbd5e1; font-family: 'Work Sans', sans-serif; font-size: 14.5px; line-height: 1.6; margin: 0 0 22px;">
+          ShortStudy coding curriculums, handwritten notes, interview MCQs, and masterclasses require a registered student or developer account.
+        </p>
+        <button id="overlay-open-auth-btn" type="button" style="background: #f2c94c; color: #1e2b25; border: none; font-weight: 800; font-size: 15px; padding: 13px 30px; border-radius: 26px; cursor: pointer; font-family: 'Work Sans', sans-serif; box-shadow: 0 6px 20px rgba(242, 201, 76, 0.35); transition: transform 0.2s;">
+          🔑 Sign In or Create Free Account →
+        </button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById("overlay-open-auth-btn")?.addEventListener("click", () => {
+      window.openAuthModal("signin");
+    });
+  }
+  overlay.style.display = "flex";
+  window.openAuthModal("signin");
+}
+
+function removeCompulsoryLockOverlay() {
+  document.body.classList.remove("auth-compulsory-locked");
+  const overlay = document.getElementById("auth-compulsory-overlay");
+  if (overlay) {
+    overlay.style.display = "none";
+  }
+}
+
+/* =========================================================
+   3. NAVIGATION AUTH STATUS / MANUAL LOGIN BUTTON
+   ========================================================= */
+function updateNavAuthUI(user) {
+  const navLinks = document.getElementById("navLinks");
+  if (!navLinks) return;
+
+  let authNavItem = document.getElementById("nav-auth-item");
+  if (!authNavItem) {
+    authNavItem = document.createElement("li");
+    authNavItem.id = "nav-auth-item";
+    authNavItem.style.display = "flex";
+    authNavItem.style.alignItems = "center";
+    navLinks.appendChild(authNavItem);
+  }
+
+  if (user && !user.isAnonymous) {
+    const displayName = user.displayName || (user.email ? user.email.split("@")[0] : "Programmer");
+    const initial = displayName.charAt(0).toUpperCase();
+    authNavItem.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <button id="nav-benefits-btn" type="button" style="display: inline-flex; align-items: center; gap: 5px; background: rgba(242, 201, 76, 0.12); border: 1px solid rgba(242, 201, 76, 0.45); color: #f2c94c; padding: 6px 12px; border-radius: 20px; font-family: 'Kalam', cursive; font-size: 13.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;" title="Why ShortStudy is beneficial for programmers">
+          <span>⚡</span> <span>Why ShortStudy?</span>
+        </button>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 20px; background: rgba(242, 201, 76, 0.15); border: 1px solid rgba(242, 201, 76, 0.4); color: #f2c94c; font-size: 14px; font-weight: 700; font-family: 'Kalam', cursive;">
+          <span style="display: inline-flex; width: 22px; height: 22px; border-radius: 50%; background: #f2c94c; color: #1e2b25; align-items: center; justify-content: center; font-size: 12px; font-weight: 900;">${initial}</span>
+          <span style="max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${displayName}</span>
+        </span>
+        <button id="nav-signout-btn" type="button" style="background: none; border: none; color: #94a3b8; font-size: 13px; font-weight: 600; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: color 0.2s;" title="Sign out" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#94a3b8'">
+          Sign Out
+        </button>
+      </div>
+    `;
+    document.getElementById("nav-benefits-btn")?.addEventListener("click", () => {
+      showProgrammerBenefitsShowcase(user, true);
+    });
+    document.getElementById("nav-signout-btn")?.addEventListener("click", async () => {
+      try {
+        await signOut(auth);
+      } catch (err) {
+        console.error("Sign out error:", err);
+      }
+    });
+  } else {
+    authNavItem.innerHTML = `
+      <button id="nav-auth-login-btn" type="button" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(242, 201, 76, 0.12); border: 1px solid rgba(242, 201, 76, 0.45); color: #f2c94c; padding: 8px 14px; border-radius: 20px; cursor: pointer; font-family: 'Kalam', cursive; font-size: 15px; font-weight: 700; transition: all 0.2s;" onmouseover="this.style.background='rgba(242, 201, 76, 0.25)'" onmouseout="this.style.background='rgba(242, 201, 76, 0.12)'">
+        <span>👤</span> <span>Login / Sign Up</span>
+      </button>
+    `;
+    document.getElementById("nav-auth-login-btn")?.addEventListener("click", () => {
+      window.openAuthModal("signin");
+    });
+  }
+}
+
+/* =========================================================
+   4. AUTH STATE LISTENER & SESSION INITIALIZATION
+   ========================================================= */
+onAuthStateChanged(auth, async (user) => {
+  if (user && !user.isAnonymous) {
     currentUserUid = user.uid;
     currentUserEmail = user.email || null;
+    currentUserName = user.displayName || null;
+    removeCompulsoryLockOverlay();
+    window.closeAuthModal(true);
+    await saveUserProfileToDatabase(user);
+    updateNavAuthUI(user);
     setupOrdersListener();
     renderCoursesUI(cachedCourses);
+
+    // If user has not seen the Programmer Benefits animation, trigger it smoothly
+    const hasSeenBenefits = localStorage.getItem("shortstudy_benefit_animation_seen_" + user.uid);
+    if (!hasSeenBenefits) {
+      setTimeout(() => {
+        showProgrammerBenefitsShowcase(user);
+      }, 400);
+    }
   } else {
+    currentUserUid = null;
     currentUserEmail = null;
-    signInAnonymously(auth).catch(err => console.error("Anon auth failed:", err));
+    currentUserName = null;
+    purchasedCourseIdsFromOrders.clear();
+    updateNavAuthUI(null);
+    setupOrdersListener();
+    renderCoursesUI(cachedCourses);
+    enforceCompulsoryAuth();
   }
 });
 
@@ -604,6 +754,15 @@ window.openCheckoutModal = function(courseId) {
   document.getElementById("checkout-summary-title").textContent = course.title || "Masterclass";
   document.getElementById("checkout-summary-price").textContent = course.price || "₹499";
 
+  const emailInput = document.getElementById("checkout-input-email");
+  const nameInput = document.getElementById("checkout-input-name");
+  if (emailInput && currentUserEmail) {
+    emailInput.value = currentUserEmail;
+  }
+  if (nameInput && currentUserName) {
+    nameInput.value = currentUserName;
+  }
+
   const form = document.getElementById("chalkboard-checkout-form");
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -617,13 +776,19 @@ window.openCheckoutModal = function(courseId) {
       return;
     }
 
+    if (!currentUserUid) {
+      alert("Please log in or create an account first to complete your order.");
+      openAuthModal("signin");
+      return;
+    }
+
     const submitBtn = document.getElementById("checkout-submit-button");
 
     submitBtn.disabled = true;
     submitBtn.innerHTML = "<span>Submitting Order...</span>";
 
     try {
-      if (!db || !currentUserUid) throw new Error("Database or User not initialized.");
+      if (!db) throw new Error("Database not initialized.");
       const payload = {
         name, email, phone, utrNumber: utr, uid: currentUserUid,
         courseId: course.id, courseTitle: course.title || "Course",
@@ -648,6 +813,726 @@ window.openCheckoutModal = function(courseId) {
 
   modal.style.display = "flex";
 }
+
+/* =========================================================
+   5. AUTH MODAL (EMAIL & PASSWORD + GOOGLE SIGN-IN OAUTH)
+   ========================================================= */
+let authModalMode = "signin"; // "signin" or "signup"
+
+function ensureAuthModal() {
+  if (document.getElementById("chalkboard-auth-modal")) return;
+
+  const modalHtml = `
+    <div id="chalkboard-auth-modal" style="display: none; position: fixed; inset: 0; z-index: 999999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+      <div style="background: #1e2b25; border: 2px solid #f2c94c; border-radius: 14px; width: 100%; max-width: 440px; box-shadow: 0 24px 60px rgba(0,0,0,0.85); overflow: hidden; display: flex; flex-direction: column; font-family: 'Work Sans', sans-serif; position: relative;">
+        
+        <!-- Header -->
+        <div style="background: #16201b; padding: 18px 22px; border-bottom: 1px solid rgba(242, 201, 76, 0.25); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 26px;">🎓</span>
+            <div>
+              <h3 id="auth-modal-title" style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 22px; margin: 0; line-height: 1.2;">Welcome to ShortStudy</h3>
+              <p id="auth-modal-subtitle" style="color: #94a3b8; font-size: 12.5px; margin: 2px 0 0 0;">Sign in to access tutorials & masterclasses</p>
+            </div>
+          </div>
+          <button id="auth-modal-close" type="button" aria-label="Close" style="background: rgba(242, 201, 76, 0.15); border: 1px solid rgba(242, 201, 76, 0.3); color: #f2c94c; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: bold; transition: background 0.2s;">✕</button>
+        </div>
+
+        <!-- Auth Tabs: Sign In / Create Account -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; background: #16201b; border-bottom: 1px solid rgba(255,255,255,0.08);">
+          <button id="auth-tab-signin" type="button" style="padding: 12px; font-family: 'Work Sans', sans-serif; font-weight: 700; font-size: 14px; background: transparent; color: #f2c94c; border: none; border-bottom: 2px solid #f2c94c; cursor: pointer; transition: all 0.2s;">
+            Sign In
+          </button>
+          <button id="auth-tab-signup" type="button" style="padding: 12px; font-family: 'Work Sans', sans-serif; font-weight: 700; font-size: 14px; background: transparent; color: #94a3b8; border: none; border-bottom: 2px solid transparent; cursor: pointer; transition: all 0.2s;">
+            Create Account
+          </button>
+        </div>
+
+        <div style="padding: 22px 24px;">
+          <!-- Error / Status Notice -->
+          <div id="auth-status-message" style="display: none; padding: 10px 14px; border-radius: 6px; font-size: 13px; line-height: 1.4; margin-bottom: 14px;"></div>
+
+          <!-- Auth Form -->
+          <form id="auth-form" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- Name Field (Only in Sign Up mode) -->
+            <div id="auth-field-name-wrap" style="display: none;">
+              <label for="auth-input-name" style="display: block; font-size: 13px; color: #f5f3ea; margin-bottom: 6px; font-weight: 600;">Full Name</label>
+              <input type="text" id="auth-input-name" placeholder="e.g. Rahul Sharma" style="width: 100%; padding: 11px 14px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(242, 201, 76, 0.25); color: #fff; font-size: 14.5px; box-sizing: border-box;">
+            </div>
+
+            <div>
+              <label for="auth-input-email" style="display: block; font-size: 13px; color: #f5f3ea; margin-bottom: 6px; font-weight: 600;">Email Address</label>
+              <input type="email" id="auth-input-email" required placeholder="you@example.com" style="width: 100%; padding: 11px 14px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(242, 201, 76, 0.25); color: #fff; font-size: 14.5px; box-sizing: border-box;">
+            </div>
+
+            <div>
+              <label for="auth-input-password" style="display: block; font-size: 13px; color: #f5f3ea; margin-bottom: 6px; font-weight: 600;">Password</label>
+              <input type="password" id="auth-input-password" required minlength="6" placeholder="•••••••• (min 6 characters)" style="width: 100%; padding: 11px 14px; border-radius: 8px; background: rgba(255,255,255,0.06); border: 1px solid rgba(242, 201, 76, 0.25); color: #fff; font-size: 14.5px; box-sizing: border-box;">
+            </div>
+
+            <button id="auth-submit-btn" type="submit" style="background: #f2c94c; color: #1e2b25; font-weight: 700; font-size: 15px; padding: 12px; border-radius: 8px; border: none; cursor: pointer; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.3);">
+              <span id="auth-submit-text">Sign In to Account</span>
+            </button>
+          </form>
+
+          <!-- Toggle Mode Link -->
+          <div style="text-align: center; margin-top: 16px; font-size: 13px; color: #94a3b8;">
+            <span id="auth-toggle-prompt">Don't have an account?</span>
+            <button id="auth-toggle-btn" type="button" style="background: none; border: none; color: #f2c94c; font-weight: 700; cursor: pointer; text-decoration: underline; margin-left: 4px; font-size: 13px; font-family: inherit;">
+              Create Free Account
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  // Shake animation helper
+  window.shakeAuthModal = function() {
+    const box = document.querySelector("#chalkboard-auth-modal > div");
+    if (box) {
+      box.classList.remove("modal-shake");
+      void box.offsetWidth;
+      box.classList.add("modal-shake");
+    }
+  };
+
+  // Close handlers
+  const modalEl = document.getElementById("chalkboard-auth-modal");
+  document.getElementById("auth-modal-close")?.addEventListener("click", () => {
+    if (!currentUserUid) {
+      showAuthStatus("Sign in or account registration is compulsory to access ShortStudy.", "error");
+      window.shakeAuthModal();
+      return;
+    }
+    window.closeAuthModal(true);
+  });
+  modalEl?.addEventListener("click", (e) => {
+    if (e.target === modalEl) {
+      if (!currentUserUid) {
+        showAuthStatus("Sign in or account registration is compulsory to access ShortStudy.", "error");
+        window.shakeAuthModal();
+        return;
+      }
+      window.closeAuthModal(true);
+    }
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalEl && modalEl.style.display === "flex") {
+      if (!currentUserUid) {
+        showAuthStatus("Sign in or account registration is compulsory to access ShortStudy.", "error");
+        window.shakeAuthModal();
+        return;
+      }
+      window.closeAuthModal(true);
+    }
+  });
+
+  // Tab buttons
+  document.getElementById("auth-tab-signin")?.addEventListener("click", () => setAuthModalMode("signin"));
+  document.getElementById("auth-tab-signup")?.addEventListener("click", () => setAuthModalMode("signup"));
+  document.getElementById("auth-toggle-btn")?.addEventListener("click", () => {
+    setAuthModalMode(authModalMode === "signin" ? "signup" : "signin");
+  });
+
+  // Email/Password Form Submit
+  document.getElementById("auth-form")?.addEventListener("submit", handleEmailAuthSubmit);
+}
+
+function setAuthModalMode(mode) {
+  authModalMode = mode;
+  const titleEl = document.getElementById("auth-modal-title");
+  const subtitleEl = document.getElementById("auth-modal-subtitle");
+  const tabSignIn = document.getElementById("auth-tab-signin");
+  const tabSignUp = document.getElementById("auth-tab-signup");
+  const nameWrap = document.getElementById("auth-field-name-wrap");
+  const submitText = document.getElementById("auth-submit-text");
+  const togglePrompt = document.getElementById("auth-toggle-prompt");
+  const toggleBtn = document.getElementById("auth-toggle-btn");
+  const statusMsg = document.getElementById("auth-status-message");
+
+  if (statusMsg) {
+    statusMsg.style.display = "none";
+    statusMsg.textContent = "";
+  }
+
+  if (mode === "signup") {
+    if (titleEl) titleEl.textContent = "Create Free Account";
+    if (subtitleEl) subtitleEl.textContent = "Start tracking your coding progress & masterclasses";
+    if (tabSignUp) {
+      tabSignUp.style.color = "#f2c94c";
+      tabSignUp.style.borderBottom = "2px solid #f2c94c";
+    }
+    if (tabSignIn) {
+      tabSignIn.style.color = "#94a3b8";
+      tabSignIn.style.borderBottom = "2px solid transparent";
+    }
+    if (nameWrap) nameWrap.style.display = "block";
+    if (submitText) submitText.textContent = "Create Free Account";
+    if (togglePrompt) togglePrompt.textContent = "Already have an account?";
+    if (toggleBtn) toggleBtn.textContent = "Sign In";
+  } else {
+    if (titleEl) titleEl.textContent = "Welcome Back";
+    if (subtitleEl) subtitleEl.textContent = "Sign in to access your saved courses & lectures";
+    if (tabSignIn) {
+      tabSignIn.style.color = "#f2c94c";
+      tabSignIn.style.borderBottom = "2px solid #f2c94c";
+    }
+    if (tabSignUp) {
+      tabSignUp.style.color = "#94a3b8";
+      tabSignUp.style.borderBottom = "2px solid transparent";
+    }
+    if (nameWrap) nameWrap.style.display = "none";
+    if (submitText) submitText.textContent = "Sign In to Account";
+    if (togglePrompt) togglePrompt.textContent = "Don't have an account?";
+    if (toggleBtn) toggleBtn.textContent = "Create Free Account";
+  }
+}
+
+function showAuthStatus(message, type) {
+  const statusEl = document.getElementById("auth-status-message");
+  if (!statusEl) return;
+  if (type === "hide") {
+    statusEl.style.display = "none";
+    statusEl.textContent = "";
+    return;
+  }
+  statusEl.style.display = "block";
+  if (type === "success") {
+    statusEl.style.background = "rgba(16, 185, 129, 0.18)";
+    statusEl.style.border = "1px solid #10b981";
+    statusEl.style.color = "#34d399";
+  } else {
+    statusEl.style.background = "rgba(239, 68, 68, 0.18)";
+    statusEl.style.border = "1px solid #ef4444";
+    statusEl.style.color = "#f87171";
+  }
+  statusEl.textContent = message;
+}
+
+async function handleEmailAuthSubmit(e) {
+  e.preventDefault();
+  const emailInput = document.getElementById("auth-input-email");
+  const passwordInput = document.getElementById("auth-input-password");
+  const nameInput = document.getElementById("auth-input-name");
+  const submitBtn = document.getElementById("auth-submit-btn");
+  const submitText = document.getElementById("auth-submit-text");
+
+  const email = emailInput?.value?.trim() || "";
+  const password = passwordInput?.value || "";
+  const name = nameInput?.value?.trim() || "";
+
+  if (!email || !password) {
+    showAuthStatus("Please fill in both email and password.", "error");
+    return;
+  }
+
+  if (password.length < 6) {
+    showAuthStatus("Password must be at least 6 characters long.", "error");
+    return;
+  }
+
+  showAuthStatus("", "hide");
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = authModalMode === "signup" ? "Creating Account..." : "Signing In...";
+
+  try {
+    let cred = null;
+    if (authModalMode === "signup") {
+      cred = await createUserWithEmailAndPassword(auth, email, password);
+      if (name) {
+        try {
+          await updateProfile(cred.user, { displayName: name });
+        } catch (e) {
+          console.warn("updateProfile error:", e);
+        }
+      }
+      await saveUserProfileToDatabase(cred.user, { name, provider: "password" });
+      showAuthStatus("✓ Account created successfully! Welcome to ShortStudy.", "success");
+    } else {
+      cred = await signInWithEmailAndPassword(auth, email, password);
+      await saveUserProfileToDatabase(cred.user, { provider: "password" });
+      showAuthStatus("✓ Signed in successfully! Welcome back.", "success");
+    }
+
+    const authenticatedUser = cred ? cred.user : auth.currentUser;
+    setTimeout(() => {
+      window.closeAuthModal(true);
+      if (authenticatedUser) {
+        showProgrammerBenefitsShowcase(authenticatedUser);
+      }
+    }, 600);
+  } catch (error) {
+    console.warn("Email auth note:", error.code || error.message);
+    let friendlyMessage = error.message || "Authentication failed.";
+    if (error.code === "auth/email-already-in-use") {
+      friendlyMessage = "This email is already registered. Please sign in with your password.";
+      setAuthModalMode("signin");
+      const emailField = document.getElementById("auth-input-email");
+      if (emailField) emailField.value = email;
+    } else if (
+      error.code === "auth/invalid-credential" || 
+      error.code === "auth/wrong-password" || 
+      error.code === "auth/user-not-found"
+    ) {
+      friendlyMessage = "Invalid email or password. Please verify your credentials or create a new account.";
+    } else if (error.code === "auth/weak-password") {
+      friendlyMessage = "Password is too weak. Please use at least 6 characters.";
+    } else if (error.code === "auth/invalid-email") {
+      friendlyMessage = "Please enter a valid email address.";
+    }
+    showAuthStatus(friendlyMessage, "error");
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = authModalMode === "signup" ? "Create Free Account" : "Sign In to Account";
+  }
+}
+
+function openAuthModal(mode = "signin") {
+  ensureAuthModal();
+  setAuthModalMode(mode);
+  const modalEl = document.getElementById("chalkboard-auth-modal");
+  if (modalEl) {
+    modalEl.style.display = "flex";
+  }
+}
+window.openAuthModal = openAuthModal;
+
+function closeAuthModal(force = false) {
+  if (!force && !currentUserUid) {
+    showAuthStatus("Sign in or account registration is compulsory to access ShortStudy.", "error");
+    if (typeof window.shakeAuthModal === "function") {
+      window.shakeAuthModal();
+    }
+    return;
+  }
+  const modalEl = document.getElementById("chalkboard-auth-modal");
+  if (modalEl) {
+    modalEl.style.display = "none";
+  }
+  if (currentUserUid) {
+    removeCompulsoryLockOverlay();
+  }
+}
+window.closeAuthModal = closeAuthModal;
+
+// Initialize auth modal into DOM once ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => {
+    ensureAuthModal();
+    ensureMobileBottomNav();
+  });
+} else {
+  ensureAuthModal();
+  ensureMobileBottomNav();
+}
+
+/* =========================================================
+   PROGRAMMER BENEFITS ANIMATION SHOWCASE
+   ========================================================= */
+const PROGRAMMER_BENEFITS_DATA = [
+  {
+    step: 1,
+    icon: "🚫 ➡️ 🏗️",
+    badge: "BENEFIT 01 • ESCAPE TUTORIAL HELL",
+    title: "First-Principles Architecture & Deep Systems",
+    subtitle: "Learn the 'Why' behind code instead of blind copy-pasting.",
+    desc: "Most tutorials trap developers into passive video watching. ShortStudy focuses on the mechanics of software engineering: memory allocations in C, scalable object-oriented design in Java, clean algorithms in Python, and transactional integrity in SQL.",
+    highlights: [
+      "Low-level memory safety & pointer architecture",
+      "Enterprise OOP patterns (SOLID, Factory, Observer)",
+      "Time & space complexity trade-offs for interviews",
+      "Zero fluff: 100% focused developer blueprints"
+    ],
+    codePreview: {
+      bad: "// ❌ Passive tutorial trap:\nprint('Hello world!')\n// Copy-pasted with zero architectural context",
+      good: "// ✅ ShortStudy Engineering Blueprint:\nclass ConnectionPool {\n  acquire(): ManagedSocket; // Handles backpressure & concurrency\n}"
+    }
+  },
+  {
+    step: 2,
+    icon: "🧠 ⚡",
+    badge: "BENEFIT 02 • ACTIVE KNOWLEDGE RETENTION",
+    title: "Instant Interactive MCQ Diagnostics & Edge Cases",
+    subtitle: "Passive reading decays fast. Active recall builds permanent skill.",
+    desc: "Every tutorial includes instant-scoring diagnostic challenges. Test yourself on tricky compiler pitfalls, variable scoping, pointer arithmetic, and algorithmic edge cases that top tech interviewers test for.",
+    highlights: [
+      "Instant scoring with detailed reasoning explanations",
+      "Curated interview traps & common production bugs",
+      "Active recall scientifically proven to boost retention",
+      "Diagnostic checkpoints after every core chapter"
+    ],
+    codePreview: {
+      bad: "// ❌ Passive Reading Result:\n\"I watched 30 hours of video, but blanked out on basic pointer questions.\"",
+      good: "// ✅ ShortStudy Interactive Diagnostic:\nQ: What is the output of *ptr++ vs (*ptr)++?\n✓ Instant validation & memory retention hook!"
+    }
+  },
+  {
+    step: 3,
+    icon: "💼 🚀",
+    badge: "BENEFIT 03 • CAREER-DEFINING PORTFOLIOS",
+    title: "Production Masterclasses That Impress Recruiters",
+    subtitle: "Move beyond toy todo-lists to verified production architectures.",
+    desc: "Hiring managers look for systems with authentication, database indexes, ACID compliance, and concurrency controls. Our guided masterclasses provide production blueprints you can proudly showcase on your resume.",
+    highlights: [
+      "Real-world enterprise system architectures",
+      "Database schema optimization & query performance",
+      "Direct code guidance & handwritten study notes",
+      "Verified course credentials & portfolio blueprints"
+    ],
+    codePreview: {
+      bad: "// ❌ Toy portfolio project:\nBasic static todo app in local storage (recruiters ignore this)",
+      good: "// ✅ ShortStudy Masterclass Project:\nConcurrent distributed queue with UTR verification & RBAC rules"
+    }
+  },
+  {
+    step: 4,
+    icon: "🎨 🧘",
+    badge: "BENEFIT 04 • ERGONOMIC COGNITIVE FLOW",
+    title: "Chalkboard Dark Palette for Deep Focus",
+    subtitle: "Built for developers who spend 8+ hours immersed in code.",
+    desc: "Our signature Chalkboard Green (#2B3A32) and Chalk Yellow (#F2C94C) aesthetic eliminates eye fatigue. High mathematical contrast, zero annoying popup ads, and lightning-fast loading across all your devices.",
+    highlights: [
+      "Zero eye burn during late-night debugging marathons",
+      "100% Free core handwritten curriculum & notes",
+      "Responsive layout optimized for Mobile, Tablet, and Desktop",
+      "Distraction-free environment built for deep work"
+    ],
+    codePreview: {
+      bad: "// ❌ Ad-heavy documentation sites:\nFlashing banners, intrusive popups, subscription blockers",
+      good: "// ✅ ShortStudy Clean Canvas:\nPure chalkboard elegance & focused developer flow"
+    }
+  }
+];
+
+let currentBenefitSlideIndex = 0;
+let benefitAutoPlayTimer = null;
+let isBenefitAutoPlaying = false;
+
+function ensureProgrammerBenefitsModal() {
+  if (document.getElementById("programmer-benefits-modal")) return;
+
+  const modalHtml = `
+    <div id="programmer-benefits-modal" style="display: none; position: fixed; inset: 0; z-index: 999998; background: rgba(14, 22, 18, 0.88); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+      <div style="background: #1e2b25; border: 2px solid #f2c94c; border-radius: 16px; width: 100%; max-width: 680px; box-shadow: 0 24px 70px rgba(0,0,0,0.9), 0 0 20px rgba(242,201,76,0.25); overflow: hidden; display: flex; flex-direction: column; font-family: 'Work Sans', sans-serif; position: relative; animation: modalSlideUpFade 0.35s cubic-bezier(0.16, 1, 0.3, 1);">
+        
+        <!-- Modal Top Bar -->
+        <div style="background: #16201b; padding: 16px 20px; border-bottom: 1px solid rgba(242, 201, 76, 0.25); display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 24px;">💡</span>
+            <div>
+              <div style="font-size: 11px; font-weight: 800; color: #f2c94c; letter-spacing: 0.08em; text-transform: uppercase;">
+                DEVELOPER ARCHITECTURE BRIEFING
+              </div>
+              <h3 style="color: #f5f3ea; font-family: 'Kalam', cursive; font-size: 20px; margin: 2px 0 0; line-height: 1.2;">
+                Why ShortStudy is Beneficial for Programmers
+              </h3>
+            </div>
+          </div>
+          <button id="benefit-modal-close" type="button" aria-label="Close" style="background: rgba(242, 201, 76, 0.12); border: 1px solid rgba(242, 201, 76, 0.3); color: #f2c94c; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: bold; transition: background 0.2s;">✕</button>
+        </div>
+
+        <!-- Step Progress Bar & Dots -->
+        <div style="background: #16201b; padding: 12px 20px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+            <span id="benefit-step-indicator" style="font-size: 12px; font-weight: 700; color: #f2c94c; font-family: 'Kalam', cursive;">
+              Benefit 1 of 4
+            </span>
+            <button id="benefit-autoplay-toggle" type="button" style="background: none; border: none; color: #94a3b8; font-size: 11.5px; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+              <span>▶ Auto-play</span>
+            </button>
+          </div>
+          <div style="width: 100%; height: 5px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+            <div id="benefit-progress-fill" style="height: 100%; width: 25%; background: #f2c94c; border-radius: 4px; transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px rgba(242,201,76,0.6);"></div>
+          </div>
+        </div>
+
+        <!-- Dynamic Slide Content Container -->
+        <div id="benefit-slide-viewport" style="padding: 22px 24px; min-height: 330px; display: flex; flex-direction: column; justify-content: space-between; overflow-y: auto; max-height: 60vh;">
+          <!-- Slide content injected here dynamically -->
+        </div>
+
+        <!-- Footer Navigation Controls -->
+        <div style="background: #16201b; padding: 14px 20px; border-top: 1px solid rgba(242, 201, 76, 0.2); display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="benefit-dont-show-checkbox" style="cursor: pointer; accent-color: #f2c94c;">
+            <label for="benefit-dont-show-checkbox" style="font-size: 12px; color: #94a3b8; cursor: pointer;">Don't show on next login</label>
+          </div>
+
+          <div style="display: flex; gap: 10px;">
+            <button id="benefit-prev-btn" type="button" style="background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #f5f3ea; font-size: 13.5px; font-weight: 700; padding: 8px 16px; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+              ← Back
+            </button>
+            <button id="benefit-next-btn" type="button" style="background: #f2c94c; color: #1e2b25; border: none; font-size: 13.5px; font-weight: 800; padding: 8px 20px; border-radius: 8px; cursor: pointer; display: flex; align-items: center; gap: 6px; box-shadow: 0 4px 12px rgba(242,201,76,0.3); transition: all 0.2s;">
+              <span id="benefit-next-text">Next Benefit →</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+  // Close handlers
+  const modalEl = document.getElementById("programmer-benefits-modal");
+  document.getElementById("benefit-modal-close")?.addEventListener("click", () => {
+    closeProgrammerBenefitsShowcase();
+  });
+  modalEl?.addEventListener("click", (e) => {
+    if (e.target === modalEl) {
+      closeProgrammerBenefitsShowcase();
+    }
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && modalEl && modalEl.style.display === "flex") {
+      closeProgrammerBenefitsShowcase();
+    }
+  });
+
+  // Next / Prev buttons
+  document.getElementById("benefit-prev-btn")?.addEventListener("click", () => {
+    stopBenefitAutoPlay();
+    if (currentBenefitSlideIndex > 0) {
+      renderBenefitSlide(currentBenefitSlideIndex - 1);
+    }
+  });
+
+  document.getElementById("benefit-next-btn")?.addEventListener("click", () => {
+    stopBenefitAutoPlay();
+    if (currentBenefitSlideIndex < PROGRAMMER_BENEFITS_DATA.length - 1) {
+      renderBenefitSlide(currentBenefitSlideIndex + 1);
+    } else {
+      triggerBenefitCompletion();
+    }
+  });
+
+  // Auto-play button
+  document.getElementById("benefit-autoplay-toggle")?.addEventListener("click", () => {
+    if (isBenefitAutoPlaying) {
+      stopBenefitAutoPlay();
+    } else {
+      startBenefitAutoPlay();
+    }
+  });
+}
+
+function renderBenefitSlide(index) {
+  currentBenefitSlideIndex = index;
+  const slide = PROGRAMMER_BENEFITS_DATA[index];
+  const viewport = document.getElementById("benefit-slide-viewport");
+  const stepIndicator = document.getElementById("benefit-step-indicator");
+  const progressFill = document.getElementById("benefit-progress-fill");
+  const prevBtn = document.getElementById("benefit-prev-btn");
+  const nextText = document.getElementById("benefit-next-text");
+
+  if (stepIndicator) {
+    stepIndicator.textContent = `Benefit ${index + 1} of ${PROGRAMMER_BENEFITS_DATA.length} — ${slide.badge}`;
+  }
+  if (progressFill) {
+    const pct = ((index + 1) / PROGRAMMER_BENEFITS_DATA.length) * 100;
+    progressFill.style.width = pct + "%";
+  }
+  if (prevBtn) {
+    prevBtn.style.visibility = index === 0 ? "hidden" : "visible";
+  }
+  if (nextText) {
+    nextText.textContent = index === PROGRAMMER_BENEFITS_DATA.length - 1 ? "Start Coding Now 🚀" : "Next Benefit →";
+  }
+
+  if (viewport && slide) {
+    viewport.style.animation = "none";
+    void viewport.offsetWidth; // reflow
+    viewport.style.animation = "benefitSlideIn 0.3s cubic-bezier(0.2, 0.9, 0.4, 1)";
+
+    viewport.innerHTML = `
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+          <span style="font-size: 28px;">${slide.icon}</span>
+          <span style="display: inline-block; padding: 4px 10px; background: rgba(242, 201, 76, 0.15); border: 1px solid rgba(242, 201, 76, 0.35); border-radius: 12px; color: #f2c94c; font-size: 11.5px; font-weight: 700; letter-spacing: 0.05em;">
+            ${slide.badge}
+          </span>
+        </div>
+
+        <h2 style="color: #f5f3ea; font-family: 'Kalam', cursive; font-size: 24px; margin: 4px 0 6px; line-height: 1.25;">
+          ${slide.title}
+        </h2>
+        <p style="color: #f2c94c; font-size: 13.5px; font-weight: 600; margin: 0 0 10px 0;">
+          ${slide.subtitle}
+        </p>
+
+        <p style="color: #cbd5e1; font-size: 14px; line-height: 1.6; margin: 0 0 16px;">
+          ${slide.desc}
+        </p>
+
+        <!-- Highlights Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; margin-bottom: 16px;">
+          ${slide.highlights.map(h => `
+            <div style="display: flex; align-items: center; gap: 7px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 8px 12px; border-radius: 8px; font-size: 12.5px; color: #f5f3ea;">
+              <span style="color: #f2c94c; font-weight: bold;">✓</span>
+              <span>${h}</span>
+            </div>
+          `).join("")}
+        </div>
+
+        <!-- Interactive Comparison Code Preview -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; background: #131c17; border: 1px solid rgba(242,201,76,0.25); border-radius: 10px; padding: 12px;">
+          <div style="font-family: 'Courier New', monospace; font-size: 11.5px; color: #f87171; line-height: 1.45; white-space: pre-wrap; background: rgba(239,68,68,0.07); padding: 8px 10px; border-radius: 6px; border-left: 3px solid #ef4444;">
+${slide.codePreview.bad}
+          </div>
+          <div style="font-family: 'Courier New', monospace; font-size: 11.5px; color: #4ade80; line-height: 1.45; white-space: pre-wrap; background: rgba(74,222,128,0.07); padding: 8px 10px; border-radius: 6px; border-left: 3px solid #22c55e;">
+${slide.codePreview.good}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+function startBenefitAutoPlay() {
+  isBenefitAutoPlaying = true;
+  const toggleBtn = document.getElementById("benefit-autoplay-toggle");
+  if (toggleBtn) toggleBtn.innerHTML = "<span>⏸ Pause</span>";
+
+  clearInterval(benefitAutoPlayTimer);
+  benefitAutoPlayTimer = setInterval(() => {
+    if (currentBenefitSlideIndex < PROGRAMMER_BENEFITS_DATA.length - 1) {
+      renderBenefitSlide(currentBenefitSlideIndex + 1);
+    } else {
+      stopBenefitAutoPlay();
+    }
+  }, 4500);
+}
+
+function stopBenefitAutoPlay() {
+  isBenefitAutoPlaying = false;
+  clearInterval(benefitAutoPlayTimer);
+  const toggleBtn = document.getElementById("benefit-autoplay-toggle");
+  if (toggleBtn) toggleBtn.innerHTML = "<span>▶ Auto-play</span>";
+}
+
+function triggerBenefitCompletion() {
+  stopBenefitAutoPlay();
+  const checkbox = document.getElementById("benefit-dont-show-checkbox");
+  if (checkbox && checkbox.checked && currentUserUid) {
+    try {
+      localStorage.setItem("shortstudy_benefit_animation_seen_" + currentUserUid, "true");
+    } catch (e) {
+      console.warn("Storage note:", e);
+    }
+  }
+
+  // Celebratory particles
+  createChalkCelebrationParticles();
+
+  const nextBtn = document.getElementById("benefit-next-btn");
+  if (nextBtn) {
+    nextBtn.innerHTML = "<span>🎉 Ready to Code!</span>";
+  }
+
+  setTimeout(() => {
+    closeProgrammerBenefitsShowcase();
+  }, 700);
+}
+
+function createChalkCelebrationParticles() {
+  const container = document.getElementById("programmer-benefits-modal");
+  if (!container) return;
+  for (let i = 0; i < 24; i++) {
+    const p = document.createElement("div");
+    p.style.position = "absolute";
+    p.style.width = Math.floor(Math.random() * 8 + 4) + "px";
+    p.style.height = p.style.width;
+    p.style.backgroundColor = ["#f2c94c", "#4ade80", "#38bdf8", "#f472b6"][i % 4];
+    p.style.borderRadius = "50%";
+    p.style.left = "50%";
+    p.style.top = "50%";
+    p.style.zIndex = "999999";
+    p.style.pointerEvents = "none";
+    p.style.transform = `translate(${(Math.random() - 0.5) * 360}px, ${(Math.random() - 0.5) * 360}px) scale(${Math.random() + 0.5})`;
+    p.style.transition = "all 0.8s cubic-bezier(0.25, 1, 0.5, 1)";
+    p.style.opacity = "1";
+    container.appendChild(p);
+
+    setTimeout(() => {
+      p.style.opacity = "0";
+      setTimeout(() => p.remove(), 800);
+    }, 50);
+  }
+}
+
+function showProgrammerBenefitsShowcase(user, force = false) {
+  if (!force && user && user.uid) {
+    const seen = localStorage.getItem("shortstudy_benefit_animation_seen_" + user.uid);
+    if (seen === "true") return;
+  }
+
+  ensureProgrammerBenefitsModal();
+  renderBenefitSlide(0);
+
+  const modalEl = document.getElementById("programmer-benefits-modal");
+  if (modalEl) {
+    modalEl.style.display = "flex";
+  }
+}
+window.showProgrammerBenefitsShowcase = showProgrammerBenefitsShowcase;
+
+function closeProgrammerBenefitsShowcase() {
+  stopBenefitAutoPlay();
+  const modalEl = document.getElementById("programmer-benefits-modal");
+  if (modalEl) {
+    modalEl.style.display = "none";
+  }
+}
+window.closeProgrammerBenefitsShowcase = closeProgrammerBenefitsShowcase;
+
+/* =========================================================
+   MOBILE BOTTOM NAVIGATION BAR (10/10 APP EXPERIENCE)
+   ========================================================= */
+function ensureMobileBottomNav() {
+  if (document.getElementById("mobile-bottom-nav")) return;
+
+  const currentPath = window.location.pathname;
+  const isHome = currentPath.endsWith("index.html") || currentPath === "/" || currentPath.endsWith("/");
+  const isCourses = currentPath.includes("courses.html");
+  const isTutorials = currentPath.includes("programming.html") || currentPath.includes("notes.html") || currentPath.includes("lecture.html");
+  const isMCQs = currentPath.includes("test.html");
+
+  const navHtml = `
+    <nav id="mobile-bottom-nav" aria-label="Mobile Navigation">
+      <a href="index.html" class="mobile-bottom-item ${isHome ? 'active' : ''}">
+        <span class="mb-icon">🏠</span>
+        <span>Home</span>
+      </a>
+      <a href="courses.html" class="mobile-bottom-item ${isCourses ? 'active' : ''}">
+        <span class="mb-icon">🎓</span>
+        <span>Courses</span>
+      </a>
+      <a href="programming.html" class="mobile-bottom-item ${isTutorials ? 'active' : ''}">
+        <span class="mb-icon">💻</span>
+        <span>Tutorials</span>
+      </a>
+      <a href="test.html" class="mobile-bottom-item ${isMCQs ? 'active' : ''}">
+        <span class="mb-icon">✍️</span>
+        <span>MCQs</span>
+      </a>
+      <button id="mb-nav-benefits-btn" type="button" class="mobile-bottom-item" style="background: none; border: none; cursor: pointer;">
+        <span class="mb-icon">⚡</span>
+        <span>Why Us</span>
+      </button>
+    </nav>
+  `;
+
+  document.body.insertAdjacentHTML("beforeend", navHtml);
+
+  document.getElementById("mb-nav-benefits-btn")?.addEventListener("click", () => {
+    showProgrammerBenefitsShowcase(auth.currentUser, true);
+  });
+}
+window.ensureMobileBottomNav = ensureMobileBottomNav;
 
 function getCoursePricingInfo(course) {
   const isPaid = isCoursePaid(course);
@@ -767,7 +1652,8 @@ function renderCoursesUI(courses) {
     else freeHtml += card;
   });
 
-  if (freeGrid) freeGrid.innerHTML = freeHtml || `<div style="color:white; padding: 20px;">No free courses.</div>`;
+  const isProgrammingPage = window.location.pathname.includes("programming.html");
+  if (freeGrid && !isProgrammingPage) freeGrid.innerHTML = freeHtml || `<div style="color:white; padding: 20px;">No free courses.</div>`;
   if (paidGrid) paidGrid.innerHTML = paidHtml || `<div style="color:white; padding: 20px;">No premium courses.</div>`;
   if (homepageGrid) homepageGrid.innerHTML = paidHtml || freeHtml || `<div style="color:white; padding: 20px;">No courses available.</div>`;
 }
@@ -825,3 +1711,20 @@ export function initRealtimeSync() {
 document.addEventListener("DOMContentLoaded", () => {
   initRealtimeSync();
 });
+
+const checkAndTriggerFirstTimePopup = enforceCompulsoryAuth;
+
+export { 
+  app, 
+  db, 
+  auth, 
+  firebaseConfig, 
+  openAuthModal, 
+  closeAuthModal, 
+  enforceCompulsoryAuth,
+  checkAndTriggerFirstTimePopup, 
+  showProgrammerBenefitsShowcase,
+  closeProgrammerBenefitsShowcase,
+  saveUserProfileToDatabase 
+};
+
