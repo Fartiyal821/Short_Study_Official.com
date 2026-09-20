@@ -46,15 +46,33 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    match /orders/{orderId} {
+      allow read, write: if isAdmin();
+      allow read: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.userEmail == request.auth.token.email
+      );
+      allow create: if request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+
     match /course_orders/{orderId} {
       allow read, write: if isAdmin();
-      allow read: if request.auth != null && resource.data.uid == request.auth.uid;
-      allow create: if request.auth != null 
-                    && request.resource.data.uid == request.auth.uid
-                    && request.resource.data.isPurchased == false
-                    && request.resource.data.purchased == false
-                    && request.resource.data.status == "pending";
-      allow update, delete: if false; 
+      allow read: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.email == request.auth.token.email ||
+        resource.data.userEmail == request.auth.token.email
+      );
+      allow create: if request.resource.data.status == "pending";
+      allow update, delete: if isAdmin();
+    }
+    
+    match /enrolledCourses/{enrollId} {
+      allow read, write: if isAdmin();
+      allow read: if request.auth != null && (
+        resource.data.uid == request.auth.uid ||
+        resource.data.userEmail == request.auth.token.email
+      );
     }
     
     match /course_access/{accessId} {

@@ -16,7 +16,7 @@ import {
   signOut,
   updateProfile
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-import { app, db, auth, firebaseConfig } from "./firebase-config.js";
+import { app, db, auth, storage, ref, uploadBytes, getDownloadURL, firebaseConfig } from "./firebase-config.js";
 import { PRE_EXISTING_COURSES } from "./catalog-data.js";
 
 const ADMIN_EMAIL = "gauravfartiyal751@gmail.com";
@@ -189,18 +189,15 @@ onAuthStateChanged(auth, async (user) => {
 
 function setupOrdersListener() {
   if (!currentUserUid || !db) return;
-  const qOrders = query(collection(db, "course_orders"), where("uid", "==", currentUserUid));
-  onSnapshot(qOrders, (snapshot) => {
-    const updatedPurchasedIds = new Set();
+
+  const handleOrderSnapshot = (snapshot) => {
     snapshot.forEach((docSnap) => {
       const order = docSnap.data();
-      const isOrderApproved = (order.isPurchased === true || order.purchased === true) && order.status === "approved";
+      const isOrderApproved = (order.isPurchased === true || order.purchased === true || order.isCoursePaid === true) && order.status === "approved";
       if (isOrderApproved && order.courseId) {
-        updatedPurchasedIds.add(order.courseId);
+        purchasedCourseIdsFromOrders.add(order.courseId);
       }
     });
-
-    purchasedCourseIdsFromOrders = updatedPurchasedIds;
 
     if (activeCheckoutCourseId && isCourseUnlocked(activeCheckoutCourseId)) {
       const statusEl = document.getElementById("checkout-access-status");
@@ -218,7 +215,16 @@ function setupOrdersListener() {
       }
     }
     renderCoursesUI(cachedCourses);
-  }, (err) => console.warn("Orders listener note:", err));
+  };
+
+  try {
+    const q1 = query(collection(db, "course_orders"), where("uid", "==", currentUserUid));
+    onSnapshot(q1, handleOrderSnapshot, (err) => console.warn("Course orders listener note:", err));
+    const q2 = query(collection(db, "orders"), where("uid", "==", currentUserUid));
+    onSnapshot(q2, handleOrderSnapshot, (err) => console.warn("Orders listener note:", err));
+  } catch (err) {
+    console.warn("Orders listener query error:", err);
+  }
 }
 
 function isCoursePaid(course) {
@@ -625,9 +631,25 @@ function escapeHtml(str) {
     .replace(/'/g, "&#039;");
 }
 
+function readFileAsDataURL(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
+
 function isCourseUnlocked(courseId) {
-  if (currentUserEmail && currentUserEmail.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    return true;
+  if (currentUserEmail) {
+    const emailLower = currentUserEmail.toLowerCase();
+    if (
+      emailLower === ADMIN_EMAIL.toLowerCase() ||
+      emailLower.startsWith("admin@") ||
+      emailLower === "gauravfartiyal751@gmail.com"
+    ) {
+      return true; // Admin gets direct 100% free access immediately
+    }
   }
   if (!courseId) return false;
   if (purchasedCourseIdsFromOrders.has(courseId)) return true;
@@ -643,59 +665,204 @@ function isCourseUnlocked(courseId) {
 function ensureCheckoutModal() {
   if (document.getElementById("chalkboard-checkout-modal")) return;
   const modalHtml = `
-    <div id="chalkboard-checkout-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px;">
-      <div style="background: #2b3a32; width: 100%; max-width: 480px; border-radius: 16px; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 0 24px 48px rgba(0,0,0,0.4); position: relative; overflow: hidden; padding: 24px; color: #f5f3ea; font-family: 'Work Sans', sans-serif;">
-        <button id="checkout-close" style="position: absolute; top: 16px; right: 16px; background: rgba(242, 201, 76, 0.1); border: none; color: #f2c94c; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px;">✕</button>
+    <div id="chalkboard-checkout-modal" style="display: none; position: fixed; inset: 0; z-index: 99999; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; padding: 16px; box-sizing: border-box;">
+      <div style="background: #2b3a32; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; border-radius: 16px; border: 1px solid rgba(242, 201, 76, 0.4); box-shadow: 0 24px 48px rgba(0,0,0,0.5); position: relative; padding: 24px; color: #f5f3ea; font-family: 'Work Sans', sans-serif;">
+        <button id="checkout-close" style="position: absolute; top: 16px; right: 16px; background: rgba(242, 201, 76, 0.1); border: none; color: #f2c94c; width: 32px; height: 32px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; z-index: 5;">✕</button>
         
-        <!-- STEP 1: FORM -->
-        <div id="checkout-step-form">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <div id="checkout-summary-icon" style="font-size: 48px; margin-bottom: 8px;"></div>
-            <img id="checkout-summary-img" src="" alt="Course Image" style="width: 120px; height: 120px; border-radius: 12px; margin: 0 auto 12px auto; display: none; object-fit: contain; background: #1b2620; border: 2px solid rgba(242,201,76,0.3);">
-            <h2 id="checkout-summary-title" style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 26px; margin: 0 0 4px 0;"></h2>
-            <div id="checkout-summary-price" style="color: #10b981; font-weight: 700; font-size: 22px;"></div>
+        <!-- COURSE HEADER -->
+        <div style="text-align: center; margin-bottom: 20px;">
+          <div id="checkout-summary-icon" style="font-size: 44px; margin-bottom: 6px;"></div>
+          <img id="checkout-summary-img" src="" alt="Course Image" style="width: 100px; height: 100px; border-radius: 10px; margin: 0 auto 10px auto; display: none; object-fit: contain; background: #1b2620; border: 2px solid rgba(242,201,76,0.3);">
+          <h2 id="checkout-summary-title" style="color: #f2c94c; font-family: 'Kalam', cursive; font-size: 24px; margin: 0 0 4px 0; line-height: 1.2;"></h2>
+          <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px;">
+            <span style="font-size: 13px; color: #d4d0c2;">Total Payable:</span>
+            <span id="checkout-summary-price" style="color: #10b981; font-weight: 800; font-size: 20px;"></span>
           </div>
-          <form id="chalkboard-checkout-form" style="display: flex; flex-direction: column; gap: 16px;">
+        </div>
+
+        <!-- ==================== STEP 1: USER DETAILS ==================== -->
+        <div id="checkout-step-1" style="display: block;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px dashed rgba(242, 201, 76, 0.3);">
+            <span style="background: rgba(242, 201, 76, 0.15); color: #f2c94c; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid rgba(242, 201, 76, 0.3);">
+              Step 1 of 2: Student Details
+            </span>
+            <span style="font-size: 12px; color: #a8a495;">Next: UPI Payment</span>
+          </div>
+
+          <form id="checkout-form-step1" style="display: flex; flex-direction: column; gap: 14px;">
             <div>
-              <label style="display: block; font-size: 13px; color: rgba(245,243,234,0.7); margin-bottom: 6px;">Full Name</label>
-              <input type="text" id="checkout-input-name" required style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.2); color: #fff; font-size: 15px;" placeholder="John Doe">
+              <label style="display: block; font-size: 13px; color: #f2c94c; margin-bottom: 5px; font-weight: 600;">Full Name *</label>
+              <input type="text" id="checkout-input-name" required style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.3); color: #fff; font-size: 15px;" placeholder="e.g. Rahul Sharma">
             </div>
             <div>
-              <label style="display: block; font-size: 13px; color: rgba(245,243,234,0.7); margin-bottom: 6px;">Email Address</label>
-              <input type="email" id="checkout-input-email" required style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.2); color: #fff; font-size: 15px;" placeholder="john@example.com">
+              <label style="display: block; font-size: 13px; color: #f2c94c; margin-bottom: 5px; font-weight: 600;">Email Address *</label>
+              <input type="email" id="checkout-input-email" required style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.3); color: #fff; font-size: 15px;" placeholder="e.g. rahul@example.com">
             </div>
             <div>
-              <label style="display: block; font-size: 13px; color: rgba(245,243,234,0.7); margin-bottom: 6px;">Phone Number (WhatsApp)</label>
-              <input type="tel" id="checkout-input-phone" required style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.2); color: #fff; font-size: 15px;" placeholder="+91 9876543210">
+              <label style="display: block; font-size: 13px; color: #f2c94c; margin-bottom: 5px; font-weight: 600;">Phone / WhatsApp Number *</label>
+              <input type="tel" id="checkout-input-phone" required style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid rgba(242,201,76,0.3); color: #fff; font-size: 15px;" placeholder="e.g. +91 9876543210">
             </div>
-            <div style="background: rgba(16, 185, 129, 0.1); border: 1px dashed #10b981; padding: 12px; border-radius: 8px; margin-top: 4px;">
-              <label style="display: block; font-size: 13px; color: #10b981; margin-bottom: 6px; font-weight: bold;">Pay via UPI to 9315671951@upi first, then enter the 12-digit UTR here:</label>
-              <input type="text" id="checkout-input-utr" required pattern="[0-9]{12}" maxlength="12" minlength="12" title="Please enter exactly 12 digits" style="width: 100%; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid #10b981; color: #fff; font-size: 15px;" placeholder="e.g. 301234567890">
-            </div>
-            <button id="checkout-submit-button" type="submit" style="background: #f2c94c; color: #2b3a32; font-weight: 700; font-size: 16px; padding: 14px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-top: 8px;">
-              <span>⚡ Submit UTR for Verification</span><span style="font-size: 20px;">→</span>
+            
+            <div id="checkout-step1-error" style="display: none; color: #f43f5e; font-size: 13px; background: rgba(244, 63, 94, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(244, 63, 94, 0.3);"></div>
+
+            <button id="checkout-btn-to-step-2" type="button" style="background: #f2c94c; color: #1e2b25; font-weight: 800; font-size: 15px; padding: 13px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 6px; transition: transform 0.15s;">
+              <span>Next: Proceed to Payment</span>
+              <span style="font-size: 18px;">→</span>
             </button>
           </form>
         </div>
 
-        <!-- STEP 2: SUCCESS -->
-        <div id="checkout-step-success" style="display: none; text-align: center; padding: 10px 0;">
+        <!-- ==================== STEP 2: PAYMENT & PROOF ==================== -->
+        <div id="checkout-step-2" style="display: none;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px dashed rgba(242, 201, 76, 0.3);">
+            <span style="background: rgba(16, 185, 129, 0.15); color: #10b981; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; border: 1px solid rgba(16, 185, 129, 0.3);">
+              Step 2 of 2: Payment & Proof
+            </span>
+            <button id="checkout-btn-back" type="button" style="background: transparent; border: none; color: #f2c94c; font-size: 12px; cursor: pointer; text-decoration: underline;">
+              ← Back to Details
+            </button>
+          </div>
+
+          <!-- UPI Details Box -->
+          <div style="background: #22302a; border: 1px solid rgba(242,201,76,0.35); border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: center;">
+            <div style="font-size: 13px; color: #f5f3ea; margin-bottom: 8px;">
+              Pay using any UPI App (GPay, PhonePe, Paytm, BHIM)
+            </div>
+            
+            <div style="background: rgba(255,255,255,0.06); padding: 8px 12px; border-radius: 6px; display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; border: 1px dashed rgba(242,201,76,0.4);">
+              <span style="font-family: 'JetBrains Mono', monospace; font-size: 14px; color: #f2c94c; font-weight: bold; letter-spacing: 0.5px;" id="checkout-upi-text">9315671951@upi</span>
+              <button type="button" id="checkout-copy-upi-btn" style="background: #f2c94c; color: #1e2b25; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">
+                📋 Copy UPI
+              </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px;">
+              <img id="checkout-upi-qr" src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi%3A%2F%2Fpay%3Fpa%3D9315671951%40upi%26pn%3DShortStudy%26cu%3DINR" alt="UPI QR Code" style="width: 130px; height: 130px; border-radius: 8px; border: 2px solid rgba(242,201,76,0.5); background: white; padding: 4px; display: block;">
+              <span style="font-size: 11px; color: #a8a495;">Scan with any UPI app to pay</span>
+            </div>
+          </div>
+
+          <form id="chalkboard-checkout-form" style="display: flex; flex-direction: column; gap: 14px;">
+            <!-- 12-Digit UTR -->
+            <div>
+              <label style="display: block; font-size: 13px; color: #10b981; margin-bottom: 5px; font-weight: 700;">
+                12-Digit UTR / Transaction ID *
+              </label>
+              <input type="text" id="checkout-input-utr" required pattern="[0-9]{12}" maxlength="12" minlength="12" style="width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1.5px solid #10b981; color: #fff; font-size: 15px; font-family: 'JetBrains Mono', monospace;" placeholder="e.g. 401234567890">
+              <span style="font-size: 11px; color: #a8a495; margin-top: 3px; display: block;">Found in your UPI payment receipt details (exactly 12 digits)</span>
+            </div>
+
+            <!-- Screenshot Upload -->
+            <div>
+              <label style="display: block; font-size: 13px; color: #f2c94c; margin-bottom: 5px; font-weight: 700;">
+                Upload Payment Screenshot Proof *
+              </label>
+              <input type="file" id="checkout-input-screenshot" accept="image/*" required style="width: 100%; box-sizing: border-box; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px dashed rgba(242,201,76,0.4); color: #fff; font-size: 13px; cursor: pointer;">
+              
+              <div id="checkout-screenshot-preview" style="display: none; margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.25); border-radius: 8px; border: 1px solid rgba(242,201,76,0.2); align-items: center; gap: 10px;">
+                <img id="checkout-preview-img" src="" alt="Proof Preview" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px; border: 1px solid rgba(242,201,76,0.4);">
+                <div style="flex: 1; min-width: 0;">
+                  <div id="checkout-preview-name" style="font-size: 12px; color: #f5f3ea; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></div>
+                  <div style="font-size: 11px; color: #10b981;">✓ Ready to upload</div>
+                </div>
+              </div>
+            </div>
+
+            <div id="checkout-step2-error" style="display: none; color: #f43f5e; font-size: 13px; background: rgba(244, 63, 94, 0.1); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(244, 63, 94, 0.3);"></div>
+
+            <button id="checkout-submit-button" type="submit" style="background: #10b981; color: #ffffff; font-weight: 800; font-size: 15px; padding: 14px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 4px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+              <span>⚡ Submit Proof & UTR for Verification</span>
+              <span style="font-size: 18px;">→</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- ==================== STEP 3: SUCCESS CONFIRMATION ==================== -->
+        <div id="checkout-step-success" style="display: none; text-align: center; padding: 16px 0;">
           <div style="font-size: 48px; margin-bottom: 8px;">⏳</div>
-          <h2 style="color: #F2C94C; font-size: 26px; margin: 0 0 8px 0; font-family: 'Kalam', cursive;">Payment Submitted!</h2>
-          <p style="color: #F5F3EA; font-size: 15px; margin-bottom: 18px;">Your UTR is under manual verification by Admin.</p>
-          <div id="checkout-access-status" style="margin-top: 20px; padding: 12px 14px; background: rgba(242, 201, 76, 0.1); border: 1px solid rgba(242, 201, 76, 0.3); border-radius: 8px; font-size: 13.5px; color: #F5F3EA; text-align: left;">
-            <div style="color: #F2C94C; font-weight: 700; margin-bottom: 3px;">🔒 Access Gating Enforced:</div>
-            <div>Materials will unlock automatically here once the Admin verifies your UTR. Please wait.</div>
+          <h2 style="color: #F2C94C; font-size: 24px; margin: 0 0 8px 0; font-family: 'Kalam', cursive;">Order Submitted!</h2>
+          <p style="color: #F5F3EA; font-size: 14.5px; margin-bottom: 16px; line-height: 1.5;">
+            Admin will verify your UTR and screenshot proof and grant access shortly.
+          </p>
+          <div id="checkout-access-status" style="margin-top: 16px; padding: 14px; background: rgba(242, 201, 76, 0.1); border: 1px solid rgba(242, 201, 76, 0.3); border-radius: 8px; font-size: 13.5px; color: #F5F3EA; text-align: left;">
+            <div style="color: #F2C94C; font-weight: 700; margin-bottom: 4px;">🔒 Verification in Progress:</div>
+            <div>Materials will unlock automatically as soon as the Admin approves your payment proof.</div>
           </div>
         </div>
+
       </div>
     </div>
   `;
   document.body.insertAdjacentHTML("beforeend", modalHtml);
 
+  // Close handler
   document.getElementById("checkout-close").addEventListener("click", () => {
     document.getElementById("chalkboard-checkout-modal").style.display = "none";
     activeCheckoutCourseId = null;
+  });
+
+  // Copy UPI button
+  document.getElementById("checkout-copy-upi-btn")?.addEventListener("click", () => {
+    navigator.clipboard?.writeText("9315671951@upi").then(() => {
+      const btn = document.getElementById("checkout-copy-upi-btn");
+      if (btn) {
+        btn.textContent = "✓ Copied!";
+        setTimeout(() => { btn.textContent = "📋 Copy UPI"; }, 2000);
+      }
+    }).catch(() => {
+      prompt("Copy UPI ID:", "9315671951@upi");
+    });
+  });
+
+  // Screenshot input preview
+  const screenshotInput = document.getElementById("checkout-input-screenshot");
+  screenshotInput?.addEventListener("change", () => {
+    const file = screenshotInput.files && screenshotInput.files[0];
+    const previewContainer = document.getElementById("checkout-screenshot-preview");
+    const previewImg = document.getElementById("checkout-preview-img");
+    const previewName = document.getElementById("checkout-preview-name");
+    if (file) {
+      previewName.textContent = file.name;
+      const objectUrl = URL.createObjectURL(file);
+      previewImg.src = objectUrl;
+      previewContainer.style.display = "flex";
+    } else {
+      previewContainer.style.display = "none";
+    }
+  });
+
+  // Step 1 -> Step 2 Navigation
+  document.getElementById("checkout-btn-to-step-2").addEventListener("click", () => {
+    const name = document.getElementById("checkout-input-name").value.trim();
+    const email = document.getElementById("checkout-input-email").value.trim();
+    const phone = document.getElementById("checkout-input-phone").value.trim();
+    const errEl = document.getElementById("checkout-step1-error");
+
+    if (!name || name.length < 2) {
+      errEl.textContent = "Please enter your full name.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = "Please enter a valid email address.";
+      errEl.style.display = "block";
+      return;
+    }
+    if (!phone || phone.replace(/\D/g, "").length < 7) {
+      errEl.textContent = "Please enter a valid phone/WhatsApp number.";
+      errEl.style.display = "block";
+      return;
+    }
+
+    errEl.style.display = "none";
+    document.getElementById("checkout-step-1").style.display = "none";
+    document.getElementById("checkout-step-2").style.display = "block";
+  });
+
+  // Step 2 -> Step 1 Back Navigation
+  document.getElementById("checkout-btn-back").addEventListener("click", () => {
+    document.getElementById("checkout-step-2").style.display = "none";
+    document.getElementById("checkout-step-1").style.display = "block";
   });
 }
 
@@ -706,9 +873,12 @@ window.openCheckoutModal = function(courseId) {
 
   activeCheckoutCourseId = courseId;
   const modal = document.getElementById("chalkboard-checkout-modal");
-  const stepForm = document.getElementById("checkout-step-form");
+  const step1 = document.getElementById("checkout-step-1");
+  const step2 = document.getElementById("checkout-step-2");
   const stepSuccess = document.getElementById("checkout-step-success");
-  stepForm.style.display = "block";
+  
+  step1.style.display = "block";
+  step2.style.display = "none";
   stepSuccess.style.display = "none";
 
   const imgEl = document.getElementById("checkout-summary-img");
@@ -737,6 +907,18 @@ window.openCheckoutModal = function(courseId) {
     nameInput.value = currentUserName;
   }
 
+  // Clear errors and inputs for step 2
+  const errStep1 = document.getElementById("checkout-step1-error");
+  const errStep2 = document.getElementById("checkout-step2-error");
+  if (errStep1) errStep1.style.display = "none";
+  if (errStep2) errStep2.style.display = "none";
+  const utrInput = document.getElementById("checkout-input-utr");
+  if (utrInput) utrInput.value = "";
+  const screenshotInput = document.getElementById("checkout-input-screenshot");
+  if (screenshotInput) screenshotInput.value = "";
+  const previewContainer = document.getElementById("checkout-screenshot-preview");
+  if (previewContainer) previewContainer.style.display = "none";
+
   const form = document.getElementById("chalkboard-checkout-form");
   form.onsubmit = async (e) => {
     e.preventDefault();
@@ -744,44 +926,100 @@ window.openCheckoutModal = function(courseId) {
     const email = document.getElementById("checkout-input-email").value.trim();
     const phone = document.getElementById("checkout-input-phone").value.trim();
     const utr = document.getElementById("checkout-input-utr").value.trim();
+    const fileInput = document.getElementById("checkout-input-screenshot");
+    const file = fileInput?.files && fileInput.files[0];
     
     if (!/^\d{12}$/.test(utr)) {
-      alert("Please enter a valid 12-digit UTR number.");
+      if (errStep2) {
+        errStep2.textContent = "Please enter a valid 12-digit UTR number.";
+        errStep2.style.display = "block";
+      } else {
+        alert("Please enter a valid 12-digit UTR number.");
+      }
       return;
     }
 
-    if (!currentUserUid) {
-      alert("Please log in or create an account first to complete your order.");
-      openAuthModal("signin");
+    if (!file) {
+      if (errStep2) {
+        errStep2.textContent = "Please upload your payment screenshot image proof.";
+        errStep2.style.display = "block";
+      } else {
+        alert("Please upload your payment screenshot image proof.");
+      }
       return;
     }
+
+    if (errStep2) errStep2.style.display = "none";
 
     const submitBtn = document.getElementById("checkout-submit-button");
-
     submitBtn.disabled = true;
-    submitBtn.innerHTML = "<span>Submitting Order...</span>";
+    submitBtn.innerHTML = `<span>⏳ Uploading Proof & Submitting...</span>`;
 
     try {
       if (!db) throw new Error("Database not initialized.");
-      const payload = {
-        name, email, phone, utrNumber: utr, uid: currentUserUid,
-        courseId: course.id, courseTitle: course.title || "Course",
-        amount: course.price || "₹499", status: "pending",
-        isPurchased: false, purchased: false,
+
+      // 1. Upload Screenshot to Firebase Storage (with Data URL fallback)
+      let screenshotURL = "";
+      try {
+        if (storage && ref && uploadBytes && getDownloadURL) {
+          const cleanFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const storagePath = `payment_proofs/${Date.now()}_${cleanFileName}`;
+          const proofStorageRef = ref(storage, storagePath);
+          const uploadSnapshot = await uploadBytes(proofStorageRef, file);
+          screenshotURL = await getDownloadURL(uploadSnapshot.ref);
+        } else {
+          screenshotURL = await readFileAsDataURL(file);
+        }
+      } catch (storageErr) {
+        console.warn("Storage upload note, saving fallback proof:", storageErr);
+        screenshotURL = await readFileAsDataURL(file);
+      }
+
+      // 2. Save Order Payload to Firestore collection "orders" and "course_orders"
+      const orderPayload = {
+        userName: name,
+        userEmail: email,
+        userPhone: phone,
+        name: name,
+        email: email,
+        phone: phone,
+        studentName: name,
+        studentEmail: email,
+        studentPhone: phone,
+        courseId: course.id,
+        courseTitle: course.title || "Course",
+        amount: course.price || "₹499",
+        utrNumber: utr,
+        utr: utr,
+        screenshotURL: screenshotURL,
+        status: "pending",
+        isPurchased: false,
+        purchased: false,
+        uid: currentUserUid || "",
         createdAt: serverTimestamp()
       };
       
-      const orderId = `${currentUserUid}_${course.id}`;
-      await setDoc(doc(db, "course_orders", orderId), payload, { merge: true });
+      const uniqueTimestamp = Date.now();
+      const orderId = `${currentUserUid || 'order'}_${course.id}_${uniqueTimestamp}`;
+      const legacyOrderId = currentUserUid ? `${currentUserUid}_${course.id}` : orderId;
+
+      // Save to "orders"
+      await setDoc(doc(db, "orders", orderId), orderPayload);
       
-      stepForm.style.display = "none";
+      // Save to "course_orders"
+      await setDoc(doc(db, "course_orders", legacyOrderId), orderPayload, { merge: true });
+
+      // 3. Trigger confirmation alert
+      alert("Order submitted! Admin will verify and grant access shortly.");
+      
+      step2.style.display = "none";
       stepSuccess.style.display = "block";
     } catch (err) {
-      console.error(err);
-      alert("Failed to submit order. Please try again.");
+      console.error("Order submission failed:", err);
+      alert("Failed to submit order. Please try again: " + (err.message || ""));
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<span>⚡ Submit UTR for Verification</span><span style="font-size: 20px;">→</span>`;
+      submitBtn.innerHTML = `<span>⚡ Submit Proof & UTR for Verification</span><span style="font-size: 18px;">→</span>`;
     }
   };
 

@@ -640,27 +640,58 @@ function startRealtimeListeners() {
     console.error("Failed to bind paid courses listener:", err);
   }
 
-  // D. COURSE ORDERS REALTIME LISTENER
-  try {
-    const ordersCol = collection(db, "course_orders");
-    unsubscribeOrders = onSnapshot(ordersCol, (snapshot) => {
-      const items = [];
-      snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      items.sort((a, b) => {
-        const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-        const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-        return timeB - timeA;
-      });
-      ordersData = items;
-      renderOrdersTable();
-      updateMetrics();
-    }, (error) => {
-      console.error("Firestore Orders Listener Error:", error);
+  // D. ORDERS REALTIME LISTENERS (orders & course_orders)
+  let ordersListA = [];
+  let ordersListB = [];
+
+  const updateMergedOrders = () => {
+    const map = new Map();
+    [...ordersListA, ...ordersListB].forEach((order) => {
+      const key = order.id || `${order.uid}_${order.courseId}_${order.utrNumber}`;
+      if (!map.has(key)) {
+        map.set(key, order);
+      } else {
+        const existing = map.get(key);
+        if (order.status === "approved" && existing.status !== "approved") {
+          map.set(key, order);
+        }
+      }
     });
+
+    const items = Array.from(map.values());
+    items.sort((a, b) => {
+      const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : (a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0);
+      const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : (b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0);
+      return timeB - timeA;
+    });
+    ordersData = items;
+    renderOrdersView();
+    updateMetrics();
+  };
+
+  try {
+    const ordersCol = collection(db, "orders");
+    const unsubA = onSnapshot(ordersCol, (snapshot) => {
+      const items = [];
+      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, _col: "orders", ...docSnap.data() }));
+      ordersListA = items;
+      updateMergedOrders();
+    }, (err) => console.warn("Orders listener note:", err));
+
+    const courseOrdersCol = collection(db, "course_orders");
+    const unsubB = onSnapshot(courseOrdersCol, (snapshot) => {
+      const items = [];
+      snapshot.forEach((docSnap) => items.push({ id: docSnap.id, _col: "course_orders", ...docSnap.data() }));
+      ordersListB = items;
+      updateMergedOrders();
+    }, (err) => console.warn("Course orders listener note:", err));
+
+    unsubscribeOrders = () => {
+      if (unsubA) unsubA();
+      if (unsubB) unsubB();
+    };
   } catch (err) {
-    console.error("Failed to bind orders listener:", err);
+    console.error("Failed to bind orders listeners:", err);
   }
 }
 
@@ -1756,6 +1787,304 @@ function renderPaidCoursesTable() {
   });
 }
 
+let currentOrdersFilter = "pending";
+
+window.openProofLightbox = function(imgUrl, caption) {
+  const modal = document.getElementById("proof-lightbox-modal");
+  const img = document.getElementById("proof-lightbox-img");
+  const cap = document.getElementById("proof-lightbox-caption");
+  if (!modal || !img) return;
+  img.src = imgUrl;
+  if (cap) cap.textContent = caption || "Payment Screenshot Proof";
+  modal.style.display = "flex";
+};
+
+document.getElementById("proof-lightbox-close")?.addEventListener("click", () => {
+  const modal = document.getElementById("proof-lightbox-modal");
+  if (modal) modal.style.display = "none";
+});
+
+document.getElementById("proof-lightbox-modal")?.addEventListener("click", (e) => {
+  if (e.target.id === "proof-lightbox-modal") {
+    const modal = document.getElementById("proof-lightbox-modal");
+    if (modal) modal.style.display = "none";
+  }
+});
+
+// Orders filter button listeners
+document.querySelectorAll(".order-filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".order-filter-btn").forEach((b) => {
+      b.classList.remove("active");
+      b.style.opacity = "0.7";
+    });
+    btn.classList.add("active");
+    btn.style.opacity = "1";
+    currentOrdersFilter = btn.getAttribute("data-filter") || "all";
+    renderOrdersView();
+  });
+});
+
+function renderOrdersView() {
+  renderOrdersCards();
+  renderOrdersTable();
+  updateOrderBadgeCounts();
+}
+
+function updateOrderBadgeCounts() {
+  const pendingCount = ordersData.filter(o => o.status !== "approved" && o.isPurchased !== true).length;
+  const approvedCount = ordersData.filter(o => o.status === "approved" || o.isPurchased === true).length;
+  const allCount = ordersData.length;
+
+  const countPendingEl = document.getElementById("count-pending-orders");
+  const countApprovedEl = document.getElementById("count-approved-orders");
+  const countAllEl = document.getElementById("count-all-orders");
+
+  if (countPendingEl) countPendingEl.textContent = pendingCount;
+  if (countApprovedEl) countApprovedEl.textContent = approvedCount;
+  if (countAllEl) countAllEl.textContent = allCount;
+}
+
+function renderOrdersCards() {
+  const container = document.getElementById("orders-cards-container");
+  if (!container) return;
+
+  let filtered = [...ordersData];
+  if (currentOrdersFilter === "pending") {
+    filtered = filtered.filter(o => o.status !== "approved" && o.isPurchased !== true);
+  } else if (currentOrdersFilter === "approved") {
+    filtered = filtered.filter(o => o.status === "approved" || o.isPurchased === true);
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; padding: 32px; background: rgba(0,0,0,0.2); border-radius: 12px; border: 1px dashed rgba(242,201,76,0.2); text-align: center; color: var(--text-muted);">
+        <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+        <div style="font-size: 15px; color: #f5f3ea; font-weight: 600;">No ${currentOrdersFilter} orders found</div>
+        <div style="font-size: 13px; margin-top: 4px;">Orders submitted by students with payment screenshot proof will appear here.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = filtered.map((order) => {
+    const isApproved = order.status === "approved" || order.isPurchased === true || order.purchased === true;
+    const studentName = order.studentName || order.userName || order.name || "Student";
+    const studentEmail = order.studentEmail || order.userEmail || order.email || "—";
+    const studentPhone = order.studentPhone || order.userPhone || order.phone || "";
+    const courseTitle = order.courseTitle || "Course";
+    const amount = order.amount || order.coursePrice || "₹499";
+    const utr = order.utrNumber || order.utr || "N/A";
+    const screenshot = order.screenshotURL || order.screenshotUrl || order.proofURL || "";
+    
+    let dateStr = "Recent";
+    if (order.createdAt?.toDate) {
+      dateStr = order.createdAt.toDate().toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" });
+    }
+
+    const statusBadge = isApproved
+      ? `<span style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.5); font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+           ✓ Access Approved
+         </span>`
+      : `<span style="background: rgba(244, 63, 94, 0.2); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.5); font-weight: 800; font-size: 12px; padding: 4px 10px; border-radius: 20px; display: inline-flex; align-items: center; gap: 4px;">
+           ⏳ Pending Verification
+         </span>`;
+
+    const actionButton = !isApproved
+      ? `<button class="btn btn-approve-access" data-id="${order.id}" data-col="${order._col || 'orders'}" data-uid="${order.uid || ''}" data-course="${order.courseId || ''}" data-email="${studentEmail}" style="width: 100%; background: #10b981; color: #ffffff; font-weight: 800; font-size: 14px; padding: 12px; border-radius: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 12px rgba(16,185,129,0.3);">
+           <span>✓ Approve Access</span>
+         </button>`
+      : `<div style="display: flex; gap: 8px; align-items: center;">
+           <div style="flex: 1; text-align: center; color: #10b981; font-weight: 700; font-size: 13px; background: rgba(16, 185, 129, 0.1); padding: 8px; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.3);">
+             ✓ Enrolled & Unlocked
+           </div>
+           <button class="btn btn-revoke-access" data-id="${order.id}" data-col="${order._col || 'orders'}" data-uid="${order.uid || ''}" data-course="${order.courseId || ''}" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 12px; padding: 8px 12px; border-radius: 6px; cursor: pointer;">
+             Revoke
+           </button>
+         </div>`;
+
+    const screenshotHtml = screenshot
+      ? `
+        <div style="position: relative; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1.5px solid rgba(242,201,76,0.3); background: #16201b; margin-top: 10px;" onclick="window.openProofLightbox('${escapeHTML(screenshot)}', '${escapeHTML(studentName)} - UTR: ${escapeHTML(utr)}')">
+          <img src="${escapeHTML(screenshot)}" alt="Screenshot Proof" style="width: 100%; height: 170px; object-fit: cover; display: block; transition: transform 0.2s;">
+          <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s;" onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=0">
+            <span style="background: #2b3a32; color: #f2c94c; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; border: 1px solid #f2c94c;">🔍 Click to Enlarge Proof</span>
+          </div>
+          <div style="padding: 6px 10px; background: rgba(0,0,0,0.6); display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 11px; color: #10b981; font-weight: 600;">📸 Payment Screenshot</span>
+            <span style="font-size: 11px; color: #f2c94c;">View Full Image ↗</span>
+          </div>
+        </div>
+      `
+      : `
+        <div style="padding: 20px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px dashed rgba(255,255,255,0.1); text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 10px;">
+          No screenshot attached
+        </div>
+      `;
+
+    return `
+      <div class="order-card" style="background: #26332c; border: 1px solid ${isApproved ? 'rgba(16, 185, 129, 0.4)' : 'rgba(244, 63, 94, 0.4)'}; border-radius: 12px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 8px 24px rgba(0,0,0,0.3);">
+        <div>
+          <!-- Header -->
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 12px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 10px;">
+            <div>
+              <div style="font-size: 11.5px; color: #a8a495;">📅 ${dateStr}</div>
+              <div style="font-size: 16px; font-weight: 700; color: #ffffff; margin-top: 2px;">${escapeHTML(studentName)}</div>
+            </div>
+            <div>${statusBadge}</div>
+          </div>
+
+          <!-- Student Info -->
+          <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; margin-bottom: 12px;">
+            <div style="color: #d4d0c2; display: flex; align-items: center; gap: 6px;">
+              <span style="color: var(--yellow);">✉️</span>
+              <a href="mailto:${escapeHTML(studentEmail)}" style="color: #93c5fd; text-decoration: none;">${escapeHTML(studentEmail)}</a>
+            </div>
+            ${studentPhone ? `
+              <div style="color: #d4d0c2; display: flex; align-items: center; gap: 6px;">
+                <span style="color: #10b981;">📱</span>
+                <a href="https://wa.me/${escapeHTML(studentPhone.replace(/\D/g,''))}" target="_blank" style="color: #6ee7b7; text-decoration: none;">${escapeHTML(studentPhone)} (WhatsApp ↗)</a>
+              </div>
+            ` : ''}
+          </div>
+
+          <!-- Course & Price -->
+          <div style="background: rgba(0,0,0,0.25); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid rgba(242,201,76,0.15);">
+            <div>
+              <div style="font-size: 11px; color: #a8a495; text-transform: uppercase; font-weight: 700;">Target Course</div>
+              <div style="font-size: 14px; font-weight: 700; color: var(--yellow);">${escapeHTML(courseTitle)}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 11px; color: #a8a495; text-transform: uppercase; font-weight: 700;">Amount</div>
+              <div style="font-size: 15px; font-weight: 800; color: #10b981;">${escapeHTML(amount)}</div>
+            </div>
+          </div>
+
+          <!-- 12-Digit UTR -->
+          <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="font-size: 11px; color: #10b981; font-weight: 700; text-transform: uppercase;">12-Digit UTR</div>
+              <code style="font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 800; color: #ffffff; letter-spacing: 1px;">
+                ${escapeHTML(utr)}
+              </code>
+            </div>
+            <button type="button" class="btn btn-sm btn-copy-utr" data-utr="${escapeHTML(utr)}" style="background: rgba(242,201,76,0.2); color: #f2c94c; border: 1px solid rgba(242,201,76,0.4); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">
+              📋 Copy
+            </button>
+          </div>
+
+          <!-- Screenshot Proof -->
+          ${screenshotHtml}
+        </div>
+
+        <!-- Actions -->
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed rgba(255,255,255,0.1);">
+          ${actionButton}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // Copy UTR buttons
+  container.querySelectorAll(".btn-copy-utr").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const utr = btn.getAttribute("data-utr");
+      navigator.clipboard?.writeText(utr).then(() => {
+        btn.textContent = "✓ Copied";
+        setTimeout(() => { btn.textContent = "📋 Copy"; }, 1800);
+      });
+    });
+  });
+
+  // Approve Access buttons
+  container.querySelectorAll(".btn-approve-access").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const orderId = btn.getAttribute("data-id");
+      const colName = btn.getAttribute("data-col") || "orders";
+      const uid = btn.getAttribute("data-uid");
+      const courseId = btn.getAttribute("data-course");
+      const userEmail = btn.getAttribute("data-email");
+
+      btn.disabled = true;
+      btn.innerHTML = `<span>⏳ Approving Access...</span>`;
+
+      try {
+        const updatePayload = {
+          status: "approved",
+          isPurchased: true,
+          purchased: true,
+          isCoursePaid: true,
+          approvedAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+
+        // Update in orders
+        await setDoc(doc(db, "orders", orderId), updatePayload, { merge: true }).catch(() => {});
+        // Update in course_orders
+        await setDoc(doc(db, "course_orders", orderId), updatePayload, { merge: true }).catch(() => {});
+
+        // Also record in enrolledCourses
+        if (uid && courseId) {
+          const enrollId = `${uid}_${courseId}`;
+          await setDoc(doc(db, "enrolledCourses", enrollId), {
+            uid,
+            courseId,
+            userEmail: userEmail || "",
+            status: "approved",
+            isPurchased: true,
+            purchased: true,
+            isCoursePaid: true,
+            approvedAt: serverTimestamp()
+          }, { merge: true }).catch((err) => console.warn("Enrollment write:", err));
+        }
+
+        showToast("Access approved! User now has full access to the course.", "success");
+      } catch (err) {
+        console.error("Failed to approve order:", err);
+        showToast("Failed to approve: " + err.message, "error");
+        btn.disabled = false;
+        btn.innerHTML = `<span>✓ Approve Access</span>`;
+      }
+    });
+  });
+
+  // Revoke Access buttons
+  container.querySelectorAll(".btn-revoke-access").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const orderId = btn.getAttribute("data-id");
+      const uid = btn.getAttribute("data-uid");
+      const courseId = btn.getAttribute("data-course");
+
+      btn.disabled = true;
+      btn.textContent = "Revoking...";
+
+      try {
+        const updatePayload = {
+          status: "pending",
+          isPurchased: false,
+          purchased: false,
+          isCoursePaid: false,
+          updatedAt: serverTimestamp()
+        };
+
+        await setDoc(doc(db, "orders", orderId), updatePayload, { merge: true }).catch(() => {});
+        await setDoc(doc(db, "course_orders", orderId), updatePayload, { merge: true }).catch(() => {});
+
+        if (uid && courseId) {
+          const enrollId = `${uid}_${courseId}`;
+          await deleteDoc(doc(db, "enrolledCourses", enrollId)).catch(() => {});
+        }
+
+        showToast("Access revoked. Course is locked for this user.", "success");
+      } catch (err) {
+        console.error("Failed to revoke access:", err);
+        showToast("Failed to revoke: " + err.message, "error");
+      }
+    });
+  });
+}
+
 function renderOrdersTable() {
   const tbody = document.getElementById("orders-table-body");
   if (!tbody) return;
@@ -1772,22 +2101,21 @@ function renderOrdersTable() {
   }
 
   tbody.innerHTML = ordersData.map((order) => {
-    // Check if user has received course access
-    const isPurchased = order.isPurchased === true || order.purchased === true || (order.purchased !== false && order.status === "approved");
+    const isApproved = order.status === "approved" || order.isPurchased === true || order.purchased === true;
     const studentName = order.studentName || order.userName || order.name || "Student";
     const studentEmail = order.studentEmail || order.userEmail || order.email || "—";
     const studentPhone = order.studentPhone || order.userPhone || order.phone || "";
     const courseTitle = order.courseTitle || "Course";
     const amount = order.amount || order.coursePrice || "₹499";
-    const utr = order.utrNumber || "N/A";
-    const status = order.status || (isPurchased ? "approved" : "pending");
+    const utr = order.utrNumber || order.utr || "N/A";
+    const screenshot = order.screenshotURL || order.screenshotUrl || order.proofURL || "";
     
     let dateStr = "Recent";
     if (order.createdAt?.toDate) {
       dateStr = order.createdAt.toDate().toLocaleString("en-IN", { dateStyle: "short", timeStyle: "short" });
     }
 
-    const statusBadge = isPurchased || status === "approved"
+    const statusBadge = isApproved
       ? `<span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.4); font-weight: 700; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
            ✓ Approved
          </span>`
@@ -1795,11 +2123,17 @@ function renderOrdersTable() {
            ⏳ Pending
          </span>`;
 
-    const controlButton = (!isPurchased && status !== "approved")
-      ? `<button class="btn btn-success btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="grant" style="background: #10b981; color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 12px;">
-           ✓ Approve Payment
+    const screenshotCol = screenshot
+      ? `<button type="button" onclick="window.openProofLightbox('${escapeHTML(screenshot)}', '${escapeHTML(studentName)} - UTR: ${escapeHTML(utr)}')" style="background: rgba(242,201,76,0.15); color: #f2c94c; border: 1px solid rgba(242,201,76,0.3); padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;">
+           📸 View Proof
          </button>`
-      : `<button class="btn btn-secondary btn-sm btn-toggle-purchase" data-id="${order.id}" data-action="revoke" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 11.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer;">
+      : `<span style="color: var(--text-muted); font-size: 12px;">No proof</span>`;
+
+    const controlButton = !isApproved
+      ? `<button class="btn btn-success btn-sm btn-table-approve" data-id="${order.id}" data-uid="${order.uid || ''}" data-course="${order.courseId || ''}" data-email="${studentEmail}" style="background: #10b981; color: #fff; font-weight: 700; padding: 6px 12px; border-radius: 6px; cursor: pointer; border: none; font-size: 12px;">
+           ✓ Approve Access
+         </button>`
+      : `<button class="btn btn-secondary btn-sm btn-table-revoke" data-id="${order.id}" data-uid="${order.uid || ''}" data-course="${order.courseId || ''}" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e; border: 1px solid rgba(244, 63, 94, 0.3); font-size: 11.5px; padding: 5px 10px; border-radius: 6px; cursor: pointer;">
            Revoke Access
          </button>`;
 
@@ -1822,41 +2156,92 @@ function renderOrdersTable() {
             ${escapeHTML(utr)}
           </code>
         </td>
-        <td>${statusBadge}</td>
-        <td>${controlButton}</td>
+        <td>${screenshotCol}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${statusBadge}
+            ${controlButton}
+          </div>
+        </td>
       </tr>
     `;
   }).join("");
 
-  tbody.querySelectorAll(".btn-toggle-purchase").forEach((btn) => {
+  tbody.querySelectorAll(".btn-table-approve").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const orderId = getValidDocId(btn.getAttribute("data-id"));
-      if (!orderId) {
-        showToast("Invalid order ID", "error");
-        return;
-      }
-      const action = btn.getAttribute("data-action");
-      const setPurchased = action === "grant";
-      
+      const orderId = btn.getAttribute("data-id");
+      const uid = btn.getAttribute("data-uid");
+      const courseId = btn.getAttribute("data-course");
+      const userEmail = btn.getAttribute("data-email");
+
       btn.disabled = true;
-      btn.textContent = "Updating...";
+      btn.textContent = "Approving...";
 
       try {
-        await updateDoc(doc(db, "course_orders", orderId), {
-          isPurchased: setPurchased,
-          purchased: setPurchased,
-          status: setPurchased ? "approved" : "pending",
+        const updatePayload = {
+          status: "approved",
+          isPurchased: true,
+          purchased: true,
+          isCoursePaid: true,
+          approvedAt: serverTimestamp(),
           updatedAt: serverTimestamp()
-        });
-        showToast(
-          setPurchased 
-            ? "Access granted! 'isPurchased: true' saved to Firestore." 
-            : "Access revoked! 'isPurchased: false' saved to Firestore.",
-          "success"
-        );
+        };
+
+        await setDoc(doc(db, "orders", orderId), updatePayload, { merge: true }).catch(() => {});
+        await setDoc(doc(db, "course_orders", orderId), updatePayload, { merge: true }).catch(() => {});
+
+        if (uid && courseId) {
+          const enrollId = `${uid}_${courseId}`;
+          await setDoc(doc(db, "enrolledCourses", enrollId), {
+            uid,
+            courseId,
+            userEmail: userEmail || "",
+            status: "approved",
+            isPurchased: true,
+            purchased: true,
+            isCoursePaid: true,
+            approvedAt: serverTimestamp()
+          }, { merge: true }).catch(() => {});
+        }
+
+        showToast("Access approved! User now has full access to the course.", "success");
       } catch (err) {
-        console.error("Failed to update access:", err);
-        showToast("Failed to update access: " + err.message, "error");
+        console.error("Failed to approve access:", err);
+        showToast("Failed to approve: " + err.message, "error");
+      }
+    });
+  });
+
+  tbody.querySelectorAll(".btn-table-revoke").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const orderId = btn.getAttribute("data-id");
+      const uid = btn.getAttribute("data-uid");
+      const courseId = btn.getAttribute("data-course");
+
+      btn.disabled = true;
+      btn.textContent = "Revoking...";
+
+      try {
+        const updatePayload = {
+          status: "pending",
+          isPurchased: false,
+          purchased: false,
+          isCoursePaid: false,
+          updatedAt: serverTimestamp()
+        };
+
+        await setDoc(doc(db, "orders", orderId), updatePayload, { merge: true }).catch(() => {});
+        await setDoc(doc(db, "course_orders", orderId), updatePayload, { merge: true }).catch(() => {});
+
+        if (uid && courseId) {
+          const enrollId = `${uid}_${courseId}`;
+          await deleteDoc(doc(db, "enrolledCourses", enrollId)).catch(() => {});
+        }
+
+        showToast("Access revoked.", "success");
+      } catch (err) {
+        console.error("Failed to revoke access:", err);
+        showToast("Failed to revoke: " + err.message, "error");
       }
     });
   });

@@ -52,9 +52,33 @@
         "courseTitle": { "type": "string" },
         "amount": { "type": "string" },
         "utr": { "type": "string" },
+        "utrNumber": { "type": "string" },
+        "screenshotURL": { "type": "string" },
         "purchased": { "type": "boolean" },
+        "isPurchased": { "type": "boolean" },
         "status": { "type": "string" }
       }
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Payment proof order submitted by student",
+      "type": "object",
+      "properties": {
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "userPhone": { "type": "string" },
+        "courseId": { "type": "string" },
+        "courseTitle": { "type": "string" },
+        "amount": { "type": "string" },
+        "utrNumber": { "type": "string" },
+        "screenshotURL": { "type": "string" },
+        "status": { "type": "string" },
+        "isPurchased": { "type": "boolean" },
+        "purchased": { "type": "boolean" },
+        "uid": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userName", "userEmail", "userPhone", "courseId", "utrNumber", "screenshotURL", "status"]
     },
     "UserProfile": {
       "title": "UserProfile",
@@ -91,6 +115,10 @@
     "/course_orders/{orderId}": {
       "schema": { "$ref": "#/entities/CourseOrder" },
       "description": "Course enrollment orders collection"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Orders collection containing payment proof and UTR"
     }
   }
 }

@@ -12,11 +12,18 @@ import {
   onSnapshot,
   collection,
   query,
+  where,
   orderBy,
   serverTimestamp,
   getDoc,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
+import {
+  getStorage,
+  ref,
+  uploadBytes,
+  getDownloadURL
+} from "https://www.gstatic.com/firebasejs/12.0.0/firebase-storage.js";
 
 // Silence internal SDK offline fallback notices
 try {
@@ -34,6 +41,7 @@ const firebaseConfig = {
 
 export const app = getApps().length > 0 ? getApps()[0] : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+export const storage = getStorage(app);
 
 let firestoreInstance;
 try {
@@ -46,5 +54,23 @@ try {
 }
 
 export const db = firestoreInstance;
-export { firebaseConfig, doc, setDoc, addDoc, updateDoc, deleteDoc, onSnapshot, collection, query, orderBy, serverTimestamp, getDoc, runTransaction };
+export {
+  firebaseConfig,
+  doc,
+  setDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  onSnapshot,
+  collection,
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
+  getDoc,
+  runTransaction,
+  ref,
+  uploadBytes,
+  getDownloadURL
+};
 
