@@ -1,5 +1,3 @@
 User-agent: *
 Allow: /
-Disallow: /admin.html
-
 Sitemap: https://short-study-official-com-qsk8.onrender.com/sitemap.xml

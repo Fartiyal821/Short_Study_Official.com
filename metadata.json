@@ -1,6 +1,6 @@
 {
   "name": "ShortStudy",
-  "description": "A free, structured programming curriculum and computer science learning platform with real-time course and lesson management.",
+  "description": "Learn C++, Python, JavaScript, and Full-Stack Web Development for free on ShortStudy. Access hand-written notes, downloadable source code, and developer guides.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -3,13 +3,19 @@
 
   <url>
     <loc>https://short-study-official-com-qsk8.onrender.com/</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-21</lastmod>
     <priority>1.00</priority>
   </url>
 
   <url>
+    <loc>https://short-study-official-com-qsk8.onrender.com/courses.html</loc>
+    <lastmod>2026-09-21</lastmod>
+    <priority>0.95</priority>
+  </url>
+
+  <url>
     <loc>https://short-study-official-com-qsk8.onrender.com/programming.html</loc>
-    <lastmod>2026-09-15</lastmod>
+    <lastmod>2026-09-21</lastmod>
     <priority>0.95</priority>
   </url>
 
